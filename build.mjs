@@ -18,8 +18,10 @@ const PAGES = [
     out: 'index',
     title: 'Datum',
     description: 'Price your extension properly — foundations, drawings, fees and VAT — then put that exact price to vetted builders.',
-    css: ['assets/styles.css'],
-    js: ['ratebook', 'trees', 'store', 'rates', 'engine', 'iso', 'app'],
+    css: ['assets/styles.css', 'assets/app.css'],
+    js: ['vendor/gsap.min.js', 'vendor/ScrollTrigger.min.js',
+         'src/ratebook.js', 'src/trees.js', 'src/store.js', 'src/rates.js',
+         'src/engine.js', 'src/iso.js', 'src/router.js', 'src/hero.js', 'src/flow.js'],
   },
   {
     src: 'admin.html',
@@ -27,7 +29,7 @@ const PAGES = [
     title: 'Datum Rate Book',
     description: 'Configure pricing for extensions, renovations, loft conversions, new builds and outdoor work.',
     css: ['assets/styles.css', 'assets/admin.css'],
-    js: ['ratebook', 'trees', 'store', 'admin'],
+    js: ['src/ratebook.js', 'src/trees.js', 'src/store.js', 'src/admin.js'],
   },
 ];
 
@@ -40,7 +42,7 @@ const bodies = {};
 for (const page of PAGES) {
   const html = read(`./${page.src}`);
   const css = page.css.map((p) => read(`./${p}`)).join('\n\n');
-  const js = page.js.map((n) => read(`./src/${n}.js`)).join('\n');
+  const js = page.js.map((n) => read(`./${n}`)).join('\n;\n');
 
   const body = html
     .slice(html.indexOf('<body>') + 6, html.indexOf('</body>'))
@@ -133,10 +135,14 @@ const SWITCH_JS = `
 })(document);
 `;
 
-const demoCss = [read('./assets/styles.css'), read('./assets/admin.css'), SWITCH_CSS].join('\n\n');
-const demoJs = ['ratebook', 'trees', 'store', 'rates', 'engine', 'iso', 'app', 'admin']
-  .map((n) => read(`./src/${n}.js`))
-  .join('\n');
+const demoCss = [read('./assets/styles.css'), read('./assets/app.css'),
+                 read('./assets/admin.css'), SWITCH_CSS].join('\n\n');
+const demoJs = ['vendor/gsap.min.js', 'vendor/ScrollTrigger.min.js',
+                'src/ratebook.js', 'src/trees.js', 'src/store.js', 'src/rates.js',
+                'src/engine.js', 'src/iso.js', 'src/router.js', 'src/hero.js',
+                'src/flow.js', 'src/admin.js']
+  .map((n) => read(`./${n}`))
+  .join('\n;\n');
 
 const demoBody =
   `<div id="app-public">\n${bodies.index}\n</div>\n` +

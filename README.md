@@ -15,8 +15,20 @@ questions.
 
 Two screens:
 
-- **`index.html`** — the client estimator. Drag the extension out, answer six questions, get an itemised range.
-- **`admin.html`** — Lee's rate book. Every figure the estimator uses, for all five build types, editable with a live worked example and a draft-then-publish flow.
+- **`index.html`** — the landing page and the estimator. The hero is a section
+  through the ground with one datum line that never moves; the estimator is
+  four questions on four routed pages, then the result.
+- **`admin.html`** — Lee's rate book. Every figure the estimator uses, for all
+  five build types, editable with a live worked example and a
+  draft-then-publish flow.
+
+Routes (hash-based, so it runs from a single file anywhere):
+
+| Route | What it is |
+|---|---|
+| `#/` | Landing — hero section, the descent, how it works, builders |
+| `#/size` `#/build` `#/ground` `#/inside` | One question per page, drawing persists |
+| `#/estimate` | The range, the cost stack and the itemised breakdown |
 
 ## Running it
 
@@ -51,7 +63,10 @@ Deployed properly these are two pages on one domain and share storage anyway.
 | `src/trees.js` | Species table, soil types, and the NHBC-shaped foundation depth logic. |
 | `src/engine.js` | Pure pricing functions. Spec in, itemised estimate out. No DOM — this moves to a server unchanged. |
 | `src/iso.js` | The isometric drawing. Everything on screen is projected from the same metres the price uses. |
-| `src/app.js` | State, dragging, and the interface. |
+| `src/router.js` | Hash routing between the landing, the four steps and the result. |
+| `src/hero.js` | The hero section drawing plots itself in from the datum outwards, then the scroll descent. GSAP. |
+| `src/flow.js` | The steps, the persistent drawing and its camera, and the result. |
+| `vendor/` | GSAP 3.15 and ScrollTrigger, inlined at build time. Standard no-charge licence. |
 | `assets/styles.css` | Design tokens and layout. Light and dark. |
 | `build.mjs` | Inlines the above into `dist/`. |
 

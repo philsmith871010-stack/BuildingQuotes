@@ -4,299 +4,208 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Datum</title>
-<meta name="description" content="Price your extension properly — foundations, drawings, fees and VAT — then put that exact price to vetted builders.">
+<meta name="description" content="Know the number before you build. Extensions priced properly — foundations, drawings, fees and VAT — then put to builders we have vetted.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap">
 <link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
 
-<div class="frame" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+<!-- ==================================================================== -->
+<!-- LANDING                                                              -->
+<!-- ==================================================================== -->
+<div class="view on night" id="view-landing">
 
-<header class="nav">
-  <div class="wrap nav-in">
-    <a class="brand" href="#top" aria-label="Datum, home">
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+  <section class="hero-stage" id="hero">
+    <a class="hero-brand" href="#/" aria-label="Datum, home">
+      <svg width="21" height="21" viewBox="0 0 22 22" fill="none" aria-hidden="true">
         <path d="M1 15h20" stroke="currentColor" stroke-width="1.4"/>
-        <path d="M11 3.5 17 15H5L11 3.5Z" fill="var(--accent)"/>
+        <path d="M11 3.5 17 15H5L11 3.5Z" fill="var(--stage-accent)"/>
         <path d="M11 3.5 17 15H5L11 3.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
         <path d="M11 18.5v-3.5" stroke="currentColor" stroke-width="1.4"/>
       </svg>
       <b>Datum</b>
     </a>
-    <nav class="nav-links" aria-label="Sections">
-      <a href="#estimate">Estimate</a>
-      <a href="#breakdown">Breakdown</a>
-      <a href="#how">How it works</a>
-      <a href="#builders">For builders</a>
-      <a href="#honest">Straight answers</a>
-    </nav>
-    <a class="btn btn-sm" href="#estimate">Get your number</a>
-  </div>
-</header>
+    <svg class="hero-svg" id="hero-svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <defs>
+        <pattern id="h-hatch" width="9" height="9" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+          <line x1="0" y1="0" x2="0" y2="9" stroke="var(--stage-hatch)" stroke-width="1"/>
+        </pattern>
+        <linearGradient id="h-deep" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--stage-earth)"/>
+          <stop offset="100%" stop-color="var(--stage)"/>
+        </linearGradient>
+      </defs>
 
-<main id="top">
+      <!-- Ground and datum are overdrawn well past the viewBox, so the section
+           bleeds to the edges at any window shape without ever cropping the
+           drawing itself. -->
+      <g id="h-ground" opacity="0">
+        <rect x="-700" y="470" width="3000" height="1400" fill="url(#h-deep)"/>
+        <rect x="-700" y="470" width="3000" height="1400" fill="url(#h-hatch)"/>
+      </g>
 
-  <!-- ============================= HERO ============================= -->
-  <section class="wrap hero" id="estimate">
-    <div class="hero-grid">
-      <div class="hero-claim">
-        <p class="eyebrow">Extensions, priced the way they are actually built</p>
-        <h1>Know the number before you build.</h1>
-        <p class="lede">
-          Drag out the extension you want. Datum prices it the way a quantity surveyor
-          would — foundations, drawings, fees, contingency and VAT, all on the face of it —
-          then puts that exact price to builders we have vetted ourselves.
-        </p>
-        <div class="hero-facts">
-          <span class="fact">Essex &amp; the Home Counties</span>
-          <span class="fact">Council building control only</span>
-          <span class="fact">JCT contract on every job</span>
-          <span class="fact">Fortnightly valuations</span>
-        </div>
+      <!-- the datum: the one line that never moves -->
+      <line id="h-datum" class="plot" x1="-700" y1="470" x2="2300" y2="470"
+            stroke="var(--stage-accent)" stroke-width="2"/>
 
-        <div class="readout" id="readout">
-          <div class="readout-main">
-            <p class="eyebrow" id="readout-label">Estimated total, including VAT</p>
-            <div class="readout-range">
-              <span class="num" id="fig-low">£0</span>
-              <span class="to">to</span>
-              <span class="num" id="fig-high">£0</span>
-            </div>
-            <div class="gauge">
-              <div class="gauge-track"><div class="gauge-fill" id="gauge"></div></div>
-              <p class="gauge-label" id="gauge-label">Answer the questions below to tighten this</p>
-            </div>
-            <div class="readout-sub">
-              <p class="readout-note" id="readout-note">A range, not a quotation — it narrows as you tell us more.</p>
-              <div class="vat-toggle" role="group" aria-label="Show prices including or excluding VAT">
-                <button type="button" id="vat-inc" aria-pressed="true">Inc VAT</button>
-                <button type="button" id="vat-ex" aria-pressed="false">Ex VAT</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- existing house, in section -->
+      <g id="h-house" stroke="var(--stage-clay)" stroke-width="1.6" fill="none" class="plot">
+        <path d="M620 470 L620 228 L810 146 L1000 228 L1000 470"/>
+        <path d="M620 327 L1000 327"/>
+        <path d="M665 372 L665 440 L718 440 L718 372 Z"/>
+        <path d="M890 372 L890 440 L943 440 L943 372 Z"/>
+        <path d="M665 250 L665 302 L718 302 L718 250 Z"/>
+        <path d="M890 250 L890 302 L943 302 L943 250 Z"/>
+      </g>
+      <g id="h-found-old" stroke="var(--stage-clay)" stroke-width="1.4" fill="none" class="plot">
+        <path d="M620 470 L620 520 L662 520 L662 470"/>
+        <path d="M958 470 L958 520 L1000 520 L1000 470"/>
+      </g>
 
-      <div class="stage">
-        <div class="stage-bar">
-          <p class="eyebrow">Rear extension · single storey</p>
-          <div class="legend">
-            <i class="l-new">New work</i>
-            <i class="l-old">Existing</i>
-            <i class="l-earth">Below ground</i>
-          </div>
-        </div>
-        <div class="iso-wrap" id="iso-wrap"></div>
-        <p class="stage-hint">
-          <svg width="26" height="10" viewBox="0 0 26 10" fill="none" aria-hidden="true">
-            <path d="M1 5h24M1 5l3.2-3M1 5l3.2 3M25 5l-3.2-3M25 5l-3.2 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-          </svg>
-          Drag a dimension to resize
-        </p>
-      </div>
-    </div>
-  </section>
+      <!-- the new work -->
+      <g id="h-ext" stroke="var(--stage-accent)" stroke-width="2" fill="none" class="plot">
+        <path d="M1000 470 L1000 313 L1330 313 L1330 470"/>
+        <path d="M1000 299 L1330 299"/>
+        <path d="M1330 313 L1330 299"/>
+        <path d="M1000 313 L1000 299"/>
+        <path d="M1180 470 L1180 349 L1320 349 L1320 470"/>
+        <path d="M1227 470 L1227 349"/>
+        <path d="M1274 470 L1274 349"/>
+      </g>
 
-  <!-- ============================= SPEC ============================= -->
-  <section class="wrap band">
-    <div class="band-head">
-      <p class="eyebrow">The specification</p>
-      <h2>Six questions. That is the whole survey.</h2>
-      <p class="lede">
-        Each answer moves the drawing and moves the price. Nothing here is a guess we
-        make on your behalf.
+      <!-- what it actually has to sit on -->
+      <g id="h-found-new" class="plot">
+        <path d="M1000 470 L1000 616 L1068 616 L1068 470" stroke="var(--stage-accent)" stroke-width="2" fill="none"/>
+        <path d="M1262 470 L1262 616 L1330 616 L1330 470" stroke="var(--stage-accent)" stroke-width="2" fill="none"/>
+        <path d="M1000 560 L1330 560" stroke="var(--stage-warn)" stroke-width="1.2" stroke-dasharray="7 5" fill="none"/>
+      </g>
+
+      <!-- the oak, and the reason the foundation goes down there -->
+      <g id="h-tree" stroke="var(--stage-clay)" stroke-width="1.6" fill="none" class="plot">
+        <path d="M1400 470 L1400 214"/>
+        <circle cx="1400" cy="152" r="76"/>
+        <path d="M1400 288 L1352 250"/>
+        <path d="M1400 320 L1450 280"/>
+      </g>
+      <g id="h-roots" stroke="var(--stage-warn)" stroke-width="1.3" fill="none" opacity=".9" class="plot">
+        <path d="M1400 470 C1350 524 1268 556 1176 596"/>
+        <path d="M1400 470 C1364 548 1300 606 1214 652"/>
+        <path d="M1400 470 C1442 528 1494 556 1548 574"/>
+      </g>
+
+      <!-- levels, read off the datum -->
+      <g id="h-levels" font-size="18" letter-spacing="1.5">
+        <g><line class="plot" x1="1452" y1="146" x2="1480" y2="146" stroke="var(--stage-rule)"/><text x="1490" y="151">+5.900</text></g>
+        <g><line class="plot" x1="1452" y1="313" x2="1480" y2="313" stroke="var(--stage-rule)"/><text x="1490" y="318">+2.850</text></g>
+        <g><line class="plot" x1="1452" y1="470" x2="1480" y2="470" stroke="var(--stage-accent)"/><text x="1490" y="475" fill="var(--stage-accent)">±0.000</text></g>
+        <g><line class="plot" x1="1452" y1="560" x2="1480" y2="560" stroke="var(--stage-rule)"/><text x="1490" y="565">−1.000</text></g>
+        <g><line class="plot" x1="1452" y1="616" x2="1480" y2="616" stroke="var(--stage-warn)"/><text x="1490" y="621" fill="var(--stage-warn)">−2.650</text></g>
+      </g>
+    </svg>
+    <div class="hero-scrim"></div>
+
+    <div class="hero-copy">
+      <p class="hero-level" id="hero-eyebrow">The point everything is measured from</p>
+      <h1 class="hero-title">
+        <span class="ln"><span>Know the</span></span>
+        <span class="ln"><span><em>number</em></span></span>
+        <span class="ln"><span>before you build.</span></span>
+      </h1>
+      <p class="hero-sub" id="hero-sub">
+        Every quote you have been given stops at the ground. Datum prices what is
+        under it too — then puts that exact figure to builders we have vetted
+        ourselves, who take it or leave it.
       </p>
+      <div class="hero-cta" id="hero-cta">
+        <a class="btn" href="#/size">Price my extension</a>
+        <a class="btn btn-line" href="#how">How it works</a>
+      </div>
     </div>
 
-    <div class="spec">
-
-      <div class="q">
-        <div class="q-head">
-          <p class="q-title">How is it built?</p>
-          <p class="q-help">The construction of the external walls.</p>
-        </div>
-        <div class="seg" role="group" aria-label="Wall construction" id="q-wall">
-          <button type="button" data-val="brick"  aria-pressed="true">Brickwork</button>
-          <button type="button" data-val="render" aria-pressed="false">Render</button>
-          <button type="button" data-val="timber" aria-pressed="false">Timber frame &amp; clad</button>
-        </div>
+    <div class="hero-foot" id="hero-foot">
+      <div class="hero-readout">
+        <div>Footprint<b id="hf-area">20.0 m²</b></div>
+        <div>Foundation<b id="hf-depth">−2.650 m</b></div>
+        <div>Estimate<b id="hf-price">£86,500—£160,500</b></div>
       </div>
-
-      <div class="q">
-        <div class="q-head">
-          <p class="q-title">Bi-fold doors</p>
-          <p class="q-help">Total width across the opening. Leave at zero for none.</p>
-        </div>
-        <div class="stepper">
-          <button type="button" id="bifold-down" aria-label="Reduce bi-fold width">−</button>
-          <output id="bifold-out" class="num" aria-live="polite">None</output>
-          <button type="button" id="bifold-up" aria-label="Increase bi-fold width">+</button>
-        </div>
-      </div>
-
-      <div class="q">
-        <div class="q-head">
-          <p class="q-title">Walls coming out</p>
-          <p class="q-help">Existing wall to be removed, so the new space opens into the house. Steel and making good included.</p>
-        </div>
-        <div class="stepper">
-          <button type="button" id="wall-down" aria-label="Reduce wall removal">−</button>
-          <output id="wall-out" class="num" aria-live="polite">None</output>
-          <button type="button" id="wall-up" aria-label="Increase wall removal">+</button>
-        </div>
-      </div>
-
-      <div class="q q-wide">
-        <div class="q-head">
-          <p class="q-title">Trees near the extension</p>
-          <p class="q-help">
-            This is the one that catches people out. On shrinkable clay a thirsty tree
-            dictates how deep you dig, and depth is expensive. We work to the NHBC
-            approach: species, its mature height, and how far away it is.
-          </p>
-        </div>
-        <div class="tree-list" id="tree-list"></div>
-        <div>
-          <button type="button" class="btn btn-ghost btn-sm" id="tree-add">+ Add a tree</button>
-        </div>
-        <div id="ground-flag"></div>
-      </div>
-
-      <div class="q">
-        <div class="q-head">
-          <p class="q-title">What is the ground?</p>
-          <p class="q-help">Most of Essex and the London basin is heavy clay, so that is where we start.</p>
-        </div>
-        <div class="seg" role="group" aria-label="Ground conditions" id="q-soil"></div>
-      </div>
-
-      <div class="q">
-        <div class="q-head">
-          <p class="q-title">A new kitchen?</p>
-          <p class="q-help">Fitting only. You buy the units and appliances you want, at whatever you want to spend.</p>
-        </div>
-        <div class="seg" role="group" aria-label="New kitchen" id="q-kitchen">
-          <button type="button" data-val="no"  aria-pressed="true">No</button>
-          <button type="button" data-val="yes" aria-pressed="false">Yes</button>
-        </div>
-      </div>
-
-      <div class="q">
-        <div class="q-head">
-          <p class="q-title">Bathrooms in the extension</p>
-          <p class="q-help">Labour only, same principle as the kitchen.</p>
-        </div>
-        <div class="seg" role="group" aria-label="Number of bathrooms" id="q-bath">
-          <button type="button" data-val="0" aria-pressed="true">None</button>
-          <button type="button" data-val="1" aria-pressed="false">One</button>
-          <button type="button" data-val="2" aria-pressed="false">Two</button>
-          <button type="button" data-val="3" aria-pressed="false">Three</button>
-        </div>
-      </div>
-
-      <div class="q q-wide">
-        <div class="flag flag-good">
-          <span><b>Single storey, for now.</b> Double storey, lofts, garage conversions and
-          whole-house renovations are next — renovations will start from a floor plan you
-          upload and scale yourself, rather than a number you have to guess at.</span>
-        </div>
-      </div>
-
+      <div class="hero-scroll"><i></i> Scroll to descend</div>
     </div>
   </section>
 
-  <!-- ========================== BREAKDOWN =========================== -->
-  <section class="wrap band" id="breakdown">
-    <div class="band-head">
-      <p class="eyebrow">Where the money goes</p>
-      <h2>Every line, in the open.</h2>
-      <p class="lede">
-        Including our margin. A builder who has to hide their profit has to find it
-        somewhere later, and that somewhere is you.
-      </p>
-    </div>
+  <!-- the descent ------------------------------------------------------- -->
+  <section class="descent" id="descent">
+    <div class="descent-inner">
+      <div class="strata" id="strata">
 
-    <div class="cost-grid">
-      <div class="stack">
-        <div class="stack-bar" id="stack-bar" role="img" aria-label="Proportion of the total taken by each part of the job"></div>
-        <div class="stack-key">
-          <i class="k-trade">Building work</i>
-          <i class="k-fees">Drawings &amp; fees</i>
-          <i class="k-margin">Margin</i>
-          <i class="k-contingency">Contingency</i>
-          <i class="k-vat">VAT</i>
-        </div>
-        <table class="items">
-          <thead>
-            <tr><th scope="col">Item</th><th scope="col">Amount</th></tr>
-          </thead>
-          <tbody id="items"></tbody>
-        </table>
-      </div>
-
-      <div style="display:grid; gap:1.1rem;">
-        <div class="capture" id="capture">
-          <div>
-            <p class="eyebrow">Take it with you</p>
-            <h3 style="margin-top:.35rem;">The itemised version, as a PDF.</h3>
+        <article class="stratum" data-level="±0.000">
+          <div class="stratum-mark">±0.000<small>Ground level</small></div>
+          <div style="display:grid;gap:1rem">
+            <h2>Three builders. Three prices. None of them what you pay.</h2>
+            <p>You get quotes that differ by forty thousand pounds and no way to tell
+            which one is honest. Then the job starts, the ground turns out to be
+            what it always was, and the price moves anyway.</p>
           </div>
-          <p class="prose-flow" style="font-size:.88rem;">
-            Every line above, the foundation working, the rates we used and what is
-            <em>not</em> in the figure yet. Yours whether or not you go any further.
-          </p>
-          <form id="capture-form" novalidate>
-            <input type="email" id="capture-email" placeholder="you@example.co.uk" aria-label="Your email address" required>
-            <button class="btn" type="submit">Send it</button>
-          </form>
-          <p class="fineprint">Demonstration only — nothing is sent and no address is stored.</p>
-          <p class="capture-done"><span>✓ On its way. In the real thing this is also the point we would ask whether you want us to brief the architect.</span></p>
-        </div>
+        </article>
 
-        <div class="card" style="border:1px solid var(--rule); border-radius:3px;">
-          <p class="eyebrow">The margin, said plainly</p>
-          <p id="margin-note">—</p>
-        </div>
+        <article class="stratum" data-level="−0.400">
+          <div class="stratum-mark">−0.400<small>Topsoil</small></div>
+          <div style="display:grid;gap:1rem">
+            <h2>Most quotes are priced off a drawing and a hunch.</h2>
+            <p>Nobody has measured your house. Nobody has looked at your soil. The
+            number is a rate per square metre and an optimistic assumption, and the
+            gap between that and the real job is where extras come from.</p>
+          </div>
+        </article>
+
+        <article class="stratum" data-level="−1.000">
+          <div class="stratum-mark">−1.000<small>Where most quotes stop</small></div>
+          <div style="display:grid;gap:1rem">
+            <h2>A metre down is the standard answer.</h2>
+            <p>It is also the cheapest one to assume. On free-draining ground it is
+            usually right. On the heavy clay under most of Essex, with anything
+            thirsty growing nearby, it is not even close.</p>
+          </div>
+        </article>
+
+        <article class="stratum" data-level="−2.650">
+          <div class="stratum-mark" style="color:var(--stage-warn)">−2.650<small>Because of one oak</small></div>
+          <div style="display:grid;gap:1rem">
+            <h2>An oak eight metres away costs twenty‑one thousand pounds.</h2>
+            <p>Its roots draw water out of clay, the clay shrinks, and the footing has
+            to go below the reach of it. That is not an extra. It was always going to
+            be true, and Datum tells you on the first screen rather than in month
+            three.</p>
+            <div class="hero-cta" style="margin-top:.6rem">
+              <a class="btn" href="#/size">See what yours costs</a>
+            </div>
+          </div>
+        </article>
+
       </div>
     </div>
   </section>
 
-  <!-- ============================ HOW ============================== -->
+  <div class="gauge-rail" id="gauge-rail" aria-hidden="true"></div>
+
+  <!-- how it works ------------------------------------------------------ -->
   <section class="wrap band" id="how">
     <div class="band-head">
       <p class="eyebrow">From a number to a finished room</p>
       <h2>Six stages, in this order.</h2>
     </div>
     <div class="steps">
-      <div class="step">
-        <h3>Price it here</h3>
-        <p>Ninety seconds, no site visit, no salesman. You get a range and the full breakdown behind it.</p>
-      </div>
-      <div class="step">
-        <h3>Say go</h3>
-        <p>We brief the architect and the structural engineer ourselves. You do not chase anybody or explain the job twice.</p>
-      </div>
-      <div class="step">
-        <h3>Drawings</h3>
-        <p>Measured survey, plans, planning or permitted development, then structural design and foundation depths for your actual ground.</p>
-      </div>
-      <div class="step">
-        <h3>The accurate price</h3>
-        <p>The drawings come back into Datum and the job is re-priced off the real design. This is the figure the contract is written against.</p>
-      </div>
-      <div class="step">
-        <h3>Tender</h3>
-        <p>That price goes to our vetted builders. They accept it or they pass. Nobody undercuts anybody, so nobody has to claw it back later.</p>
-      </div>
-      <div class="step">
-        <h3>Build</h3>
-        <p>JCT contract. We value the work on site every two weeks, and the builder invoices what we have valued. Not before.</p>
-      </div>
+      <div class="step"><h3>Price it here</h3><p>Ninety seconds, no site visit, no salesman. A range and the full breakdown behind it.</p></div>
+      <div class="step"><h3>Say go</h3><p>We brief the architect and the structural engineer. You do not chase anybody or explain the job twice.</p></div>
+      <div class="step"><h3>Drawings</h3><p>Measured survey, plans, planning or permitted development, then structural design for your actual ground.</p></div>
+      <div class="step"><h3>The accurate price</h3><p>Drawings come back into Datum and the job is re-priced off the real design. This is the figure the contract is written against.</p></div>
+      <div class="step"><h3>Tender</h3><p>That price goes to our vetted builders. They accept it or they pass. Nobody undercuts anybody, so nobody claws it back later.</p></div>
+      <div class="step"><h3>Build</h3><p>JCT contract. We value the work every two weeks, and the builder invoices what we have valued. Not before.</p></div>
     </div>
   </section>
 
-  <!-- =========================== PLEDGES =========================== -->
   <section class="wrap band">
     <div class="band-head">
       <p class="eyebrow">Why the price holds</p>
@@ -306,12 +215,12 @@
       <div class="card">
         <p class="eyebrow">Nothing added without us</p>
         <h3>Extras come through Datum, not through you</h3>
-        <p>If something genuinely unforeseen turns up, we approve it. A builder cannot bill you for something they should have allowed for in the first place, because we priced it and we know what was allowed.</p>
+        <p>If something genuinely unforeseen turns up, we approve it. A builder cannot bill you for something they should have allowed for, because we priced it and we know what was allowed.</p>
       </div>
       <div class="card">
         <p class="eyebrow">Paid for work done</p>
         <h3>We measure it before you pay for it</h3>
-        <p>Every fortnight we value what has actually been built. The invoice follows the valuation. That is how commercial jobs have always worked and there is no reason your kitchen extension should be different.</p>
+        <p>Every fortnight we value what has actually been built. The invoice follows the valuation. That is how commercial jobs have always worked.</p>
       </div>
       <div class="card">
         <p class="eyebrow">Council, always</p>
@@ -326,7 +235,6 @@
     </div>
   </section>
 
-  <!-- =========================== BUILDERS ========================== -->
   <section class="wrap band" id="builders">
     <div class="split">
       <div>
@@ -338,95 +246,202 @@
           You look at it and you either take it or you don't.</p>
           <p>Because the price was set before you saw it, nobody wins by shaving it, and
           nobody needs to make it back on extras. The client already knows what you are
-          earning, which turns out to be a much easier conversation than the one where
-          they find out.</p>
+          earning, which is a much easier conversation than the one where they find out.</p>
           <p>Membership is a subscription. We call your references, every one of them, and
           we are on site every fortnight while you build.</p>
         </div>
       </div>
       <div class="cards" style="grid-template-columns:1fr;">
-        <div class="card">
-          <p class="eyebrow">01 · Vetting</p>
-          <h3>References called, not collected</h3>
-          <p>We speak to previous clients. We look at finished work. Insurance, qualifications and trading history checked before you are listed.</p>
-        </div>
-        <div class="card">
-          <p class="eyebrow">02 · While you build</p>
-          <h3>Standards checked throughout</h3>
-          <p>The same fortnightly visit that values the work also inspects it. Keeping the standard up is how you stay on the list.</p>
-        </div>
-        <div class="card">
-          <p class="eyebrow">03 · Getting paid</p>
-          <h3>Valued Friday, invoiced Friday</h3>
-          <p>No arguing about percentages with a homeowner who doesn't know how to read them. We agree what is done and you invoice it.</p>
-        </div>
+        <div class="card"><p class="eyebrow">01 · Vetting</p><h3>References called, not collected</h3><p>We speak to previous clients. We look at finished work. Insurance, qualifications and trading history checked before you are listed.</p></div>
+        <div class="card"><p class="eyebrow">02 · While you build</p><h3>Standards checked throughout</h3><p>The same fortnightly visit that values the work also inspects it. Keeping the standard up is how you stay on the list.</p></div>
+        <div class="card"><p class="eyebrow">03 · Getting paid</p><h3>Valued Friday, invoiced Friday</h3><p>No arguing about percentages with a homeowner who cannot read them. We agree what is done and you invoice it.</p></div>
       </div>
     </div>
   </section>
 
-  <!-- =========================== HONEST ============================ -->
   <section class="wrap band" id="honest">
     <div class="band-head">
       <p class="eyebrow">Straight answers</p>
       <h2>Three things we would rather you heard from us.</h2>
     </div>
     <div class="cards">
-      <div class="card">
-        <p class="eyebrow">On the estimate</p>
-        <h3>It is an estimate, and it says so</h3>
-        <p>The figure at the top of this page is a range, and it stays a range until an architect has measured your house and an engineer has looked at your ground. It is not a quotation and nothing is fixed until there is a contract.</p>
-      </div>
-      <div class="card">
-        <p class="eyebrow">On the obvious question</p>
-        <h3>Yes — we price the job and we take a cut of it</h3>
-        <p>So the rates are published, the breakdown is the same one your builder sees, and every fortnightly valuation is evidenced with photographs and measurements. If our five per cent is on the page in front of you, we cannot quietly grow it.</p>
-      </div>
-      <div class="card">
-        <p class="eyebrow">On what is missing</p>
-        <h3>What this version does not know yet</h3>
-        <p>Party wall awards, site access, drains under the footprint, roof glazing, heating and electrical work, decoration and floor finishes, and which planning route you need. All of them move the number, and all of them are being added.</p>
-      </div>
-      <div class="card">
-        <p class="eyebrow">On the figures</p>
-        <h3>These rates are a first pass</h3>
-        <p>The build rate, the door rate and the foundation table on this page are starting figures for a working demonstration. They are being replaced with a full quantity surveyor's schedule, and the estimator is built so that swapping them takes minutes.</p>
-      </div>
+      <div class="card"><p class="eyebrow">On the estimate</p><h3>It is an estimate, and it says so</h3><p>The figure is a range, and it stays a range until an architect has measured your house and an engineer has looked at your ground. It is not a quotation and nothing is fixed until there is a contract.</p></div>
+      <div class="card"><p class="eyebrow">On the obvious question</p><h3>Yes — we price the job and we take a cut of it</h3><p>So the rates are published, the breakdown is the same one your builder sees, and every valuation is evidenced with photographs and measurements. If our five per cent is on the page in front of you, we cannot quietly grow it.</p></div>
+      <div class="card"><p class="eyebrow">On what is missing</p><h3>What this version does not know yet</h3><p>Party wall awards, site access, drains under the footprint, roof glazing, heating and electrical work, decoration and floor finishes, and which planning route you need. All of them move the number, and all of them are being added.</p></div>
+      <div class="card"><p class="eyebrow">On the figures</p><h3>These rates are a first pass</h3><p>The build rate, the door rate and the foundation table are starting figures for a working demonstration. They are being replaced with a full quantity surveyor's schedule.</p></div>
     </div>
   </section>
 
-</main>
-
-<footer class="wrap foot">
-  <dl class="titleblock">
-    <div class="tb tb-brand"><dt>Project</dt><dd>Datum</dd></div>
-    <div class="tb"><dt>Client</dt><dd>L Todd Construction</dd></div>
-    <div class="tb"><dt>Drawing</dt><dd>Concept front end</dd></div>
-    <div class="tb"><dt>Scale</dt><dd>Indicative</dd></div>
-    <div class="tb"><dt>Revision</dt><dd>A</dd></div>
-  </dl>
-  <p class="foot-note">
-    Concept demonstration. Every figure on this page is indicative, exclusive of any
-    allowance not listed, and is not a quotation or an offer to carry out work. Rates
-    are placeholders pending a quantity surveyor's schedule. Foundation depths follow
-    the shape of the NHBC guidance on building near trees but are a draft and must be
-    confirmed by a structural engineer for your site.
-  </p>
-</footer>
-
-<div class="sticky" id="sticky">
-  <div>
-    <div class="sticky-lab" id="sticky-lab">Estimated, inc VAT</div>
-    <div class="sticky-fig" id="sticky-fig">£0</div>
-  </div>
-  <a class="btn btn-sm" href="#breakdown">See the breakdown</a>
+  <footer class="wrap foot">
+    <dl class="titleblock">
+      <div class="tb tb-brand"><dt>Project</dt><dd>Datum</dd></div>
+      <div class="tb"><dt>Client</dt><dd>L Todd Construction</dd></div>
+      <div class="tb"><dt>Drawing</dt><dd>Concept front end</dd></div>
+      <div class="tb"><dt>Scale</dt><dd>Indicative</dd></div>
+      <div class="tb"><dt>Revision</dt><dd>B</dd></div>
+    </dl>
+    <p class="foot-note">
+      Concept demonstration. Every figure is indicative, exclusive of any allowance
+      not listed, and is not a quotation or an offer to carry out work. Rates are
+      placeholders pending a quantity surveyor's schedule. Foundation depths follow
+      the shape of the NHBC guidance on building near trees but are a draft and must
+      be confirmed by a structural engineer for your site.
+    </p>
+  </footer>
 </div>
 
+<!-- ==================================================================== -->
+<!-- FLOW — one shell, the question panel swaps per step                   -->
+<!-- ==================================================================== -->
+<div class="view" id="view-flow">
+  <div class="flow">
+    <header class="flowbar">
+      <div class="flowbar-in">
+        <a class="brand" href="#/" aria-label="Datum, home">
+          <svg width="20" height="20" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+            <path d="M1 15h20" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M11 3.5 17 15H5L11 3.5Z" fill="var(--accent)"/>
+            <path d="M11 3.5 17 15H5L11 3.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+            <path d="M11 18.5v-3.5" stroke="currentColor" stroke-width="1.4"/>
+          </svg>
+          <b>Datum</b>
+        </a>
+        <nav class="steps-rail" id="steps-rail" aria-label="Estimator steps"></nav>
+        <div class="flow-total">
+          <div class="lab" id="flow-total-lab">Running estimate</div>
+          <div class="fig" id="flow-total-fig">—</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="flow-body">
+      <section class="flow-ask" id="flow-ask" aria-live="polite"></section>
+
+      <aside class="flow-draw">
+        <div class="flow-draw-bar">
+          <p class="eyebrow" id="draw-title">Rear extension · single storey</p>
+          <div class="legend">
+            <i class="l-new">New work</i>
+            <i class="l-old">Existing</i>
+            <i class="l-earth">Below ground</i>
+          </div>
+        </div>
+        <div class="flow-draw-view">
+          <div class="iso-wrap" id="iso-wrap"></div>
+        </div>
+        <div class="flow-draw-foot">
+          <span id="draw-note">Drag a dimension to resize</span>
+          <span id="draw-level">±0.000</span>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<!-- ==================================================================== -->
+<!-- RESULT                                                                -->
+<!-- ==================================================================== -->
+<div class="view" id="view-estimate">
+  <div class="flow" style="grid-template-rows:auto auto">
+    <header class="flowbar">
+      <div class="flowbar-in">
+        <a class="brand" href="#/" aria-label="Datum, home">
+          <svg width="20" height="20" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+            <path d="M1 15h20" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M11 3.5 17 15H5L11 3.5Z" fill="var(--accent)"/>
+            <path d="M11 3.5 17 15H5L11 3.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+            <path d="M11 18.5v-3.5" stroke="currentColor" stroke-width="1.4"/>
+          </svg>
+          <b>Datum</b>
+        </a>
+        <nav class="steps-rail" id="steps-rail-2" aria-label="Estimator steps"></nav>
+      </div>
+    </header>
+
+    <div class="result">
+      <div class="result-top">
+        <div style="display:grid;gap:1.1rem">
+          <p class="eyebrow">Your estimate</p>
+          <div class="readout" style="box-shadow:none">
+            <div class="readout-main">
+              <p class="eyebrow" id="readout-label">Estimated total, including VAT</p>
+              <div class="readout-range">
+                <span class="num" id="fig-low">£0</span>
+                <span class="to">to</span>
+                <span class="num" id="fig-high">£0</span>
+              </div>
+              <div class="gauge">
+                <div class="gauge-track"><div class="gauge-fill" id="gauge"></div></div>
+                <p class="gauge-label" id="gauge-label"></p>
+              </div>
+              <div class="readout-sub">
+                <p class="readout-note" id="readout-note"></p>
+                <div class="vat-toggle" role="group" aria-label="Show prices including or excluding VAT">
+                  <button type="button" id="vat-inc" aria-pressed="true">Inc VAT</button>
+                  <button type="button" id="vat-ex" aria-pressed="false">Ex VAT</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="result-flag"></div>
+          <div class="stack">
+            <div class="stack-bar" id="stack-bar" role="img" aria-label="Proportion of the total taken by each part of the job"></div>
+            <div class="stack-key">
+              <i class="k-trade">Building work</i>
+              <i class="k-fees">Drawings &amp; fees</i>
+              <i class="k-margin">Margin</i>
+              <i class="k-contingency">Contingency</i>
+              <i class="k-vat">VAT</i>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;gap:1.1rem">
+          <div class="capture" id="capture">
+            <div>
+              <p class="eyebrow">Take it with you</p>
+              <h3 style="margin-top:.35rem;">The itemised version, as a PDF.</h3>
+            </div>
+            <p class="prose-flow" style="font-size:.88rem;">
+              Every line below, the foundation working, the rates we used and what is
+              <em>not</em> in the figure yet. Yours whether or not you go any further.
+            </p>
+            <form id="capture-form" novalidate>
+              <input type="email" id="capture-email" placeholder="you@example.co.uk" aria-label="Your email address" required>
+              <button class="btn" type="submit">Send it</button>
+            </form>
+            <p class="fineprint">Demonstration only — nothing is sent and no address is stored.</p>
+            <p class="capture-done"><span>✓ On its way. In the real thing this is also where we would ask whether to brief the architect.</span></p>
+          </div>
+          <div class="card" style="border:1px solid var(--rule);border-radius:3px">
+            <p class="eyebrow">The margin, said plainly</p>
+            <p id="margin-note">—</p>
+          </div>
+          <div class="flow-nav">
+            <a class="btn btn-ghost btn-sm" href="#/inside">← Change something</a>
+            <a class="skip" href="#/">Back to the start</a>
+          </div>
+        </div>
+      </div>
+
+      <table class="items">
+        <thead><tr><th scope="col">Item</th><th scope="col">Amount</th></tr></thead>
+        <tbody id="items"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/gsap.min.js"></script>
+<script src="vendor/ScrollTrigger.min.js"></script>
 <script src="src/ratebook.js"></script>
 <script src="src/trees.js"></script>
 <script src="src/store.js"></script>
 <script src="src/rates.js"></script>
 <script src="src/engine.js"></script>
 <script src="src/iso.js"></script>
-<script src="src/app.js"></script>
+<script src="src/router.js"></script>
+<script src="src/hero.js"></script>
+<script src="src/flow.js"></script>
 </body>
 </html>
