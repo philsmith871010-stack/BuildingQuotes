@@ -252,6 +252,7 @@ a { color: inherit; }
 }
 .btn:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
 .btn:active { transform: translateY(1px); }
+.btn[hidden] { display: none; }
 .btn-ghost { background: transparent; color: var(--ink); border-color: var(--rule); }
 .btn-ghost:hover { background: var(--well); border-color: var(--ink-3); color: var(--ink); }
 .btn-sm { padding: .44rem .8rem; font-size: .82rem; }

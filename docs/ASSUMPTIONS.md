@@ -45,6 +45,25 @@ a number they might act on.
 
 ---
 
+## 2b. The other four build types
+
+Lee gave figures for extensions. Renovations, loft conversions, new builds and
+outdoor work are now in the rate book with a full set of priced items — **every
+one of those rates is ours, not his.** 37 placeholders in total, counted on the
+admin overview.
+
+They are plausible UK figures for 2026 and they are not his business's numbers.
+The admin exists precisely so they stop being a blocker: Lee types over each one
+and it stops being a placeholder. The CSV importer takes a whole schedule at
+once if the QS spreadsheet is ready.
+
+Worth knowing: the compounding matters more than any single rate. A £1,850/m²
+loft shell becomes roughly £4,700/m² by the time margin, contingency and VAT are
+on it. That is arithmetic, not a mistake — but it is the clearest reason section
+2 needs answering.
+
+---
+
 ## 3. Placeholders we invented
 
 Every one of these is a guess dressed up well enough to demonstrate. None should

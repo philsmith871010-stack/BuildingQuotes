@@ -112,10 +112,16 @@
   /**
    * Governing depth across every tree on the plot. The deepest one wins —
    * you dig the whole footing to the worst case.
+   *
+   * `settings` comes from the rate book, so Lee's admin edits reach here.
    */
-  function requiredDepth(trees, soilId) {
+  function requiredDepth(trees, soilId, settings) {
+    var cfg = settings || {};
+    var minClay = cfg.nominalDepth || MIN_CLAY;
+    var maxDepth = cfg.maxDepth || MAX_DEPTH;
+    var pileAt = cfg.pilingThreshold || 2.5;
     var soil = bySoilId(soilId);
-    var floor = soil.factor === 0 ? MIN_OTHER : MIN_CLAY;
+    var floor = soil.factor === 0 ? Math.min(MIN_OTHER, minClay) : minClay;
     var governing = null;
     var depth = floor;
 
@@ -124,14 +130,14 @@
       if (r.depth > depth) { depth = r.depth; governing = r; }
     });
 
-    depth = Math.min(Math.round(depth * 20) / 20, MAX_DEPTH); // to nearest 50mm
+    depth = Math.min(Math.round(depth * 20) / 20, maxDepth); // to nearest 50mm
     return {
       depth: depth,
       floor: floor,
       governing: governing,
       soil: soil,
-      piled: depth >= 2.5,
-      capped: depth >= MAX_DEPTH
+      piled: depth >= pileAt,
+      capped: depth >= maxDepth
     };
   }
 
