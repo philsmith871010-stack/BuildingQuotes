@@ -31,6 +31,19 @@ Routes (hash-based, so it runs from a single file anywhere):
 | `#/<type>/<step>` | One question per page, drawing alongside |
 | `#/<type>/estimate` | The range, the cost stack and the itemised breakdown |
 
+**A project can be several build types at once.** An extension *and* a loft *and*
+a refurbishment is one job, not three: the building work adds up, but you pay
+for one survey, one set of drawings, one engineer and one building control
+application. `priceProject()` does that, and the estimate shows what the same
+work would have cost bought separately — about £7,800 more on a typical
+three-part job.
+
+**The plan is one house across several floors.** Ground, first and loft, drawn
+with real plan conventions — wall thickness, door swings, stairs, windows,
+party wall — with the work marked on whichever floor it belongs to. The
+extension appears on the ground floor, the loft conversion on the loft, the
+refurbishment tinted across the rooms it touches.
+
 **The questions come out of the rate book.** Each measurement carries homeowner
 wording (`ask`) and each build type groups them into steps. Add a build type in
 the admin, give its measurements wording, and its public flow appears with no

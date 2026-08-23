@@ -254,8 +254,10 @@
   display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
   padding: .55rem .85rem; border-bottom: 1px solid var(--rule-soft); background: var(--well);
 }
-.flow-draw-view { position: relative; overflow: hidden; display: grid; place-items: center; }
-.flow-draw-view .iso-wrap { width: 100%; padding: .4rem; will-change: transform; min-height: 0; }
+.flow-draw-view { position: relative; overflow: hidden; display: grid; min-height: 0; }
+/* the wrap has to fill its row, or the SVG sizes itself from its width alone
+   and a tall drawing overflows the panel instead of fitting inside it */
+.flow-draw-view .iso-wrap { width: 100%; height: 100%; min-height: 0; padding: .5rem; }
 .flow-draw-foot {
   display: flex; align-items: center; justify-content: space-between; gap: .8rem; flex-wrap: wrap;
   padding: .5rem .85rem; border-top: 1px solid var(--rule-soft);
@@ -344,6 +346,10 @@
   --d2-lawn:        #D8E4D2;
   --d2-scan:        #A9A49A;
   --d2-scan-paper:  #EDEAE3;
+  --d2-wall:        #3C4247;
+  --d2-floor:       #F1F0EC;
+  --d2-party:       #8C867B;
+  --d2-reno:        #E8EEF3;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -368,6 +374,10 @@
     --d2-lawn:        #23301F;
     --d2-scan:        #5E574B;
     --d2-scan-paper:  #191C1D;
+    --d2-wall:        #9BA3A6;
+    --d2-floor:       #171B1D;
+    --d2-party:       #7E7768;
+    --d2-reno:        #17252F;
   }
 }
 :root[data-theme="dark"] {
@@ -392,6 +402,10 @@
   --d2-lawn:        #23301F;
   --d2-scan:        #5E574B;
   --d2-scan-paper:  #191C1D;
+  --d2-wall:        #9BA3A6;
+  --d2-floor:       #171B1D;
+  --d2-party:       #7E7768;
+  --d2-reno:        #17252F;
 }
 
 .d2 { display: block; width: 100%; height: 100%; touch-action: none; }
@@ -404,6 +418,8 @@
 }
 .d2-room-area { font-size: 10.5px; letter-spacing: .04em; fill: var(--ink-2); }
 .d2-scan-tag { font-size: 10px; letter-spacing: .18em; fill: var(--d2-scan); }
+.d2-party-tag { font-size: 9px; letter-spacing: .16em; fill: var(--d2-party); }
+.d2-reno-tag { font-size: 10px; letter-spacing: .16em; fill: var(--d2-accent); font-weight: 600; }
 .d2-cal-tag { font-size: 9.5px; letter-spacing: .16em; fill: var(--d2-accent); font-weight: 600; }
 
 /* --- Chooser ---------------------------------------------------------------- */
@@ -426,3 +442,37 @@
 
 .ratebook-link { flex: none; }
 @media (max-width: 780px) { .ratebook-link { display: none; } }
+
+/* --- Multi-select chooser ---------------------------------------------------- */
+.pick { position: relative; border: 0; text-align: left; font: inherit; cursor: pointer; width: 100%; }
+.pick-tick {
+  position: absolute; top: 1.15rem; right: 1.1rem;
+  width: 20px; height: 20px; border-radius: 3px; display: grid; place-items: center;
+  border: 1px solid var(--rule); color: var(--on-accent); font-size: .72rem; line-height: 1;
+  background: var(--paper); transition: background .15s ease, border-color .15s ease;
+}
+.pick.on { background: var(--accent-soft); }
+.pick.on .pick-tick { background: var(--accent); border-color: var(--accent); }
+.pick.on .pick-name { color: var(--accent-ink); }
+.pick-name { padding-right: 2rem; }
+
+/* --- Floor tabs -------------------------------------------------------------- */
+.floor-tabs {
+  display: flex; gap: .25rem; padding: .45rem .85rem;
+  border-bottom: 1px solid var(--rule-soft); background: var(--surface);
+}
+.floor-tabs[hidden] { display: none; }
+.floor-tabs button {
+  font-family: var(--mono); font-size: .64rem; letter-spacing: .13em; text-transform: uppercase;
+  padding: .34rem .7rem; border: 1px solid var(--rule); border-radius: 2px;
+  background: var(--paper); color: var(--ink-3); cursor: pointer;
+}
+.floor-tabs button:hover { color: var(--ink); border-color: var(--ink-3); }
+.floor-tabs button[aria-pressed="true"] {
+  background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 600;
+}
+
+.items tr.grp td {
+  font-family: var(--mono); font-size: .64rem; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--ink-3); padding-top: 1.1rem; border-bottom: 1px solid var(--rule);
+}

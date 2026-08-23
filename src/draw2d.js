@@ -69,6 +69,11 @@
       (stroke ? ' stroke="' + stroke + '" stroke-width="' + (w || 1.4) + '"' : '') + '/>');
   };
   Ctx.prototype.label = function (at, text, cls, anchor) {
+    // reserve roughly the room the text takes, so fitting the viewBox does not clip it
+    var half = String(text).length * 3.4;
+    var l = anchor === 'start' ? 0 : anchor === 'end' ? half * 2 : half;
+    this.mark([at[0] - l, at[1] - 9]);
+    this.mark([at[0] - l + half * 2, at[1] + 5]);
     return this.add('<text x="' + n(at[0]) + '" y="' + n(at[1]) + '" text-anchor="' +
       (anchor || 'middle') + '" class="' + (cls || 'd2-note') + '">' + esc(text) + '</text>');
   };
@@ -153,6 +158,206 @@
     c.label(c.s(x0 + (x1 - x0) * 0.5, -NOMINAL + 0.17), 'USUAL DEPTH', 'd2-warn-tag');
   }
 
+
+  /* =====================================================================
+     The house — one plan, several floors, with the work marked on it
+     ===================================================================== */
+
+  // A semi-detached with a rear outrigger. Metres, origin at the front-left
+  // corner, garden away from the front door.
+  var HOUSE = { w: 8.4, d: 8.2, outX: 3.4, outD: 3.2, party: 0 };
+  var W_EXT = 0.22, W_INT = 0.08;
+
+  function wallRun(c, a, b, thick, k, colour) {
+    c.line(c.p(a[0], a[1]), c.p(b[0], b[1]), colour || 'var(--d2-wall)', thick * S);
+  }
+  /** Cut a hole in a wall by overdrawing it in the floor colour. */
+  function cut(c, a, b, thick) {
+    c.line(c.p(a[0], a[1]), c.p(b[0], b[1]), 'var(--d2-floor)', thick * S + 0.6);
+  }
+  function win(c, a, b, k) {
+    cut(c, a, b, W_EXT);
+    c.line(c.p(a[0], a[1]), c.p(b[0], b[1]), 'var(--d2-wall)', 1.1 * k);
+    c.line(c.p(a[0], a[1]), c.p(b[0], b[1]), 'var(--d2-glass)', 2.6 * k);
+  }
+  /** Door: the opening, the leaf and the swing, as a plan would show it. */
+  function door(c, at, dx, dy, width, k, thick) {
+    var to = [at[0] + dx * width, at[1] + dy * width];
+    cut(c, at, to, thick === undefined ? W_INT : thick);
+    var leafX = at[0] - dy * width, leafY = at[1] + dx * width;
+    c.line(c.p(at[0], at[1]), c.p(leafX, leafY), 'var(--d2-wall)', 1.2 * k);
+    var r = width * S;
+    c.add('<path d="M' + n(c.p(to[0], to[1])[0]) + ' ' + n(c.p(to[0], to[1])[1]) +
+      ' A' + n(r) + ' ' + n(r) + ' 0 0 ' + (dx * dy >= 0 ? '1' : '0') + ' ' +
+      n(c.p(leafX, leafY)[0]) + ' ' + n(c.p(leafX, leafY)[1]) +
+      '" fill="none" stroke="var(--d2-wall)" stroke-width="' + (0.9 * k) + '" stroke-dasharray="' +
+      (2.5 * k).toFixed(1) + ' ' + (2.5 * k).toFixed(1) + '"/>');
+  }
+  function stair(c, x0, y0, x1, y1, k, up) {
+    c.box(c.p(x0, y0), c.p(x1, y1), 'none', 'var(--d2-wall)', 1 * k);
+    var n2 = 9;
+    for (var i = 1; i < n2; i++) {
+      var yy = y0 + i * (y1 - y0) / n2;
+      c.line(c.p(x0, yy), c.p(x1, yy), 'var(--d2-wall)', 0.8 * k);
+    }
+    var mx = (x0 + x1) / 2;
+    c.line(c.p(mx, y1 - 0.15), c.p(mx, y0 + 0.15), 'var(--d2-wall)', 1.1 * k);
+    c.add(arrow(c.p(mx, y0 + 0.15), 0, -1, k));
+    c.label(c.p(mx, y1 + 0.42), up || 'UP', 'd2-tag');
+  }
+
+  function room(c, r, k, tint) {
+    c.box(c.p(r.x, r.y), c.p(r.x + r.w, r.y + r.h), tint || 'var(--d2-floor)', 'none');
+    var ly = r.y + r.h * (r.labelY || 0.5);
+    c.label(c.p(r.x + r.w / 2, ly - 0.1), r.name, 'd2-tag');
+    c.label(c.p(r.x + r.w / 2, ly + 0.66), (r.w * r.h).toFixed(1) + ' m²', 'd2-room-area');
+  }
+
+  var FLOORS = {
+    ground: [
+      { x: 0,   y: 0,   w: 5.0, h: 4.8, name: 'LIVING ROOM' },
+      { x: 5.0, y: 0,   w: 3.4, h: 4.8, name: 'HALL', labelY: 0.14 },
+      { x: 0,   y: 4.8, w: 8.4, h: 3.4, name: 'KITCHEN / DINING' },
+      { x: 0,   y: 8.2, w: 3.4, h: 3.2, name: 'UTILITY' }
+    ],
+    first: [
+      { x: 0,   y: 0,   w: 5.0, h: 4.8, name: 'BEDROOM 1' },
+      { x: 5.0, y: 0,   w: 3.4, h: 3.0, name: 'LANDING', labelY: 0.95 },
+      { x: 5.0, y: 3.0, w: 3.4, h: 5.2, name: 'BEDROOM 2' },
+      { x: 0,   y: 4.8, w: 5.0, h: 3.4, name: 'BEDROOM 3' },
+      { x: 0,   y: 8.2, w: 3.4, h: 3.2, name: 'BATHROOM' }
+    ],
+    loft: [
+      { x: 1.3, y: 1.0, w: 5.7, h: 4.2, name: 'LOFT ROOM' },
+      { x: 1.3, y: 5.2, w: 2.6, h: 2.2, name: 'ENSUITE' },
+      { x: 3.9, y: 5.2, w: 3.1, h: 2.2, name: 'LANDING', labelY: 0.34 }
+    ]
+  };
+
+  /**
+   * One house, one floor. Whatever work has been selected is drawn onto it:
+   * the extension on the ground floor, the loft conversion on the loft, and
+   * the refurbishment tinted across whichever rooms it touches.
+   */
+  function housePlan(c, floor, proj, k) {
+    var H = HOUSE;
+    var types = (proj && proj.types) || [];
+    var jobs = (proj && proj.jobs) || {};
+    var doingReno = types.indexOf('renovation') >= 0;
+    var hasOut = floor !== 'loft';
+
+    // ---- floor plate
+    var plate = hasOut
+      ? [[0, 0], [H.w, 0], [H.w, H.d], [H.outX, H.d], [H.outX, H.d + H.outD], [0, H.d + H.outD]]
+      : [[0, 0], [H.w, 0], [H.w, H.d], [0, H.d]];
+    c.poly(plate.map(function (q) { return c.p(q[0], q[1]); }), 'var(--d2-floor)', 'none');
+
+    // ---- the extension, on the ground floor where it belongs
+    var ext = jobs.extension && jobs.extension.measurements;
+    var showExt = floor === 'ground' && types.indexOf('extension') >= 0 && ext;
+    if (showExt) {
+      var ew = Math.min(ext.width || 5, H.w), ed = ext.depth || 4;
+      var ex0 = H.w - ew, ey0 = H.d;
+      c.box(c.p(ex0, ey0), c.p(H.w, ey0 + ed), 'var(--d2-new-fill)', 'var(--d2-new-line)', 2.4 * k);
+      c.label(c.p((ex0 + H.w) / 2, ey0 + ed / 2 - 0.1), 'NEW EXTENSION', 'd2-tag');
+      c.label(c.p((ex0 + H.w) / 2, ey0 + ed / 2 + 0.66), (ew * ed).toFixed(1) + ' m²', 'd2-room-area');
+      if (ext.bifoldWidth > 0) {
+        var bw = Math.min(ext.bifoldWidth, ew - 0.4), bx = ex0 + (ew - bw) / 2;
+        c.line(c.p(bx, ey0 + ed), c.p(bx + bw, ey0 + ed), 'var(--d2-glass)', 7 * k);
+        c.label(c.p(ex0 + ew / 2, ey0 + ed - 0.45), bw.toFixed(1) + ' m OF BI-FOLD', 'd2-tag');
+      }
+      // dimensions the client can drag
+      c.dimH(c.p(ex0, ey0 + ed + 1.5)[0], c.p(H.w, ey0 + ed + 1.5)[0], c.p(0, ey0 + ed + 1.5)[1],
+        ew.toFixed(2) + ' m', k, 'width', 'Extension width, ' + ew.toFixed(2) + ' metres. Drag, or use the arrow keys.');
+      c.dimV(c.p(H.w + 1.5, ey0)[1], c.p(H.w + 1.5, ey0 + ed)[1], c.p(H.w + 1.5, 0)[0],
+        ed.toFixed(2) + ' m', k, 'depth', 'Projection, ' + ed.toFixed(2) + ' metres. Drag, or use the arrow keys.');
+    }
+
+    // ---- rooms
+    var tint = doingReno && floor !== 'loft' ? 'var(--d2-reno)' : null;
+    (FLOORS[floor] || []).forEach(function (r) { room(c, r, k, tint); });
+
+    // ---- walls
+    var outline = plate.slice();
+    for (var i = 0; i < outline.length; i++) {
+      var a = outline[i], b = outline[(i + 1) % outline.length];
+      wallRun(c, a, b, W_EXT, k);
+    }
+    if (floor === 'loft') {
+      c.box(c.p(1.3, 1.0), c.p(7.0, 7.4), 'none', 'var(--d2-wall)', W_INT * S);
+      c.line(c.p(1.3, 5.2), c.p(7.0, 5.2), 'var(--d2-wall)', W_INT * S);
+      c.line(c.p(3.9, 5.2), c.p(3.9, 7.4), 'var(--d2-wall)', W_INT * S);
+      // where the roof comes down to nothing
+      c.line(c.p(0.2, 0.4), c.p(8.2, 0.4), 'var(--d2-dim)', 1 * k, (4 * k).toFixed(1) + ' ' + (3 * k).toFixed(1));
+      c.line(c.p(0.2, 8.0), c.p(8.2, 8.0), 'var(--d2-dim)', 1 * k, (4 * k).toFixed(1) + ' ' + (3 * k).toFixed(1));
+      c.label(c.p(4.2, 0.15), 'EAVES — NO HEAD HEIGHT', 'd2-tag');
+    } else if (floor === 'ground') {
+      wallRun(c, [5.0, 0], [5.0, 4.8], W_INT, k);
+      wallRun(c, [0, 4.8], [8.4, 4.8], W_INT, k);
+      wallRun(c, [0, 8.2], [3.4, 8.2], W_INT, k);
+      stair(c, 5.45, 1.9, 7.95, 4.5, k);
+      door(c, [5.0, 3.6], 0, 1, 0.85, k);            // hall to living
+      door(c, [3.2, 4.8], 1, 0, 0.85, k);            // hall to kitchen
+      door(c, [1.4, 8.2], 1, 0, 0.85, k);            // kitchen to utility
+      cut(c, [6.1, 0], [7.1, 0], W_EXT);             // front door
+      c.line(c.p(6.1, 0), c.p(7.1, 0), 'var(--d2-wall)', 2 * k);
+      c.label(c.p(6.6, -0.42), 'FRONT DOOR', 'd2-tag');
+      win(c, [1.0, 0], [3.6, 0], k);                 // bay to the living room
+      win(c, [0, 5.6], [0, 7.4], k);
+      if (!showExt) win(c, [4.6, 8.2], [7.4, 8.2], k);
+      win(c, [0.6, 11.4], [2.4, 11.4], k);
+    } else {
+      wallRun(c, [5.0, 0], [5.0, 8.2], W_INT, k);
+      wallRun(c, [0, 4.8], [5.0, 4.8], W_INT, k);
+      wallRun(c, [5.0, 3.0], [8.4, 3.0], W_INT, k);
+      wallRun(c, [0, 8.2], [3.4, 8.2], W_INT, k);
+      stair(c, 5.45, 0.35, 7.95, 2.3, k, 'DOWN');
+      door(c, [5.0, 1.0], 0, 1, 0.85, k);
+      door(c, [5.0, 3.9], 0, 1, 0.85, k);
+      door(c, [3.2, 4.8], 1, 0, 0.85, k);
+      door(c, [1.4, 8.2], 1, 0, 0.85, k);
+      win(c, [1.0, 0], [3.6, 0], k);
+      win(c, [6.0, 0], [7.6, 0], k);
+      win(c, [0, 5.6], [0, 7.4], k);
+      win(c, [4.6, 8.2], [7.4, 8.2], k);
+    }
+
+    // ---- the party wall, because this is a semi
+    c.line(c.p(0, 0), c.p(0, floor === 'loft' ? H.d : H.d + H.outD), 'var(--d2-party)', W_EXT * S);
+    c.label(c.p(0.34, 0.72), 'PARTY WALL', 'd2-party-tag', 'start');
+
+    // ---- the one measurement everything else is scaled from
+    c.tick(c.p(0, 0), c.p(0, -2.2), k);
+    c.tick(c.p(H.w, 0), c.p(H.w, -2.2), k);
+    c.line(c.p(0, -1.95), c.p(H.w, -1.95), 'var(--d2-accent)', 1.6 * k);
+    c.add(arrow(c.p(0, -1.95), -1, 0, k * 1.15));
+    c.add(arrow(c.p(H.w, -1.95), 1, 0, k * 1.15));
+    c.chip(c.p(H.w / 2, -1.95), H.w.toFixed(2) + ' m', k * 1.15);
+    c.label(c.p(H.w / 2, -2.62), 'SCALE SET FROM THIS WALL', 'd2-cal-tag');
+
+    // ---- what floor am I looking at
+    var area = (FLOORS[floor] || []).reduce(function (t, r) { return t + r.w * r.h; }, 0);
+    var extBottom = showExt ? H.d + (jobs.extension.measurements.depth || 4) : 0;
+    var bottom = Math.max(floor === 'loft' ? 8.0 : H.d + H.outD, extBottom);
+    c.label(c.p(H.w / 2, bottom + (showExt ? 2.6 : 1.7)),
+      floor.toUpperCase() + ' FLOOR · ' + area.toFixed(1) + ' m²', 'd2-area');
+  }
+
+  /** The scan the client traced over, drawn under whatever plan is on screen. */
+  function scanLayer(c, floor, k) {
+    var H = HOUSE;
+    var mid = c.p(H.w / 2, (H.d + H.outD) / 2);
+    c.raw('<g opacity="0.45" transform="rotate(-1.1 ' + n(mid[0]) + ' ' + n(mid[1]) +
+          ') translate(' + n(5 * k) + ' ' + n(4 * k) + ')">');
+    c.box(c.p(-0.7, -0.7), c.p(H.w + 0.7, H.d + H.outD + 0.7), 'var(--d2-scan-paper)', 'var(--d2-scan)',
+      1 * k, (6 * k).toFixed(1) + ' ' + (4 * k).toFixed(1));
+    (FLOORS[floor] || []).forEach(function (r) {
+      c.box(c.p(r.x, r.y), c.p(r.x + r.w, r.y + r.h), 'none', 'var(--d2-scan)', 2.4 * k);
+    });
+    c.label(c.p(-0.6, -1.05), 'YOUR FLOOR PLAN, AS UPLOADED', 'd2-scan-tag', 'start');
+    c.raw('</g>');
+  }
+
   /* =====================================================================
      Scenes
      ===================================================================== */
@@ -162,44 +367,9 @@
     /* ---------------------------------------------------------- extension */
     extension: {
       plan: function (c, j, g, k) {
-        var w = j.width || 5, d = j.depth || 4;
-        var hw = Math.max(w + 2, 7), hd = 6;
-        // the house that is already there
-        c.box(c.p(-(hw - w) / 2, -hd), c.p(w + (hw - w) / 2, 0), 'var(--d2-old-fill)', 'var(--d2-old-line)', 1.4 * k);
-        c.label(c.p(w / 2, -hd / 2), 'EXISTING HOUSE', 'd2-tag');
-        // the new work
-        c.box(c.p(0, 0), c.p(w, d), 'var(--d2-new-fill)', 'var(--d2-new-line)', 2 * k);
-        c.label(c.p(w / 2, d / 2), (w * d).toFixed(1) + ' m²', 'd2-area');
-        // bi-folds on the garden edge
-        if (j.bifoldWidth > 0) {
-          var bw = Math.min(j.bifoldWidth, w - 0.4), bx = (w - bw) / 2;
-          c.line(c.p(bx, d), c.p(bx + bw, d), 'var(--d2-glass)', 6 * k);
-          c.label(c.p(w / 2, d + 0.55), bw.toFixed(2) + ' m OF GLASS', 'd2-tag');
-        }
-        // wall coming out, on the line between old and new
-        if (j.wallRemoval > 0) {
-          var rw = Math.min(j.wallRemoval, w), rx = (w - rw) / 2;
-          c.line(c.p(rx, 0), c.p(rx + rw, 0), 'var(--d2-warn)', 3 * k, (5 * k).toFixed(1) + ' ' + (4 * k).toFixed(1));
-        }
-        // trees, in the garden
-        (j.trees || []).forEach(function (t, i) {
-          var sp = root.DATUM.TREES.bySpeciesId(t.species);
-          if (!sp) return;
-          var r = visual(t.distance);
-          var tx = i % 2 ? w + r * 0.72 : -r * 0.72;
-          var ty = d + r * 0.62;
-          var at = c.p(tx, ty);
-          c.circle(at, Math.max(0.9, sp.height * 0.16) * S, 'var(--d2-canopy)', 'var(--d2-canopy-line)', 1.3 * k);
-          var corner = c.p(tx > w / 2 ? w : 0, d);
-          c.tick(corner, at, k);
-          c.chip([(corner[0] + at[0]) / 2, (corner[1] + at[1]) / 2], t.distance.toFixed(1) + ' m', k);
-          c.label([at[0], at[1] + Math.max(0.9, sp.height * 0.16) * S + 13 * k], sp.name.toUpperCase(), 'd2-tag');
-        });
-        // dimensions
-        c.dimH(c.p(0, d + 1.5)[0], c.p(w, d + 1.5)[0], c.p(0, d + 1.5)[1],
-          w.toFixed(2) + ' m', k, 'width', 'Width, ' + w.toFixed(2) + ' metres. Drag, or use the arrow keys.');
-        c.dimV(c.p(w + 1.5, 0)[1], c.p(w + 1.5, d)[1], c.p(w + 1.5, 0)[0],
-          d.toFixed(2) + ' m', k, 'depth', 'Projection, ' + d.toFixed(2) + ' metres. Drag, or use the arrow keys.');
+        var floor = (j.project && j.project.floor) || 'ground';
+        scanLayer(c, floor, k);
+        housePlan(c, floor, j.project, k);
       },
       section: function (c, j, g, k) {
         var d = j.depth || 4, depth = g ? g.depth : NOMINAL;
@@ -288,104 +458,26 @@
         c.label(c.s(span / 2, eaves - 1.2), (j.floorArea || 0).toFixed(0) + ' m² OF NEW FLOOR', 'd2-area');
       },
       plan: function (c, j, g, k) {
-        var span = 8, len = Math.max(4, (j.floorArea || 28) / 4);
-        c.box(c.p(0, 0), c.p(span, len), 'var(--d2-old-fill)', 'var(--d2-old-line)', 1.4 * k);
-        var uw = Math.min(span - 1.4, 3.6);
-        c.box(c.p((span - uw) / 2, 0.5), c.p((span + uw) / 2, len - 0.5), 'var(--d2-new-fill)', 'var(--d2-new-line)', 2 * k);
-        c.label(c.p(span / 2, len / 2), (j.floorArea || 0).toFixed(0) + ' m²', 'd2-area');
-        if (j.dormerWidth > 0) {
-          var dw = Math.min(j.dormerWidth, span - 1);
-          c.line(c.p((span - dw) / 2, len), c.p((span + dw) / 2, len), 'var(--d2-glass)', 6 * k);
-          c.label(c.p(span / 2, len + 0.55), 'DORMER', 'd2-tag');
+        var floor = (j.project && j.project.floor) || 'loft';
+        scanLayer(c, floor, k);
+        housePlan(c, floor, j.project, k);
+        if (floor === 'loft' && j.dormerWidth > 0) {
+          var dw = Math.min(j.dormerWidth, 5.4);
+          c.line(c.p(4.2 - dw / 2, 7.4), c.p(4.2 + dw / 2, 7.4), 'var(--d2-glass)', 7 * k);
+          c.label(c.p(4.2, 7.95), dw.toFixed(1) + ' m DORMER', 'd2-tag');
         }
-        if (j.staircases > 0) {
-          c.box(c.p(span / 2 - 0.5, 0.7), c.p(span / 2 + 0.5, 3.2), 'none', 'var(--d2-new-line)', 1.2 * k);
-          for (var i = 1; i < 8; i++) c.line(c.p(span / 2 - 0.5, 0.7 + i * 0.31), c.p(span / 2 + 0.5, 0.7 + i * 0.31), 'var(--d2-new-line)', 0.8 * k);
-          c.label(c.p(span / 2, 3.65), 'STAIR', 'd2-tag');
-        }
-        c.dimH(c.p(0, len + 1.4)[0], c.p(span, len + 1.4)[0], c.p(0, len + 1.4)[1], span.toFixed(1) + ' m', k);
       }
     },
 
     /* --------------------------------------------------------- renovation */
     renovation: {
-      /*
-       * A floor plan as it looks AFTER the client has uploaded theirs and
-       * traced it: the scan sits underneath, slightly out of square the way a
-       * photographed plan always is, with the crisp trace over the top. One
-       * wall carries the dimension they typed in, and that single number sets
-       * the scale for every other measurement on the drawing.
-       */
       plan: function (c, j, g, k) {
-        // Proportional layout of an ordinary semi, scaled to whatever floor
-        // area the client gave us, so the drawing never contradicts the number.
-        var UNITS = 72;
-        var f = Math.sqrt(Math.max(j.floorArea || 90, 10) / UNITS);
-        var W = 8 * f, H = 9 * f;
-        var rooms = [
-          { x: 0,       y: 0,       w: 5.2 * f, h: 4.5 * f, name: 'LIVING ROOM' },
-          { x: 5.2 * f, y: 0,       w: 2.8 * f, h: 4.5 * f, name: 'HALL & STAIR', labelY: 0.8 },
-          { x: 0,       y: 4.5 * f, w: W,       h: 4.5 * f, name: 'KITCHEN / DINER' }
-        ];
-
-        // ---- the uploaded scan, underneath and very slightly out of square
-        var mid = c.p(W / 2, H / 2);
-        c.raw('<g opacity="0.5" transform="rotate(-1.15 ' + n(mid[0]) + ' ' + n(mid[1]) +
-              ') translate(' + n(5 * k) + ' ' + n(4 * k) + ')">');
-        c.box(c.p(-0.5, -0.5), c.p(W + 0.5, H + 0.5), 'var(--d2-scan-paper)', 'var(--d2-scan)', 1 * k,
-          (6 * k).toFixed(1) + ' ' + (4 * k).toFixed(1));
-        rooms.forEach(function (r) {
-          c.box(c.p(r.x, r.y), c.p(r.x + r.w, r.y + r.h), 'none', 'var(--d2-scan)', 2.6 * k);
-        });
-        c.label(c.p(0.15, H + 0.55), 'YOUR FLOOR PLAN, AS UPLOADED', 'd2-scan-tag', 'start');
-        c.raw('</g>');
-
-        // ---- the trace
-        c.box(c.p(0, 0), c.p(W, H), 'var(--d2-new-fill)', 'var(--d2-new-line)', 2.4 * k);
-        rooms.forEach(function (r) {
-          c.box(c.p(r.x, r.y), c.p(r.x + r.w, r.y + r.h), 'none', 'var(--d2-new-line)', 1.6 * k);
-          var ly = r.y + r.h * (r.labelY || 0.5);
-          c.label(c.p(r.x + r.w / 2, ly - 0.12), r.name, 'd2-tag');
-          c.label(c.p(r.x + r.w / 2, ly + 0.62), (r.w * r.h).toFixed(1) + ' m²', 'd2-room-area');
-        });
-
-        // stair treads, so the hall reads as a hall
-        var hall = rooms[1];
-        var stairTop = hall.y + hall.h * 0.08, stairBot = hall.y + hall.h * 0.55;
-        c.box(c.p(hall.x + 0.3 * f, stairTop), c.p(hall.x + hall.w - 0.3 * f, stairBot),
-          'none', 'var(--d2-new-line)', 1 * k);
-        for (var t = 1; t < 7; t++) {
-          var ty = stairTop + t * (stairBot - stairTop) / 7;
-          c.line(c.p(hall.x + 0.3 * f, ty), c.p(hall.x + hall.w - 0.3 * f, ty), 'var(--d2-new-line)', 0.9 * k);
-        }
-
-        // windows on the front and rear walls
-        [[0, 0.22], [0, 0.62], [H, 0.3], [H, 0.72]].forEach(function (win) {
-          c.line(c.p(W * win[1] - 0.45 * f, win[0]), c.p(W * win[1] + 0.45 * f, win[0]), 'var(--d2-glass)', 5.5 * k);
-        });
-
-        // ---- the one measurement everything else is scaled from
-        var cy = c.p(0, -1.9)[1];
-        c.tick(c.p(0, 0), c.p(0, -2.15), k);
-        c.tick(c.p(W, 0), c.p(W, -2.15), k);
-        c.line(c.p(0, -1.9), c.p(W, -1.9), 'var(--d2-accent)', 1.6 * k);
-        c.add(arrow(c.p(0, -1.9), -1, 0, k * 1.15));
-        c.add(arrow(c.p(W, -1.9), 1, 0, k * 1.15));
-        c.chip([mid[0], cy], W.toFixed(2) + ' m', k * 1.15);
-        c.label(c.p(W / 2, -2.55), 'SCALE SET FROM THIS WALL', 'd2-cal-tag');
-
-        // ---- wall coming out
-        if (j.wallRemoval > 0) {
-          var rw = Math.min(j.wallRemoval, 5.2 * f);
-          c.line(c.p(0, 4.5 * f), c.p(rw, 4.5 * f), 'var(--d2-warn)', 4 * k,
-            (5 * k).toFixed(1) + ' ' + (4 * k).toFixed(1));
-          c.label(c.p(0.25, 4.5 * f - 0.42), rw.toFixed(1) + ' m OF WALL OUT', 'd2-warn-tag', 'start');
-        }
-
-        c.label(c.p(W / 2, H + 1.95), (j.floorArea || 0).toFixed(0) + ' m² TRACED', 'd2-area');
-        c.dimV(c.p(W + 1.6, 0)[1], c.p(W + 1.6, H)[1], c.p(W + 1.6, 0)[0], H.toFixed(2) + ' m', k);
+        var floor = (j.project && j.project.floor) || 'ground';
+        scanLayer(c, floor, k);
+        housePlan(c, floor, j.project, k);
+        c.label(c.p(HOUSE.w / 2, -3.35),
+          (j.floorArea || 0).toFixed(0) + ' m² BEING REFURBISHED', 'd2-reno-tag');
       },
-
       section: function (c, j, g, k) {
         var w = 9;
         groundLine(c, -1, w + 1, k);

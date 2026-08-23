@@ -1407,11 +1407,11 @@ select.cell:hover { border-color: var(--rule); }
    * @param typeId       which build type
    * @param job          { measurements, modifiers, ground, region, council, answered }
    */
-  function priceJob(book, typeId, job) {
+  /** Just the building work for one build type. No fees, no margin, no VAT. */
+  function tradeLines(book, typeId, job) {
     var type = typeById(book, typeId);
-    if (!type) return null;
+    if (!type) return { lines: [], trade: 0, ground: null };
 
-    var c = book.commercial;
     var m = job.measurements || {};
     var lines = [];
     var regionFactor = 1;
@@ -1419,19 +1419,18 @@ select.cell:hover { border-color: var(--rule); }
       if (r.id === (job.region || book.activeRegion)) regionFactor = r.factor;
     });
 
-    // ---- trade lines
     type.lines.forEach(function (line) {
       if (!line.enabled) return;
       var qty = line.unit === 'per_item' ? 1 : (m[line.driver] || 0);
       if (!qty) return;
-      var amount = qty * line.rate * factorFor(type, job.modifiers, line.id) * regionFactor;
       lines.push({
-        key: line.id, group: 'trade', label: line.label,
-        detail: qtyLabel(line, qty), amount: amount, source: line.source
+        key: line.id, group: 'trade', type: typeId, typeName: type.name,
+        label: line.label, detail: qtyLabel(line, qty), source: line.source,
+        amount: qty * line.rate * factorFor(type, job.modifiers, line.id) * regionFactor
       });
     });
 
-    // ---- foundations, where the build type has ground to dig
+    // foundations, where the build type has ground to dig
     var ground = null;
     if (type.usesFoundations && root.DATUM.TREES) {
       var g = job.ground || { soil: 'high', trees: [] };
@@ -1452,34 +1451,41 @@ select.cell:hover { border-color: var(--rule); }
                  ' m deeper than standard — ' + vol.toFixed(1) + ' m³';
       }
       if (cost > 0) {
-        cost *= regionFactor;
-        lines.push({ key: 'foundations', group: 'trade', label: 'Deeper foundations',
-                     detail: detail, amount: cost, source: 'placeholder' });
+        lines.push({ key: typeId + '.foundations', group: 'trade', type: typeId, typeName: type.name,
+          label: 'Deeper foundations', detail: detail, amount: cost * regionFactor, source: 'placeholder' });
       }
     }
 
-    var trade = lines.reduce(function (t, l) { return t + l.amount; }, 0);
+    return {
+      lines: lines,
+      trade: lines.reduce(function (t, l) { return t + l.amount; }, 0),
+      ground: ground, regionFactor: regionFactor,
+      hasOpenings: (m.wallRemoval || m.steels || 0) > 0,
+      area: m.floorArea || m.footprintArea || m.patioArea || 0
+    };
+  }
 
-    // ---- professional fees
-    var fe = book.fees;
+  /** Fees, margin, contingency and VAT — charged once, over whatever trade total. */
+  function wrapUp(book, trade, lines, opts) {
+    var c = book.commercial, fe = book.fees;
     var arch = Math.max(trade * fe.architectural.pct, fe.architectural.min);
     lines.push({ key: 'architectural', group: 'fees', label: 'Architectural drawings',
-                 detail: 'Survey, plans and planning submission', amount: arch, source: fe.architectural.source });
+      detail: opts.multi ? 'One survey and one set of drawings for the whole project'
+                         : 'Survey, plans and planning submission', amount: arch });
 
-    var struct = fe.structural.base + ((m.wallRemoval || m.steels || 0) > 0 ? fe.structural.withOpenings : 0);
+    var struct = fe.structural.base + (opts.hasOpenings ? fe.structural.withOpenings : 0);
     lines.push({ key: 'structural', group: 'fees', label: 'Structural engineer',
-                 detail: 'Calculations and design', amount: struct, source: fe.structural.source });
+      detail: opts.multi ? 'One engineer across every part of the job' : 'Calculations and design',
+      amount: struct });
 
     var council = null;
-    (book.councils || []).forEach(function (x) { if (x.id === job.council) council = x; });
+    (book.councils || []).forEach(function (x) { if (x.id === opts.council) council = x; });
     var bc = council ? council.fee : fe.buildingControl.base;
     lines.push({ key: 'buildingControl', group: 'fees', label: 'Building control',
-                 detail: council ? council.name + ' — never a private inspector' : 'Your council, never a private inspector',
-                 amount: bc, source: fe.buildingControl.source });
+      detail: (council ? council.name + ' — ' : 'Your council — ') +
+        (opts.multi ? 'one application, not one per job' : 'never a private inspector'), amount: bc });
 
     var fees = arch + struct + bc;
-
-    // ---- margin, contingency, VAT
     var base = trade + fees;
     var margin = c.marginIncludedInRates ? 0 : base * c.margin.total;
     if (margin > 0) {
@@ -1494,20 +1500,67 @@ select.cell:hover { border-color: var(--rule); }
 
     var exVat = base + margin + contingency;
     var vat = exVat * c.vatRate;
-    var spread = Math.max(c.confidence.floor, c.confidence.start - (job.answered || 0) * c.confidence.perAnswer);
+    var spread = Math.max(c.confidence.floor, c.confidence.start - (opts.answered || 0) * c.confidence.perAnswer);
 
     return {
-      typeId: typeId, lines: lines,
-      trade: trade, fees: fees, margin: margin,
-      datumShare: base * c.margin.datum, tradeShare: base * c.margin.trade,
-      contingency: contingency, exVat: exVat, vat: vat, incVat: exVat + vat,
-      regionFactor: regionFactor, ground: ground, spread: spread,
-      low: Math.round((exVat + vat) * (1 - spread)),
-      high: Math.round((exVat + vat) * (1 + spread)),
-      lowExVat: Math.round(exVat * (1 - spread)),
-      highExVat: Math.round(exVat * (1 + spread)),
-      area: m.floorArea || m.footprintArea || m.patioArea || 0
+      lines: lines, trade: trade, fees: fees, feeParts: { arch: arch, struct: struct, bc: bc },
+      margin: margin, datumShare: base * c.margin.datum, tradeShare: base * c.margin.trade,
+      contingency: contingency, exVat: exVat, vat: vat, incVat: exVat + vat, spread: spread,
+      low: Math.round((exVat + vat) * (1 - spread)), high: Math.round((exVat + vat) * (1 + spread)),
+      lowExVat: Math.round(exVat * (1 - spread)), highExVat: Math.round(exVat * (1 + spread))
     };
+  }
+
+  /** One build type on its own. */
+  function priceJob(book, typeId, job) {
+    var t = tradeLines(book, typeId, job);
+    var r = wrapUp(book, t.trade, t.lines.slice(), {
+      hasOpenings: t.hasOpenings, council: job.council, answered: job.answered, multi: false
+    });
+    r.typeId = typeId;
+    r.ground = t.ground;
+    r.regionFactor = t.regionFactor;
+    r.area = t.area;
+    return r;
+  }
+
+  /**
+   * Several build types as ONE project. This is the honest way to price an
+   * extension plus a loft plus a refurbishment: the building work adds up, but
+   * you only pay for one set of drawings, one engineer and one building control
+   * application — because that is all the job actually needs.
+   */
+  function priceProject(book, typeIds, jobs) {
+    var lines = [], trade = 0, openings = false, answered = 0;
+    var ground = null, area = 0, byType = [];
+
+    typeIds.forEach(function (id) {
+      var jb = jobs[id] || {};
+      var t = tradeLines(book, id, jb);
+      lines = lines.concat(t.lines);
+      trade += t.trade;
+      openings = openings || t.hasOpenings;
+      answered += Object.keys(jb.touched || {}).length;
+      if (t.ground && (!ground || t.ground.depth > ground.depth)) ground = t.ground;
+      area += t.area;
+      byType.push({ id: id, name: (typeById(book, id) || {}).name, trade: t.trade });
+    });
+
+    var r = wrapUp(book, trade, lines, {
+      hasOpenings: openings, council: (jobs.council || null), answered: answered,
+      multi: typeIds.length > 1
+    });
+    r.typeIds = typeIds;
+    r.byType = byType;
+    r.ground = ground;
+    r.area = area;
+
+    // what the same work would cost bought as separate jobs, fees and all
+    var separate = 0;
+    typeIds.forEach(function (id) { separate += priceJob(book, id, jobs[id] || {}).incVat; });
+    r.separately = separate;
+    r.saving = Math.max(0, separate - r.incVat);
+    return r;
   }
 
   /** Price a build type's own worked example — used for impact analysis. */
@@ -1539,6 +1592,8 @@ select.cell:hover { border-color: var(--rule); }
   root.DATUM = root.DATUM || {};
   root.DATUM.RATEBOOK = {
     UNITS: UNITS,
+    tradeLines: tradeLines,
+    priceProject: priceProject,
     defaultBook: defaultBook,
     typeById: typeById,
     priceJob: priceJob,

@@ -31,14 +31,13 @@
     var parts = h.split('/').filter(Boolean);
     if (!parts.length) return { name: 'landing', path: '/' };
     if (parts[0] === 'start') return { name: 'start', path: '/start' };
+    if (parts[0] === 'estimate') return { name: 'estimate', path: '/estimate' };
 
     var type = typeOf(parts[0]);
     if (!type) return { name: 'start', path: '/start' };
 
     var step = parts[1];
-    if (step === 'estimate') {
-      return { name: 'estimate', typeId: type.id, type: type, path: '/' + type.id + '/estimate' };
-    }
+    if (step === 'estimate') return { name: 'estimate', path: '/estimate' };
     var found = null;
     (type.steps || []).forEach(function (s) { if (s.id === step) found = s; });
     if (!found) found = (type.steps || [])[0];

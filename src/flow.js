@@ -18,6 +18,29 @@
 
   var jobs = {};        // per build type, so switching does not lose answers
   var incVat = true;
+
+  /* A project can be several build types at once — an extension AND a loft AND
+     a refurbishment is one job, not three, and gets priced that way. */
+  var PKEY = 'datum.project.v1';
+  var project = { types: [], floor: 'ground' };
+  try {
+    var saved = JSON.parse(root.localStorage.getItem(PKEY) || 'null');
+    if (saved && Array.isArray(saved.types)) project = saved;
+  } catch (e) { /* private mode */ }
+  function saveProject() {
+    try { root.localStorage.setItem(PKEY, JSON.stringify(project)); } catch (e) {}
+  }
+  /** Selected types, in the order the rate book lists them. */
+  function selected() {
+    return book().buildTypes
+      .filter(function (t) { return t.enabled && (t.steps || []).length && project.types.indexOf(t.id) >= 0; });
+  }
+  var HOUSE_TYPES = ['extension', 'renovation', 'loft'];
+  function floorsAvailable() {
+    var f = ['ground', 'first'];
+    if (project.types.indexOf('loft') >= 0) f.push('loft');
+    return f;
+  }
   var route = null;
   var focusDim = null;
 
@@ -70,12 +93,16 @@
     return j;
   }
 
-  function price(typeId) {
-    var j = derive(typeId, job(typeId));
-    return RB.priceJob(book(), typeId, {
-      measurements: j.measurements, modifiers: j.modifiers,
-      ground: j.ground, answered: Object.keys(j.touched).length
-    });
+  /** Every selected build type, priced as one job. */
+  function priceNow() {
+    var sel = selected();
+    var map = {};
+    sel.forEach(function (t) { map[t.id] = derive(t.id, job(t.id)); });
+    return RB.priceProject(book(), sel.map(function (t) { return t.id; }), map);
+  }
+  /** Just this build type's trade work — what the drawing needs. */
+  function tradeNow(typeId) {
+    return RB.tradeLines(book(), typeId, derive(typeId, job(typeId)));
   }
 
   /* ---- inputs ------------------------------------------------------------- */
@@ -173,16 +200,51 @@
     var b = book();
     var host = $('start-grid');
     if (!host) return;
-    host.innerHTML = b.buildTypes.filter(function (t) { return t.enabled && (t.steps || []).length; })
-      .map(function (t) {
-        var r = RB.priceTypical(b, t.id);
-        return '<a class="pick" href="#/' + t.id + '/' + t.steps[0].id + '">' +
-          '<span class="pick-name">' + esc(t.name) + '</span>' +
-          '<span class="pick-blurb">' + esc(t.blurb) + '</span>' +
-          '<span class="pick-foot"><span class="pick-typ">' +
-          (r ? 'Typical ' + money(r.incVat) : '') + '</span>' +
-          '<span class="pick-go">Price it →</span></span></a>';
-      }).join('');
+    var avail = b.buildTypes.filter(function (t) { return t.enabled && (t.steps || []).length; });
+    host.innerHTML = avail.map(function (t) {
+      var r = RB.priceTypical(b, t.id);
+      var on = project.types.indexOf(t.id) >= 0;
+      return '<button type="button" class="pick' + (on ? ' on' : '') + '" data-pick="' + t.id +
+        '" aria-pressed="' + on + '">' +
+        '<span class="pick-tick" aria-hidden="true">' + (on ? '✓' : '') + '</span>' +
+        '<span class="pick-name">' + esc(t.name) + '</span>' +
+        '<span class="pick-blurb">' + esc(t.blurb) + '</span>' +
+        '<span class="pick-foot"><span class="pick-typ">' + (r ? 'Typical ' + money(r.incVat) : '') +
+        '</span></span></button>';
+    }).join('');
+
+    var sel = selected();
+    var go = $('start-go'), note = $('start-note');
+    if (go) {
+      go.hidden = !sel.length;
+      if (sel.length) go.href = '#/' + sel[0].id + '/' + sel[0].steps[0].id;
+      go.textContent = sel.length > 1
+        ? 'Price all ' + sel.length + ' together →'
+        : 'Start →';
+    }
+    if (note) {
+      if (sel.length > 1) {
+        var combined = RB.priceProject(b, sel.map(function (t) { return t.id; }), typicalJobs(sel));
+        note.innerHTML = '<div class="flag flag-good"><span><b>One project, not ' + sel.length +
+          '.</b> You pay for one survey, one set of drawings, one engineer and one building control ' +
+          'application — not ' + sel.length + ' of each. On a typical job of this shape that is about ' +
+          money(combined.saving) + ' you do not spend.</span></div>';
+      } else {
+        note.innerHTML = sel.length
+          ? '<p class="q-help">Doing more than one? Tick them all — it is cheaper as a single project.</p>'
+          : '<p class="q-help">Tick everything you are thinking about. You can change your mind later.</p>';
+      }
+    }
+  }
+
+  function typicalJobs(sel) {
+    var out = {};
+    sel.forEach(function (t) {
+      out[t.id] = { measurements: (t.typical || {}).measurements || {},
+                    modifiers: (t.typical || {}).modifiers || {},
+                    ground: (t.typical || {}).ground, touched: {} };
+    });
+    return out;
   }
 
   /* ---- the step page -------------------------------------------------------- */
@@ -192,9 +254,17 @@
     var j = job(type.id);
     var steps = type.steps;
     var i = steps.indexOf(step);
-    var prev = i > 0 ? '#/' + type.id + '/' + steps[i - 1].id : '#/start';
+    var sel = selected();
+    var ti = sel.map(function (t) { return t.id; }).indexOf(type.id);
+
+    var prev = i > 0 ? '#/' + type.id + '/' + steps[i - 1].id
+      : (ti > 0 ? '#/' + sel[ti - 1].id + '/' + sel[ti - 1].steps[sel[ti - 1].steps.length - 1].id : '#/start');
+
+    var nextType = ti >= 0 && ti < sel.length - 1 ? sel[ti + 1] : null;
     var next = i < steps.length - 1 ? '#/' + type.id + '/' + steps[i + 1].id
-                                    : '#/' + type.id + '/estimate';
+      : (nextType ? '#/' + nextType.id + '/' + nextType.steps[0].id : '#/estimate');
+    var nextLabel = i < steps.length - 1 ? 'Next'
+      : (nextType ? 'On to ' + nextType.name.toLowerCase() : 'See the estimate');
 
     var fields = asks(type).filter(function (m) { return m.ask.step === step.id; })
       .map(function (m) { return inputHtml(m, j); }).join('');
@@ -212,13 +282,29 @@
       '<div class="flow-fields">' + fields + (step.ground ? groundHtml(j) : '') + mods + '</div>' +
       '<div class="flow-nav">' +
         '<a class="btn btn-ghost" href="' + prev + '">← Back</a>' +
-        '<a class="btn" href="' + next + '">' +
-        (i === steps.length - 1 ? 'See the estimate' : 'Next') + ' →</a>' +
+        '<a class="btn" href="' + next + '">' + esc(nextLabel) + ' →</a>' +
       '</div>';
 
     var ask = $('flow-ask');
     ask.innerHTML = html;
     if (step.ground) paintTrees();
+
+    var tabs = $('floor-tabs');
+    if (tabs) {
+      var housey = HOUSE_TYPES.indexOf(type.id) >= 0 && step.view === 'plan';
+      tabs.hidden = !housey;
+      if (housey) {
+        var fl = floorsAvailable();
+        // show the floor the question is actually about
+        var want = type.id === 'loft' ? 'loft' : type.id === 'extension' ? 'ground' : project.floor;
+        if (fl.indexOf(want) < 0) want = 'ground';
+        project.floor = want;
+        tabs.innerHTML = fl.map(function (f) {
+          return '<button type="button" data-floor="' + f + '" aria-pressed="' +
+            (f === project.floor) + '">' + f.charAt(0).toUpperCase() + f.slice(1) + '</button>';
+        }).join('');
+      }
+    }
 
     $('draw-title').textContent = type.name + ' · ' + (step.view === 'plan' ? 'plan' : 'section');
     $('draw-note').textContent = type.id === 'renovation' && step.view === 'plan'
@@ -232,18 +318,17 @@
   }
 
   function paintRail(r) {
-    var type = r.type;
-    if (!type) return;
-    var here = r.name === 'estimate' ? 'estimate' : r.step.id;
-    var idx = r.name === 'estimate' ? type.steps.length
-      : type.steps.indexOf(r.step);
-    var html = type.steps.map(function (s, i) {
-      return '<a href="#/' + type.id + '/' + s.id + '" class="' +
-        (s.id === here ? 'here' : i < idx ? 'done' : '') + '"><i>' +
-        (i < idx ? '✓' : i + 1) + '</i><span>' + esc(s.short || s.id) + '</span></a>';
+    var sel = selected();
+    if (!sel.length) return;
+    var hereId = r.name === 'estimate' ? null : r.typeId;
+    var hereIdx = hereId ? sel.map(function (t) { return t.id; }).indexOf(hereId) : sel.length;
+    var html = sel.map(function (t, i) {
+      return '<a href="#/' + t.id + '/' + t.steps[0].id + '" class="' +
+        (t.id === hereId ? 'here' : i < hereIdx ? 'done' : '') + '"><i>' +
+        (i < hereIdx ? '✓' : i + 1) + '</i><span>' + esc(t.name) + '</span></a>';
     }).join('') +
-      '<a href="#/' + type.id + '/estimate" class="' + (here === 'estimate' ? 'here' : '') + '">' +
-      '<i>' + (type.steps.length + 1) + '</i><span>Estimate</span></a>';
+      '<a href="#/estimate" class="' + (r.name === 'estimate' ? 'here' : '') + '"><i>' +
+      (sel.length + 1) + '</i><span>Estimate</span></a>';
     ['steps-rail', 'steps-rail-2'].forEach(function (id) {
       var el = $(id); if (el) el.innerHTML = html;
     });
@@ -256,7 +341,7 @@
     var host = $('iso-wrap');
     if (!host) return;
     var j = job(r.typeId);
-    host.innerHTML = DRAW.render(r.typeId, view, j.measurements ? mergeJob(j) : j, result.ground);
+    host.innerHTML = DRAW.render(r.typeId, view, mergeJob(j), result.ground);
     if (focusDim) {
       var el = doc.querySelector('[data-dim="' + focusDim + '"]');
       if (el) el.focus();
@@ -269,6 +354,10 @@
     Object.keys(j.measurements).forEach(function (k) { out[k] = j.measurements[k]; });
     out.trees = j.ground.trees;
     out.soil = j.ground.soil;
+    // the plan draws the whole house, so it needs every part of the project
+    var all = {};
+    selected().forEach(function (t) { all[t.id] = derive(t.id, job(t.id)); });
+    out.project = { types: project.types.slice(), jobs: all, floor: project.floor };
     return out;
   }
 
@@ -313,12 +402,14 @@
       '</td><td class="amt">' + money(amount) + '</td></tr>';
   }
 
-  function paintResult(r, result) {
-    var vat = book().commercial.vatRate, conf = book().commercial.confidence;
+  function paintResult(result) {
+    var b = book(), vat = b.commercial.vatRate, conf = b.commercial.confidence;
+    var sel = selected();
+
     countTo($('fig-low'), incVat ? result.low : result.lowExVat, 'down');
     countTo($('fig-high'), incVat ? result.high : result.highExVat, 'up');
     $('readout-label').textContent = 'Estimated total, ' + (incVat ? 'including' : 'excluding') + ' VAT';
-    $('result-type').textContent = r.type.name;
+    $('result-type').textContent = sel.map(function (t) { return t.name.toLowerCase(); }).join(' + ');
 
     var spread = Math.round(result.spread * 100);
     var tight = (conf.start - result.spread) / (conf.start - conf.floor);
@@ -326,9 +417,21 @@
     $('gauge-label').textContent = result.spread <= conf.floor + 0.001
       ? 'Plus or minus ' + spread + '% — as tight as it gets without a survey'
       : 'Plus or minus ' + spread + '%, and it narrows once an architect has measured up';
-    $('readout-note').textContent = (result.area ? result.area.toFixed(1) + ' m² · ' : '') +
+    $('readout-note').textContent = (result.area ? result.area.toFixed(0) + ' m² of work · ' : '') +
       (result.ground ? result.ground.depth.toFixed(2) + ' m foundations · ' : '') +
       (incVat ? 'VAT included' : 'VAT not included');
+
+    // what buying these separately would have cost
+    var saveEl = $('result-saving');
+    if (saveEl) {
+      if (sel.length > 1 && result.saving > 0) {
+        saveEl.innerHTML = '<div class="flag flag-good"><span><b>One project, not ' + sel.length +
+          '.</b> Priced as separate jobs this would be ' + money(result.separately) +
+          ', because you would pay for ' + sel.length + ' surveys, ' + sel.length +
+          ' sets of drawings and ' + sel.length + ' building control applications. ' +
+          'Doing it as one job saves ' + money(result.saving) + '.</span></div>';
+      } else { saveEl.innerHTML = ''; }
+    }
 
     var segs = [
       { cls: 's-trade', v: result.trade, name: 'Building work' },
@@ -337,20 +440,26 @@
       { cls: 's-contingency', v: result.contingency, name: 'Contingency' }
     ];
     if (incVat) segs.push({ cls: 's-vat', v: result.vat, name: 'VAT' });
-    var total = segs.reduce(function (t, s) { return t + s.v; }, 0) || 1;
-    $('stack-bar').innerHTML = segs.map(function (s) {
-      return '<span class="' + s.cls + '" style="width:' + ((s.v / total) * 100).toFixed(2) +
-        '%" title="' + s.name + ' — ' + money(s.v) + '"></span>';
+    var total = segs.reduce(function (t, x) { return t + x.v; }, 0) || 1;
+    $('stack-bar').innerHTML = segs.map(function (x) {
+      return '<span class="' + x.cls + '" style="width:' + ((x.v / total) * 100).toFixed(2) +
+        '%" title="' + x.name + ' — ' + money(x.v) + '"></span>';
     }).join('');
 
-    var grp = function (g) { return result.lines.filter(function (l) { return l.group === g; }); };
+    // building work, grouped by what it is
     var html = '';
-    grp('trade').forEach(function (l) { html += row('', l.label, l.detail, l.amount); });
+    (result.byType || []).forEach(function (bt) {
+      if (sel.length > 1) html += '<tr class="grp"><td colspan="2">' + esc(bt.name) + '</td></tr>';
+      result.lines.filter(function (l) { return l.group === 'trade' && l.type === bt.id; })
+        .forEach(function (l) { html += row('', l.label, l.detail, l.amount); });
+      if (sel.length > 1) html += row('sub', bt.name + ' subtotal', '', bt.trade);
+    });
     html += row('sub', 'Building work', '', result.trade);
-    grp('fees').forEach(function (l) { html += row('', l.label, l.detail, l.amount); });
+    result.lines.filter(function (l) { return l.group === 'fees'; })
+      .forEach(function (l) { html += row('', l.label, l.detail, l.amount); });
     html += row('sub', 'Drawings, fees and permissions', '', result.fees);
-    grp('margin').forEach(function (l) { html += row('', l.label, l.detail, l.amount); });
-    grp('contingency').forEach(function (l) { html += row('', l.label, l.detail, l.amount); });
+    result.lines.filter(function (l) { return l.group === 'margin' || l.group === 'contingency'; })
+      .forEach(function (l) { html += row('', l.label, l.detail, l.amount); });
     if (incVat) {
       html += row('sub', 'Total, excluding VAT', '', result.exVat);
       html += row('', 'VAT at ' + (vat * 100) + '%', '', result.vat);
@@ -365,24 +474,36 @@
       ' goes to the builder and the consultants. It sits on the invoice rather than behind it.';
 
     var back = $('result-back');
-    if (back) back.href = '#/' + r.typeId + '/' + r.type.steps[r.type.steps.length - 1].id;
+    if (back && sel.length) {
+      var last = sel[sel.length - 1];
+      back.href = '#/' + last.id + '/' + last.steps[last.steps.length - 1].id;
+    }
     groundFlag(result, 'result-flag');
   }
 
   /* ---- the loop ---------------------------------------------------------------- */
 
   function update(redraw) {
-    if (!route || !route.typeId) return;
-    var result = price(route.typeId);
-    if (redraw !== false) drawNow(route, result);
+    if (!route) return;
+    if (!selected().length) return;
+    var proj = priceNow();
+
+    if (route.name === 'step') {
+      var t = tradeNow(route.typeId);
+      if (redraw !== false) drawNow(route, t);
+      if (route.step.ground) groundFlag({ ground: t.ground }, 'ground-flag');
+      var lvl = $('draw-level');
+      if (lvl) lvl.textContent = t.ground ? '−' + t.ground.depth.toFixed(3) : '±0.000';
+    }
+
     var fig = $('flow-total-fig');
-    if (fig) fig.textContent = rounded(incVat ? result.low : result.lowExVat, 'down') + '–' +
-      rounded(incVat ? result.high : result.highExVat, 'up');
-    var lvl = $('draw-level');
-    if (lvl) lvl.textContent = result.ground ? '−' + result.ground.depth.toFixed(3) : '±0.000';
-    if (route.name === 'estimate') paintResult(route, result);
-    if (route.name === 'step' && route.step.ground) groundFlag(result, 'ground-flag');
-    return result;
+    if (fig) fig.textContent = rounded(incVat ? proj.low : proj.lowExVat, 'down') + '–' +
+      rounded(incVat ? proj.high : proj.highExVat, 'up');
+    var lab = $('flow-total-lab');
+    if (lab) lab.textContent = selected().length > 1 ? 'Whole project' : 'Running estimate';
+
+    if (route.name === 'estimate') paintResult(proj);
+    return proj;
   }
 
   function refreshOutputs() {
@@ -442,6 +563,27 @@
         j2.ground.soil = v;
         j2.touched.soil = true;
       }
+      update();
+      return;
+    }
+
+    var pick = t.closest ? t.closest('[data-pick]') : null;
+    if (pick) {
+      var id = pick.getAttribute('data-pick');
+      var at = project.types.indexOf(id);
+      if (at >= 0) project.types.splice(at, 1); else project.types.push(id);
+      saveProject();
+      paintChooser();
+      return;
+    }
+
+    var fl = t.closest ? t.closest('[data-floor]') : null;
+    if (fl) {
+      project.floor = fl.getAttribute('data-floor');
+      saveProject();
+      Array.prototype.forEach.call(fl.parentNode.querySelectorAll('button'), function (x) {
+        x.setAttribute('aria-pressed', String(x === fl));
+      });
       update();
       return;
     }
@@ -558,8 +700,16 @@
 
   ROUTER.on(function (r) {
     route = r;
-    if (r.name === 'start') { paintChooser(); return; }
     if (r.name === 'landing') return;
+    if (r.name === 'start') { paintChooser(); return; }
+
+    // arriving straight at a build type adds it to the project
+    if (r.typeId && project.types.indexOf(r.typeId) < 0) {
+      project.types.push(r.typeId);
+      saveProject();
+    }
+    if (r.name === 'estimate' && !selected().length) { ROUTER.go('/start'); return; }
+
     paintRail(r);
     if (r.name === 'step') renderStep(r);
     update();

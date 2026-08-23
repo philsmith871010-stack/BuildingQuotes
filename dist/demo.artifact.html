@@ -828,8 +828,10 @@ section[id], main[id] { scroll-margin-top: 78px; }
   display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
   padding: .55rem .85rem; border-bottom: 1px solid var(--rule-soft); background: var(--well);
 }
-.flow-draw-view { position: relative; overflow: hidden; display: grid; place-items: center; }
-.flow-draw-view .iso-wrap { width: 100%; padding: .4rem; will-change: transform; min-height: 0; }
+.flow-draw-view { position: relative; overflow: hidden; display: grid; min-height: 0; }
+/* the wrap has to fill its row, or the SVG sizes itself from its width alone
+   and a tall drawing overflows the panel instead of fitting inside it */
+.flow-draw-view .iso-wrap { width: 100%; height: 100%; min-height: 0; padding: .5rem; }
 .flow-draw-foot {
   display: flex; align-items: center; justify-content: space-between; gap: .8rem; flex-wrap: wrap;
   padding: .5rem .85rem; border-top: 1px solid var(--rule-soft);
@@ -918,6 +920,10 @@ section[id], main[id] { scroll-margin-top: 78px; }
   --d2-lawn:        #D8E4D2;
   --d2-scan:        #A9A49A;
   --d2-scan-paper:  #EDEAE3;
+  --d2-wall:        #3C4247;
+  --d2-floor:       #F1F0EC;
+  --d2-party:       #8C867B;
+  --d2-reno:        #E8EEF3;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -942,6 +948,10 @@ section[id], main[id] { scroll-margin-top: 78px; }
     --d2-lawn:        #23301F;
     --d2-scan:        #5E574B;
     --d2-scan-paper:  #191C1D;
+    --d2-wall:        #9BA3A6;
+    --d2-floor:       #171B1D;
+    --d2-party:       #7E7768;
+    --d2-reno:        #17252F;
   }
 }
 :root[data-theme="dark"] {
@@ -966,6 +976,10 @@ section[id], main[id] { scroll-margin-top: 78px; }
   --d2-lawn:        #23301F;
   --d2-scan:        #5E574B;
   --d2-scan-paper:  #191C1D;
+  --d2-wall:        #9BA3A6;
+  --d2-floor:       #171B1D;
+  --d2-party:       #7E7768;
+  --d2-reno:        #17252F;
 }
 
 .d2 { display: block; width: 100%; height: 100%; touch-action: none; }
@@ -978,6 +992,8 @@ section[id], main[id] { scroll-margin-top: 78px; }
 }
 .d2-room-area { font-size: 10.5px; letter-spacing: .04em; fill: var(--ink-2); }
 .d2-scan-tag { font-size: 10px; letter-spacing: .18em; fill: var(--d2-scan); }
+.d2-party-tag { font-size: 9px; letter-spacing: .16em; fill: var(--d2-party); }
+.d2-reno-tag { font-size: 10px; letter-spacing: .16em; fill: var(--d2-accent); font-weight: 600; }
 .d2-cal-tag { font-size: 9.5px; letter-spacing: .16em; fill: var(--d2-accent); font-weight: 600; }
 
 /* --- Chooser ---------------------------------------------------------------- */
@@ -1000,6 +1016,40 @@ section[id], main[id] { scroll-margin-top: 78px; }
 
 .ratebook-link { flex: none; }
 @media (max-width: 780px) { .ratebook-link { display: none; } }
+
+/* --- Multi-select chooser ---------------------------------------------------- */
+.pick { position: relative; border: 0; text-align: left; font: inherit; cursor: pointer; width: 100%; }
+.pick-tick {
+  position: absolute; top: 1.15rem; right: 1.1rem;
+  width: 20px; height: 20px; border-radius: 3px; display: grid; place-items: center;
+  border: 1px solid var(--rule); color: var(--on-accent); font-size: .72rem; line-height: 1;
+  background: var(--paper); transition: background .15s ease, border-color .15s ease;
+}
+.pick.on { background: var(--accent-soft); }
+.pick.on .pick-tick { background: var(--accent); border-color: var(--accent); }
+.pick.on .pick-name { color: var(--accent-ink); }
+.pick-name { padding-right: 2rem; }
+
+/* --- Floor tabs -------------------------------------------------------------- */
+.floor-tabs {
+  display: flex; gap: .25rem; padding: .45rem .85rem;
+  border-bottom: 1px solid var(--rule-soft); background: var(--surface);
+}
+.floor-tabs[hidden] { display: none; }
+.floor-tabs button {
+  font-family: var(--mono); font-size: .64rem; letter-spacing: .13em; text-transform: uppercase;
+  padding: .34rem .7rem; border: 1px solid var(--rule); border-radius: 2px;
+  background: var(--paper); color: var(--ink-3); cursor: pointer;
+}
+.floor-tabs button:hover { color: var(--ink); border-color: var(--ink-3); }
+.floor-tabs button[aria-pressed="true"] {
+  background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 600;
+}
+
+.items tr.grp td {
+  font-family: var(--mono); font-size: .64rem; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--ink-3); padding-top: 1.1rem; border-bottom: 1px solid var(--rule);
+}
 
 
 /* ===========================================================================
@@ -1616,9 +1666,14 @@ select.cell:hover { border-color: var(--rule); }
       <div class="band-head">
         <p class="eyebrow">Pick one</p>
         <h1 style="font-family:var(--disp);font-weight:700;font-stretch:112%;font-size:clamp(2rem,4.4vw,3.3rem);line-height:1.02;letter-spacing:-.032em">What are you building?</h1>
-        <p class="lede">Each one asks a different set of questions, because each one is priced a different way. None of them take more than a couple of minutes.</p>
+        <p class="lede">Tick everything you are thinking about — an extension, a loft and a refurbishment are one job, not three, and cost less that way because you only pay for one set of drawings.</p>
       </div>
       <div class="start-grid" id="start-grid"></div>
+      <div id="start-note" style="margin-top:1.1rem"></div>
+      <div class="flow-nav" style="margin-top:1.1rem">
+        <a class="btn" id="start-go" href="#/start" hidden>Start →</a>
+        <a class="skip" href="#/">Back to the start</a>
+      </div>
       <p class="foot-note" style="margin-top:1.6rem">
         Every figure is indicative and not a quotation. Rates are placeholders pending a
         quantity surveyor's schedule.
@@ -1664,6 +1719,7 @@ select.cell:hover { border-color: var(--rule); }
             <i class="l-earth">Below ground</i>
           </div>
         </div>
+        <div class="floor-tabs" id="floor-tabs" role="group" aria-label="Which floor" hidden></div>
         <div class="flow-draw-view">
           <div class="iso-wrap" id="iso-wrap"></div>
         </div>
@@ -1722,6 +1778,7 @@ select.cell:hover { border-color: var(--rule); }
               </div>
             </div>
           </div>
+          <div id="result-saving"></div>
           <div id="result-flag"></div>
           <div class="stack">
             <div class="stack-bar" id="stack-bar" role="img" aria-label="Proportion of the total taken by each part of the job"></div>
@@ -2344,11 +2401,11 @@ select.cell:hover { border-color: var(--rule); }
    * @param typeId       which build type
    * @param job          { measurements, modifiers, ground, region, council, answered }
    */
-  function priceJob(book, typeId, job) {
+  /** Just the building work for one build type. No fees, no margin, no VAT. */
+  function tradeLines(book, typeId, job) {
     var type = typeById(book, typeId);
-    if (!type) return null;
+    if (!type) return { lines: [], trade: 0, ground: null };
 
-    var c = book.commercial;
     var m = job.measurements || {};
     var lines = [];
     var regionFactor = 1;
@@ -2356,19 +2413,18 @@ select.cell:hover { border-color: var(--rule); }
       if (r.id === (job.region || book.activeRegion)) regionFactor = r.factor;
     });
 
-    // ---- trade lines
     type.lines.forEach(function (line) {
       if (!line.enabled) return;
       var qty = line.unit === 'per_item' ? 1 : (m[line.driver] || 0);
       if (!qty) return;
-      var amount = qty * line.rate * factorFor(type, job.modifiers, line.id) * regionFactor;
       lines.push({
-        key: line.id, group: 'trade', label: line.label,
-        detail: qtyLabel(line, qty), amount: amount, source: line.source
+        key: line.id, group: 'trade', type: typeId, typeName: type.name,
+        label: line.label, detail: qtyLabel(line, qty), source: line.source,
+        amount: qty * line.rate * factorFor(type, job.modifiers, line.id) * regionFactor
       });
     });
 
-    // ---- foundations, where the build type has ground to dig
+    // foundations, where the build type has ground to dig
     var ground = null;
     if (type.usesFoundations && root.DATUM.TREES) {
       var g = job.ground || { soil: 'high', trees: [] };
@@ -2389,34 +2445,41 @@ select.cell:hover { border-color: var(--rule); }
                  ' m deeper than standard — ' + vol.toFixed(1) + ' m³';
       }
       if (cost > 0) {
-        cost *= regionFactor;
-        lines.push({ key: 'foundations', group: 'trade', label: 'Deeper foundations',
-                     detail: detail, amount: cost, source: 'placeholder' });
+        lines.push({ key: typeId + '.foundations', group: 'trade', type: typeId, typeName: type.name,
+          label: 'Deeper foundations', detail: detail, amount: cost * regionFactor, source: 'placeholder' });
       }
     }
 
-    var trade = lines.reduce(function (t, l) { return t + l.amount; }, 0);
+    return {
+      lines: lines,
+      trade: lines.reduce(function (t, l) { return t + l.amount; }, 0),
+      ground: ground, regionFactor: regionFactor,
+      hasOpenings: (m.wallRemoval || m.steels || 0) > 0,
+      area: m.floorArea || m.footprintArea || m.patioArea || 0
+    };
+  }
 
-    // ---- professional fees
-    var fe = book.fees;
+  /** Fees, margin, contingency and VAT — charged once, over whatever trade total. */
+  function wrapUp(book, trade, lines, opts) {
+    var c = book.commercial, fe = book.fees;
     var arch = Math.max(trade * fe.architectural.pct, fe.architectural.min);
     lines.push({ key: 'architectural', group: 'fees', label: 'Architectural drawings',
-                 detail: 'Survey, plans and planning submission', amount: arch, source: fe.architectural.source });
+      detail: opts.multi ? 'One survey and one set of drawings for the whole project'
+                         : 'Survey, plans and planning submission', amount: arch });
 
-    var struct = fe.structural.base + ((m.wallRemoval || m.steels || 0) > 0 ? fe.structural.withOpenings : 0);
+    var struct = fe.structural.base + (opts.hasOpenings ? fe.structural.withOpenings : 0);
     lines.push({ key: 'structural', group: 'fees', label: 'Structural engineer',
-                 detail: 'Calculations and design', amount: struct, source: fe.structural.source });
+      detail: opts.multi ? 'One engineer across every part of the job' : 'Calculations and design',
+      amount: struct });
 
     var council = null;
-    (book.councils || []).forEach(function (x) { if (x.id === job.council) council = x; });
+    (book.councils || []).forEach(function (x) { if (x.id === opts.council) council = x; });
     var bc = council ? council.fee : fe.buildingControl.base;
     lines.push({ key: 'buildingControl', group: 'fees', label: 'Building control',
-                 detail: council ? council.name + ' — never a private inspector' : 'Your council, never a private inspector',
-                 amount: bc, source: fe.buildingControl.source });
+      detail: (council ? council.name + ' — ' : 'Your council — ') +
+        (opts.multi ? 'one application, not one per job' : 'never a private inspector'), amount: bc });
 
     var fees = arch + struct + bc;
-
-    // ---- margin, contingency, VAT
     var base = trade + fees;
     var margin = c.marginIncludedInRates ? 0 : base * c.margin.total;
     if (margin > 0) {
@@ -2431,20 +2494,67 @@ select.cell:hover { border-color: var(--rule); }
 
     var exVat = base + margin + contingency;
     var vat = exVat * c.vatRate;
-    var spread = Math.max(c.confidence.floor, c.confidence.start - (job.answered || 0) * c.confidence.perAnswer);
+    var spread = Math.max(c.confidence.floor, c.confidence.start - (opts.answered || 0) * c.confidence.perAnswer);
 
     return {
-      typeId: typeId, lines: lines,
-      trade: trade, fees: fees, margin: margin,
-      datumShare: base * c.margin.datum, tradeShare: base * c.margin.trade,
-      contingency: contingency, exVat: exVat, vat: vat, incVat: exVat + vat,
-      regionFactor: regionFactor, ground: ground, spread: spread,
-      low: Math.round((exVat + vat) * (1 - spread)),
-      high: Math.round((exVat + vat) * (1 + spread)),
-      lowExVat: Math.round(exVat * (1 - spread)),
-      highExVat: Math.round(exVat * (1 + spread)),
-      area: m.floorArea || m.footprintArea || m.patioArea || 0
+      lines: lines, trade: trade, fees: fees, feeParts: { arch: arch, struct: struct, bc: bc },
+      margin: margin, datumShare: base * c.margin.datum, tradeShare: base * c.margin.trade,
+      contingency: contingency, exVat: exVat, vat: vat, incVat: exVat + vat, spread: spread,
+      low: Math.round((exVat + vat) * (1 - spread)), high: Math.round((exVat + vat) * (1 + spread)),
+      lowExVat: Math.round(exVat * (1 - spread)), highExVat: Math.round(exVat * (1 + spread))
     };
+  }
+
+  /** One build type on its own. */
+  function priceJob(book, typeId, job) {
+    var t = tradeLines(book, typeId, job);
+    var r = wrapUp(book, t.trade, t.lines.slice(), {
+      hasOpenings: t.hasOpenings, council: job.council, answered: job.answered, multi: false
+    });
+    r.typeId = typeId;
+    r.ground = t.ground;
+    r.regionFactor = t.regionFactor;
+    r.area = t.area;
+    return r;
+  }
+
+  /**
+   * Several build types as ONE project. This is the honest way to price an
+   * extension plus a loft plus a refurbishment: the building work adds up, but
+   * you only pay for one set of drawings, one engineer and one building control
+   * application — because that is all the job actually needs.
+   */
+  function priceProject(book, typeIds, jobs) {
+    var lines = [], trade = 0, openings = false, answered = 0;
+    var ground = null, area = 0, byType = [];
+
+    typeIds.forEach(function (id) {
+      var jb = jobs[id] || {};
+      var t = tradeLines(book, id, jb);
+      lines = lines.concat(t.lines);
+      trade += t.trade;
+      openings = openings || t.hasOpenings;
+      answered += Object.keys(jb.touched || {}).length;
+      if (t.ground && (!ground || t.ground.depth > ground.depth)) ground = t.ground;
+      area += t.area;
+      byType.push({ id: id, name: (typeById(book, id) || {}).name, trade: t.trade });
+    });
+
+    var r = wrapUp(book, trade, lines, {
+      hasOpenings: openings, council: (jobs.council || null), answered: answered,
+      multi: typeIds.length > 1
+    });
+    r.typeIds = typeIds;
+    r.byType = byType;
+    r.ground = ground;
+    r.area = area;
+
+    // what the same work would cost bought as separate jobs, fees and all
+    var separate = 0;
+    typeIds.forEach(function (id) { separate += priceJob(book, id, jobs[id] || {}).incVat; });
+    r.separately = separate;
+    r.saving = Math.max(0, separate - r.incVat);
+    return r;
   }
 
   /** Price a build type's own worked example — used for impact analysis. */
@@ -2476,6 +2586,8 @@ select.cell:hover { border-color: var(--rule); }
   root.DATUM = root.DATUM || {};
   root.DATUM.RATEBOOK = {
     UNITS: UNITS,
+    tradeLines: tradeLines,
+    priceProject: priceProject,
     defaultBook: defaultBook,
     typeById: typeById,
     priceJob: priceJob,
@@ -3043,6 +3155,11 @@ select.cell:hover { border-color: var(--rule); }
       (stroke ? ' stroke="' + stroke + '" stroke-width="' + (w || 1.4) + '"' : '') + '/>');
   };
   Ctx.prototype.label = function (at, text, cls, anchor) {
+    // reserve roughly the room the text takes, so fitting the viewBox does not clip it
+    var half = String(text).length * 3.4;
+    var l = anchor === 'start' ? 0 : anchor === 'end' ? half * 2 : half;
+    this.mark([at[0] - l, at[1] - 9]);
+    this.mark([at[0] - l + half * 2, at[1] + 5]);
     return this.add('<text x="' + n(at[0]) + '" y="' + n(at[1]) + '" text-anchor="' +
       (anchor || 'middle') + '" class="' + (cls || 'd2-note') + '">' + esc(text) + '</text>');
   };
@@ -3127,6 +3244,206 @@ select.cell:hover { border-color: var(--rule); }
     c.label(c.s(x0 + (x1 - x0) * 0.5, -NOMINAL + 0.17), 'USUAL DEPTH', 'd2-warn-tag');
   }
 
+
+  /* =====================================================================
+     The house — one plan, several floors, with the work marked on it
+     ===================================================================== */
+
+  // A semi-detached with a rear outrigger. Metres, origin at the front-left
+  // corner, garden away from the front door.
+  var HOUSE = { w: 8.4, d: 8.2, outX: 3.4, outD: 3.2, party: 0 };
+  var W_EXT = 0.22, W_INT = 0.08;
+
+  function wallRun(c, a, b, thick, k, colour) {
+    c.line(c.p(a[0], a[1]), c.p(b[0], b[1]), colour || 'var(--d2-wall)', thick * S);
+  }
+  /** Cut a hole in a wall by overdrawing it in the floor colour. */
+  function cut(c, a, b, thick) {
+    c.line(c.p(a[0], a[1]), c.p(b[0], b[1]), 'var(--d2-floor)', thick * S + 0.6);
+  }
+  function win(c, a, b, k) {
+    cut(c, a, b, W_EXT);
+    c.line(c.p(a[0], a[1]), c.p(b[0], b[1]), 'var(--d2-wall)', 1.1 * k);
+    c.line(c.p(a[0], a[1]), c.p(b[0], b[1]), 'var(--d2-glass)', 2.6 * k);
+  }
+  /** Door: the opening, the leaf and the swing, as a plan would show it. */
+  function door(c, at, dx, dy, width, k, thick) {
+    var to = [at[0] + dx * width, at[1] + dy * width];
+    cut(c, at, to, thick === undefined ? W_INT : thick);
+    var leafX = at[0] - dy * width, leafY = at[1] + dx * width;
+    c.line(c.p(at[0], at[1]), c.p(leafX, leafY), 'var(--d2-wall)', 1.2 * k);
+    var r = width * S;
+    c.add('<path d="M' + n(c.p(to[0], to[1])[0]) + ' ' + n(c.p(to[0], to[1])[1]) +
+      ' A' + n(r) + ' ' + n(r) + ' 0 0 ' + (dx * dy >= 0 ? '1' : '0') + ' ' +
+      n(c.p(leafX, leafY)[0]) + ' ' + n(c.p(leafX, leafY)[1]) +
+      '" fill="none" stroke="var(--d2-wall)" stroke-width="' + (0.9 * k) + '" stroke-dasharray="' +
+      (2.5 * k).toFixed(1) + ' ' + (2.5 * k).toFixed(1) + '"/>');
+  }
+  function stair(c, x0, y0, x1, y1, k, up) {
+    c.box(c.p(x0, y0), c.p(x1, y1), 'none', 'var(--d2-wall)', 1 * k);
+    var n2 = 9;
+    for (var i = 1; i < n2; i++) {
+      var yy = y0 + i * (y1 - y0) / n2;
+      c.line(c.p(x0, yy), c.p(x1, yy), 'var(--d2-wall)', 0.8 * k);
+    }
+    var mx = (x0 + x1) / 2;
+    c.line(c.p(mx, y1 - 0.15), c.p(mx, y0 + 0.15), 'var(--d2-wall)', 1.1 * k);
+    c.add(arrow(c.p(mx, y0 + 0.15), 0, -1, k));
+    c.label(c.p(mx, y1 + 0.42), up || 'UP', 'd2-tag');
+  }
+
+  function room(c, r, k, tint) {
+    c.box(c.p(r.x, r.y), c.p(r.x + r.w, r.y + r.h), tint || 'var(--d2-floor)', 'none');
+    var ly = r.y + r.h * (r.labelY || 0.5);
+    c.label(c.p(r.x + r.w / 2, ly - 0.1), r.name, 'd2-tag');
+    c.label(c.p(r.x + r.w / 2, ly + 0.66), (r.w * r.h).toFixed(1) + ' m²', 'd2-room-area');
+  }
+
+  var FLOORS = {
+    ground: [
+      { x: 0,   y: 0,   w: 5.0, h: 4.8, name: 'LIVING ROOM' },
+      { x: 5.0, y: 0,   w: 3.4, h: 4.8, name: 'HALL', labelY: 0.14 },
+      { x: 0,   y: 4.8, w: 8.4, h: 3.4, name: 'KITCHEN / DINING' },
+      { x: 0,   y: 8.2, w: 3.4, h: 3.2, name: 'UTILITY' }
+    ],
+    first: [
+      { x: 0,   y: 0,   w: 5.0, h: 4.8, name: 'BEDROOM 1' },
+      { x: 5.0, y: 0,   w: 3.4, h: 3.0, name: 'LANDING', labelY: 0.95 },
+      { x: 5.0, y: 3.0, w: 3.4, h: 5.2, name: 'BEDROOM 2' },
+      { x: 0,   y: 4.8, w: 5.0, h: 3.4, name: 'BEDROOM 3' },
+      { x: 0,   y: 8.2, w: 3.4, h: 3.2, name: 'BATHROOM' }
+    ],
+    loft: [
+      { x: 1.3, y: 1.0, w: 5.7, h: 4.2, name: 'LOFT ROOM' },
+      { x: 1.3, y: 5.2, w: 2.6, h: 2.2, name: 'ENSUITE' },
+      { x: 3.9, y: 5.2, w: 3.1, h: 2.2, name: 'LANDING', labelY: 0.34 }
+    ]
+  };
+
+  /**
+   * One house, one floor. Whatever work has been selected is drawn onto it:
+   * the extension on the ground floor, the loft conversion on the loft, and
+   * the refurbishment tinted across whichever rooms it touches.
+   */
+  function housePlan(c, floor, proj, k) {
+    var H = HOUSE;
+    var types = (proj && proj.types) || [];
+    var jobs = (proj && proj.jobs) || {};
+    var doingReno = types.indexOf('renovation') >= 0;
+    var hasOut = floor !== 'loft';
+
+    // ---- floor plate
+    var plate = hasOut
+      ? [[0, 0], [H.w, 0], [H.w, H.d], [H.outX, H.d], [H.outX, H.d + H.outD], [0, H.d + H.outD]]
+      : [[0, 0], [H.w, 0], [H.w, H.d], [0, H.d]];
+    c.poly(plate.map(function (q) { return c.p(q[0], q[1]); }), 'var(--d2-floor)', 'none');
+
+    // ---- the extension, on the ground floor where it belongs
+    var ext = jobs.extension && jobs.extension.measurements;
+    var showExt = floor === 'ground' && types.indexOf('extension') >= 0 && ext;
+    if (showExt) {
+      var ew = Math.min(ext.width || 5, H.w), ed = ext.depth || 4;
+      var ex0 = H.w - ew, ey0 = H.d;
+      c.box(c.p(ex0, ey0), c.p(H.w, ey0 + ed), 'var(--d2-new-fill)', 'var(--d2-new-line)', 2.4 * k);
+      c.label(c.p((ex0 + H.w) / 2, ey0 + ed / 2 - 0.1), 'NEW EXTENSION', 'd2-tag');
+      c.label(c.p((ex0 + H.w) / 2, ey0 + ed / 2 + 0.66), (ew * ed).toFixed(1) + ' m²', 'd2-room-area');
+      if (ext.bifoldWidth > 0) {
+        var bw = Math.min(ext.bifoldWidth, ew - 0.4), bx = ex0 + (ew - bw) / 2;
+        c.line(c.p(bx, ey0 + ed), c.p(bx + bw, ey0 + ed), 'var(--d2-glass)', 7 * k);
+        c.label(c.p(ex0 + ew / 2, ey0 + ed - 0.45), bw.toFixed(1) + ' m OF BI-FOLD', 'd2-tag');
+      }
+      // dimensions the client can drag
+      c.dimH(c.p(ex0, ey0 + ed + 1.5)[0], c.p(H.w, ey0 + ed + 1.5)[0], c.p(0, ey0 + ed + 1.5)[1],
+        ew.toFixed(2) + ' m', k, 'width', 'Extension width, ' + ew.toFixed(2) + ' metres. Drag, or use the arrow keys.');
+      c.dimV(c.p(H.w + 1.5, ey0)[1], c.p(H.w + 1.5, ey0 + ed)[1], c.p(H.w + 1.5, 0)[0],
+        ed.toFixed(2) + ' m', k, 'depth', 'Projection, ' + ed.toFixed(2) + ' metres. Drag, or use the arrow keys.');
+    }
+
+    // ---- rooms
+    var tint = doingReno && floor !== 'loft' ? 'var(--d2-reno)' : null;
+    (FLOORS[floor] || []).forEach(function (r) { room(c, r, k, tint); });
+
+    // ---- walls
+    var outline = plate.slice();
+    for (var i = 0; i < outline.length; i++) {
+      var a = outline[i], b = outline[(i + 1) % outline.length];
+      wallRun(c, a, b, W_EXT, k);
+    }
+    if (floor === 'loft') {
+      c.box(c.p(1.3, 1.0), c.p(7.0, 7.4), 'none', 'var(--d2-wall)', W_INT * S);
+      c.line(c.p(1.3, 5.2), c.p(7.0, 5.2), 'var(--d2-wall)', W_INT * S);
+      c.line(c.p(3.9, 5.2), c.p(3.9, 7.4), 'var(--d2-wall)', W_INT * S);
+      // where the roof comes down to nothing
+      c.line(c.p(0.2, 0.4), c.p(8.2, 0.4), 'var(--d2-dim)', 1 * k, (4 * k).toFixed(1) + ' ' + (3 * k).toFixed(1));
+      c.line(c.p(0.2, 8.0), c.p(8.2, 8.0), 'var(--d2-dim)', 1 * k, (4 * k).toFixed(1) + ' ' + (3 * k).toFixed(1));
+      c.label(c.p(4.2, 0.15), 'EAVES — NO HEAD HEIGHT', 'd2-tag');
+    } else if (floor === 'ground') {
+      wallRun(c, [5.0, 0], [5.0, 4.8], W_INT, k);
+      wallRun(c, [0, 4.8], [8.4, 4.8], W_INT, k);
+      wallRun(c, [0, 8.2], [3.4, 8.2], W_INT, k);
+      stair(c, 5.45, 1.9, 7.95, 4.5, k);
+      door(c, [5.0, 3.6], 0, 1, 0.85, k);            // hall to living
+      door(c, [3.2, 4.8], 1, 0, 0.85, k);            // hall to kitchen
+      door(c, [1.4, 8.2], 1, 0, 0.85, k);            // kitchen to utility
+      cut(c, [6.1, 0], [7.1, 0], W_EXT);             // front door
+      c.line(c.p(6.1, 0), c.p(7.1, 0), 'var(--d2-wall)', 2 * k);
+      c.label(c.p(6.6, -0.42), 'FRONT DOOR', 'd2-tag');
+      win(c, [1.0, 0], [3.6, 0], k);                 // bay to the living room
+      win(c, [0, 5.6], [0, 7.4], k);
+      if (!showExt) win(c, [4.6, 8.2], [7.4, 8.2], k);
+      win(c, [0.6, 11.4], [2.4, 11.4], k);
+    } else {
+      wallRun(c, [5.0, 0], [5.0, 8.2], W_INT, k);
+      wallRun(c, [0, 4.8], [5.0, 4.8], W_INT, k);
+      wallRun(c, [5.0, 3.0], [8.4, 3.0], W_INT, k);
+      wallRun(c, [0, 8.2], [3.4, 8.2], W_INT, k);
+      stair(c, 5.45, 0.35, 7.95, 2.3, k, 'DOWN');
+      door(c, [5.0, 1.0], 0, 1, 0.85, k);
+      door(c, [5.0, 3.9], 0, 1, 0.85, k);
+      door(c, [3.2, 4.8], 1, 0, 0.85, k);
+      door(c, [1.4, 8.2], 1, 0, 0.85, k);
+      win(c, [1.0, 0], [3.6, 0], k);
+      win(c, [6.0, 0], [7.6, 0], k);
+      win(c, [0, 5.6], [0, 7.4], k);
+      win(c, [4.6, 8.2], [7.4, 8.2], k);
+    }
+
+    // ---- the party wall, because this is a semi
+    c.line(c.p(0, 0), c.p(0, floor === 'loft' ? H.d : H.d + H.outD), 'var(--d2-party)', W_EXT * S);
+    c.label(c.p(0.34, 0.72), 'PARTY WALL', 'd2-party-tag', 'start');
+
+    // ---- the one measurement everything else is scaled from
+    c.tick(c.p(0, 0), c.p(0, -2.2), k);
+    c.tick(c.p(H.w, 0), c.p(H.w, -2.2), k);
+    c.line(c.p(0, -1.95), c.p(H.w, -1.95), 'var(--d2-accent)', 1.6 * k);
+    c.add(arrow(c.p(0, -1.95), -1, 0, k * 1.15));
+    c.add(arrow(c.p(H.w, -1.95), 1, 0, k * 1.15));
+    c.chip(c.p(H.w / 2, -1.95), H.w.toFixed(2) + ' m', k * 1.15);
+    c.label(c.p(H.w / 2, -2.62), 'SCALE SET FROM THIS WALL', 'd2-cal-tag');
+
+    // ---- what floor am I looking at
+    var area = (FLOORS[floor] || []).reduce(function (t, r) { return t + r.w * r.h; }, 0);
+    var extBottom = showExt ? H.d + (jobs.extension.measurements.depth || 4) : 0;
+    var bottom = Math.max(floor === 'loft' ? 8.0 : H.d + H.outD, extBottom);
+    c.label(c.p(H.w / 2, bottom + (showExt ? 2.6 : 1.7)),
+      floor.toUpperCase() + ' FLOOR · ' + area.toFixed(1) + ' m²', 'd2-area');
+  }
+
+  /** The scan the client traced over, drawn under whatever plan is on screen. */
+  function scanLayer(c, floor, k) {
+    var H = HOUSE;
+    var mid = c.p(H.w / 2, (H.d + H.outD) / 2);
+    c.raw('<g opacity="0.45" transform="rotate(-1.1 ' + n(mid[0]) + ' ' + n(mid[1]) +
+          ') translate(' + n(5 * k) + ' ' + n(4 * k) + ')">');
+    c.box(c.p(-0.7, -0.7), c.p(H.w + 0.7, H.d + H.outD + 0.7), 'var(--d2-scan-paper)', 'var(--d2-scan)',
+      1 * k, (6 * k).toFixed(1) + ' ' + (4 * k).toFixed(1));
+    (FLOORS[floor] || []).forEach(function (r) {
+      c.box(c.p(r.x, r.y), c.p(r.x + r.w, r.y + r.h), 'none', 'var(--d2-scan)', 2.4 * k);
+    });
+    c.label(c.p(-0.6, -1.05), 'YOUR FLOOR PLAN, AS UPLOADED', 'd2-scan-tag', 'start');
+    c.raw('</g>');
+  }
+
   /* =====================================================================
      Scenes
      ===================================================================== */
@@ -3136,44 +3453,9 @@ select.cell:hover { border-color: var(--rule); }
     /* ---------------------------------------------------------- extension */
     extension: {
       plan: function (c, j, g, k) {
-        var w = j.width || 5, d = j.depth || 4;
-        var hw = Math.max(w + 2, 7), hd = 6;
-        // the house that is already there
-        c.box(c.p(-(hw - w) / 2, -hd), c.p(w + (hw - w) / 2, 0), 'var(--d2-old-fill)', 'var(--d2-old-line)', 1.4 * k);
-        c.label(c.p(w / 2, -hd / 2), 'EXISTING HOUSE', 'd2-tag');
-        // the new work
-        c.box(c.p(0, 0), c.p(w, d), 'var(--d2-new-fill)', 'var(--d2-new-line)', 2 * k);
-        c.label(c.p(w / 2, d / 2), (w * d).toFixed(1) + ' m²', 'd2-area');
-        // bi-folds on the garden edge
-        if (j.bifoldWidth > 0) {
-          var bw = Math.min(j.bifoldWidth, w - 0.4), bx = (w - bw) / 2;
-          c.line(c.p(bx, d), c.p(bx + bw, d), 'var(--d2-glass)', 6 * k);
-          c.label(c.p(w / 2, d + 0.55), bw.toFixed(2) + ' m OF GLASS', 'd2-tag');
-        }
-        // wall coming out, on the line between old and new
-        if (j.wallRemoval > 0) {
-          var rw = Math.min(j.wallRemoval, w), rx = (w - rw) / 2;
-          c.line(c.p(rx, 0), c.p(rx + rw, 0), 'var(--d2-warn)', 3 * k, (5 * k).toFixed(1) + ' ' + (4 * k).toFixed(1));
-        }
-        // trees, in the garden
-        (j.trees || []).forEach(function (t, i) {
-          var sp = root.DATUM.TREES.bySpeciesId(t.species);
-          if (!sp) return;
-          var r = visual(t.distance);
-          var tx = i % 2 ? w + r * 0.72 : -r * 0.72;
-          var ty = d + r * 0.62;
-          var at = c.p(tx, ty);
-          c.circle(at, Math.max(0.9, sp.height * 0.16) * S, 'var(--d2-canopy)', 'var(--d2-canopy-line)', 1.3 * k);
-          var corner = c.p(tx > w / 2 ? w : 0, d);
-          c.tick(corner, at, k);
-          c.chip([(corner[0] + at[0]) / 2, (corner[1] + at[1]) / 2], t.distance.toFixed(1) + ' m', k);
-          c.label([at[0], at[1] + Math.max(0.9, sp.height * 0.16) * S + 13 * k], sp.name.toUpperCase(), 'd2-tag');
-        });
-        // dimensions
-        c.dimH(c.p(0, d + 1.5)[0], c.p(w, d + 1.5)[0], c.p(0, d + 1.5)[1],
-          w.toFixed(2) + ' m', k, 'width', 'Width, ' + w.toFixed(2) + ' metres. Drag, or use the arrow keys.');
-        c.dimV(c.p(w + 1.5, 0)[1], c.p(w + 1.5, d)[1], c.p(w + 1.5, 0)[0],
-          d.toFixed(2) + ' m', k, 'depth', 'Projection, ' + d.toFixed(2) + ' metres. Drag, or use the arrow keys.');
+        var floor = (j.project && j.project.floor) || 'ground';
+        scanLayer(c, floor, k);
+        housePlan(c, floor, j.project, k);
       },
       section: function (c, j, g, k) {
         var d = j.depth || 4, depth = g ? g.depth : NOMINAL;
@@ -3262,104 +3544,26 @@ select.cell:hover { border-color: var(--rule); }
         c.label(c.s(span / 2, eaves - 1.2), (j.floorArea || 0).toFixed(0) + ' m² OF NEW FLOOR', 'd2-area');
       },
       plan: function (c, j, g, k) {
-        var span = 8, len = Math.max(4, (j.floorArea || 28) / 4);
-        c.box(c.p(0, 0), c.p(span, len), 'var(--d2-old-fill)', 'var(--d2-old-line)', 1.4 * k);
-        var uw = Math.min(span - 1.4, 3.6);
-        c.box(c.p((span - uw) / 2, 0.5), c.p((span + uw) / 2, len - 0.5), 'var(--d2-new-fill)', 'var(--d2-new-line)', 2 * k);
-        c.label(c.p(span / 2, len / 2), (j.floorArea || 0).toFixed(0) + ' m²', 'd2-area');
-        if (j.dormerWidth > 0) {
-          var dw = Math.min(j.dormerWidth, span - 1);
-          c.line(c.p((span - dw) / 2, len), c.p((span + dw) / 2, len), 'var(--d2-glass)', 6 * k);
-          c.label(c.p(span / 2, len + 0.55), 'DORMER', 'd2-tag');
+        var floor = (j.project && j.project.floor) || 'loft';
+        scanLayer(c, floor, k);
+        housePlan(c, floor, j.project, k);
+        if (floor === 'loft' && j.dormerWidth > 0) {
+          var dw = Math.min(j.dormerWidth, 5.4);
+          c.line(c.p(4.2 - dw / 2, 7.4), c.p(4.2 + dw / 2, 7.4), 'var(--d2-glass)', 7 * k);
+          c.label(c.p(4.2, 7.95), dw.toFixed(1) + ' m DORMER', 'd2-tag');
         }
-        if (j.staircases > 0) {
-          c.box(c.p(span / 2 - 0.5, 0.7), c.p(span / 2 + 0.5, 3.2), 'none', 'var(--d2-new-line)', 1.2 * k);
-          for (var i = 1; i < 8; i++) c.line(c.p(span / 2 - 0.5, 0.7 + i * 0.31), c.p(span / 2 + 0.5, 0.7 + i * 0.31), 'var(--d2-new-line)', 0.8 * k);
-          c.label(c.p(span / 2, 3.65), 'STAIR', 'd2-tag');
-        }
-        c.dimH(c.p(0, len + 1.4)[0], c.p(span, len + 1.4)[0], c.p(0, len + 1.4)[1], span.toFixed(1) + ' m', k);
       }
     },
 
     /* --------------------------------------------------------- renovation */
     renovation: {
-      /*
-       * A floor plan as it looks AFTER the client has uploaded theirs and
-       * traced it: the scan sits underneath, slightly out of square the way a
-       * photographed plan always is, with the crisp trace over the top. One
-       * wall carries the dimension they typed in, and that single number sets
-       * the scale for every other measurement on the drawing.
-       */
       plan: function (c, j, g, k) {
-        // Proportional layout of an ordinary semi, scaled to whatever floor
-        // area the client gave us, so the drawing never contradicts the number.
-        var UNITS = 72;
-        var f = Math.sqrt(Math.max(j.floorArea || 90, 10) / UNITS);
-        var W = 8 * f, H = 9 * f;
-        var rooms = [
-          { x: 0,       y: 0,       w: 5.2 * f, h: 4.5 * f, name: 'LIVING ROOM' },
-          { x: 5.2 * f, y: 0,       w: 2.8 * f, h: 4.5 * f, name: 'HALL & STAIR', labelY: 0.8 },
-          { x: 0,       y: 4.5 * f, w: W,       h: 4.5 * f, name: 'KITCHEN / DINER' }
-        ];
-
-        // ---- the uploaded scan, underneath and very slightly out of square
-        var mid = c.p(W / 2, H / 2);
-        c.raw('<g opacity="0.5" transform="rotate(-1.15 ' + n(mid[0]) + ' ' + n(mid[1]) +
-              ') translate(' + n(5 * k) + ' ' + n(4 * k) + ')">');
-        c.box(c.p(-0.5, -0.5), c.p(W + 0.5, H + 0.5), 'var(--d2-scan-paper)', 'var(--d2-scan)', 1 * k,
-          (6 * k).toFixed(1) + ' ' + (4 * k).toFixed(1));
-        rooms.forEach(function (r) {
-          c.box(c.p(r.x, r.y), c.p(r.x + r.w, r.y + r.h), 'none', 'var(--d2-scan)', 2.6 * k);
-        });
-        c.label(c.p(0.15, H + 0.55), 'YOUR FLOOR PLAN, AS UPLOADED', 'd2-scan-tag', 'start');
-        c.raw('</g>');
-
-        // ---- the trace
-        c.box(c.p(0, 0), c.p(W, H), 'var(--d2-new-fill)', 'var(--d2-new-line)', 2.4 * k);
-        rooms.forEach(function (r) {
-          c.box(c.p(r.x, r.y), c.p(r.x + r.w, r.y + r.h), 'none', 'var(--d2-new-line)', 1.6 * k);
-          var ly = r.y + r.h * (r.labelY || 0.5);
-          c.label(c.p(r.x + r.w / 2, ly - 0.12), r.name, 'd2-tag');
-          c.label(c.p(r.x + r.w / 2, ly + 0.62), (r.w * r.h).toFixed(1) + ' m²', 'd2-room-area');
-        });
-
-        // stair treads, so the hall reads as a hall
-        var hall = rooms[1];
-        var stairTop = hall.y + hall.h * 0.08, stairBot = hall.y + hall.h * 0.55;
-        c.box(c.p(hall.x + 0.3 * f, stairTop), c.p(hall.x + hall.w - 0.3 * f, stairBot),
-          'none', 'var(--d2-new-line)', 1 * k);
-        for (var t = 1; t < 7; t++) {
-          var ty = stairTop + t * (stairBot - stairTop) / 7;
-          c.line(c.p(hall.x + 0.3 * f, ty), c.p(hall.x + hall.w - 0.3 * f, ty), 'var(--d2-new-line)', 0.9 * k);
-        }
-
-        // windows on the front and rear walls
-        [[0, 0.22], [0, 0.62], [H, 0.3], [H, 0.72]].forEach(function (win) {
-          c.line(c.p(W * win[1] - 0.45 * f, win[0]), c.p(W * win[1] + 0.45 * f, win[0]), 'var(--d2-glass)', 5.5 * k);
-        });
-
-        // ---- the one measurement everything else is scaled from
-        var cy = c.p(0, -1.9)[1];
-        c.tick(c.p(0, 0), c.p(0, -2.15), k);
-        c.tick(c.p(W, 0), c.p(W, -2.15), k);
-        c.line(c.p(0, -1.9), c.p(W, -1.9), 'var(--d2-accent)', 1.6 * k);
-        c.add(arrow(c.p(0, -1.9), -1, 0, k * 1.15));
-        c.add(arrow(c.p(W, -1.9), 1, 0, k * 1.15));
-        c.chip([mid[0], cy], W.toFixed(2) + ' m', k * 1.15);
-        c.label(c.p(W / 2, -2.55), 'SCALE SET FROM THIS WALL', 'd2-cal-tag');
-
-        // ---- wall coming out
-        if (j.wallRemoval > 0) {
-          var rw = Math.min(j.wallRemoval, 5.2 * f);
-          c.line(c.p(0, 4.5 * f), c.p(rw, 4.5 * f), 'var(--d2-warn)', 4 * k,
-            (5 * k).toFixed(1) + ' ' + (4 * k).toFixed(1));
-          c.label(c.p(0.25, 4.5 * f - 0.42), rw.toFixed(1) + ' m OF WALL OUT', 'd2-warn-tag', 'start');
-        }
-
-        c.label(c.p(W / 2, H + 1.95), (j.floorArea || 0).toFixed(0) + ' m² TRACED', 'd2-area');
-        c.dimV(c.p(W + 1.6, 0)[1], c.p(W + 1.6, H)[1], c.p(W + 1.6, 0)[0], H.toFixed(2) + ' m', k);
+        var floor = (j.project && j.project.floor) || 'ground';
+        scanLayer(c, floor, k);
+        housePlan(c, floor, j.project, k);
+        c.label(c.p(HOUSE.w / 2, -3.35),
+          (j.floorArea || 0).toFixed(0) + ' m² BEING REFURBISHED', 'd2-reno-tag');
       },
-
       section: function (c, j, g, k) {
         var w = 9;
         groundLine(c, -1, w + 1, k);
@@ -3565,14 +3769,13 @@ select.cell:hover { border-color: var(--rule); }
     var parts = h.split('/').filter(Boolean);
     if (!parts.length) return { name: 'landing', path: '/' };
     if (parts[0] === 'start') return { name: 'start', path: '/start' };
+    if (parts[0] === 'estimate') return { name: 'estimate', path: '/estimate' };
 
     var type = typeOf(parts[0]);
     if (!type) return { name: 'start', path: '/start' };
 
     var step = parts[1];
-    if (step === 'estimate') {
-      return { name: 'estimate', typeId: type.id, type: type, path: '/' + type.id + '/estimate' };
-    }
+    if (step === 'estimate') return { name: 'estimate', path: '/estimate' };
     var found = null;
     (type.steps || []).forEach(function (s) { if (s.id === step) found = s; });
     if (!found) found = (type.steps || [])[0];
@@ -3819,6 +4022,29 @@ select.cell:hover { border-color: var(--rule); }
 
   var jobs = {};        // per build type, so switching does not lose answers
   var incVat = true;
+
+  /* A project can be several build types at once — an extension AND a loft AND
+     a refurbishment is one job, not three, and gets priced that way. */
+  var PKEY = 'datum.project.v1';
+  var project = { types: [], floor: 'ground' };
+  try {
+    var saved = JSON.parse(root.localStorage.getItem(PKEY) || 'null');
+    if (saved && Array.isArray(saved.types)) project = saved;
+  } catch (e) { /* private mode */ }
+  function saveProject() {
+    try { root.localStorage.setItem(PKEY, JSON.stringify(project)); } catch (e) {}
+  }
+  /** Selected types, in the order the rate book lists them. */
+  function selected() {
+    return book().buildTypes
+      .filter(function (t) { return t.enabled && (t.steps || []).length && project.types.indexOf(t.id) >= 0; });
+  }
+  var HOUSE_TYPES = ['extension', 'renovation', 'loft'];
+  function floorsAvailable() {
+    var f = ['ground', 'first'];
+    if (project.types.indexOf('loft') >= 0) f.push('loft');
+    return f;
+  }
   var route = null;
   var focusDim = null;
 
@@ -3871,12 +4097,16 @@ select.cell:hover { border-color: var(--rule); }
     return j;
   }
 
-  function price(typeId) {
-    var j = derive(typeId, job(typeId));
-    return RB.priceJob(book(), typeId, {
-      measurements: j.measurements, modifiers: j.modifiers,
-      ground: j.ground, answered: Object.keys(j.touched).length
-    });
+  /** Every selected build type, priced as one job. */
+  function priceNow() {
+    var sel = selected();
+    var map = {};
+    sel.forEach(function (t) { map[t.id] = derive(t.id, job(t.id)); });
+    return RB.priceProject(book(), sel.map(function (t) { return t.id; }), map);
+  }
+  /** Just this build type's trade work — what the drawing needs. */
+  function tradeNow(typeId) {
+    return RB.tradeLines(book(), typeId, derive(typeId, job(typeId)));
   }
 
   /* ---- inputs ------------------------------------------------------------- */
@@ -3974,16 +4204,51 @@ select.cell:hover { border-color: var(--rule); }
     var b = book();
     var host = $('start-grid');
     if (!host) return;
-    host.innerHTML = b.buildTypes.filter(function (t) { return t.enabled && (t.steps || []).length; })
-      .map(function (t) {
-        var r = RB.priceTypical(b, t.id);
-        return '<a class="pick" href="#/' + t.id + '/' + t.steps[0].id + '">' +
-          '<span class="pick-name">' + esc(t.name) + '</span>' +
-          '<span class="pick-blurb">' + esc(t.blurb) + '</span>' +
-          '<span class="pick-foot"><span class="pick-typ">' +
-          (r ? 'Typical ' + money(r.incVat) : '') + '</span>' +
-          '<span class="pick-go">Price it →</span></span></a>';
-      }).join('');
+    var avail = b.buildTypes.filter(function (t) { return t.enabled && (t.steps || []).length; });
+    host.innerHTML = avail.map(function (t) {
+      var r = RB.priceTypical(b, t.id);
+      var on = project.types.indexOf(t.id) >= 0;
+      return '<button type="button" class="pick' + (on ? ' on' : '') + '" data-pick="' + t.id +
+        '" aria-pressed="' + on + '">' +
+        '<span class="pick-tick" aria-hidden="true">' + (on ? '✓' : '') + '</span>' +
+        '<span class="pick-name">' + esc(t.name) + '</span>' +
+        '<span class="pick-blurb">' + esc(t.blurb) + '</span>' +
+        '<span class="pick-foot"><span class="pick-typ">' + (r ? 'Typical ' + money(r.incVat) : '') +
+        '</span></span></button>';
+    }).join('');
+
+    var sel = selected();
+    var go = $('start-go'), note = $('start-note');
+    if (go) {
+      go.hidden = !sel.length;
+      if (sel.length) go.href = '#/' + sel[0].id + '/' + sel[0].steps[0].id;
+      go.textContent = sel.length > 1
+        ? 'Price all ' + sel.length + ' together →'
+        : 'Start →';
+    }
+    if (note) {
+      if (sel.length > 1) {
+        var combined = RB.priceProject(b, sel.map(function (t) { return t.id; }), typicalJobs(sel));
+        note.innerHTML = '<div class="flag flag-good"><span><b>One project, not ' + sel.length +
+          '.</b> You pay for one survey, one set of drawings, one engineer and one building control ' +
+          'application — not ' + sel.length + ' of each. On a typical job of this shape that is about ' +
+          money(combined.saving) + ' you do not spend.</span></div>';
+      } else {
+        note.innerHTML = sel.length
+          ? '<p class="q-help">Doing more than one? Tick them all — it is cheaper as a single project.</p>'
+          : '<p class="q-help">Tick everything you are thinking about. You can change your mind later.</p>';
+      }
+    }
+  }
+
+  function typicalJobs(sel) {
+    var out = {};
+    sel.forEach(function (t) {
+      out[t.id] = { measurements: (t.typical || {}).measurements || {},
+                    modifiers: (t.typical || {}).modifiers || {},
+                    ground: (t.typical || {}).ground, touched: {} };
+    });
+    return out;
   }
 
   /* ---- the step page -------------------------------------------------------- */
@@ -3993,9 +4258,17 @@ select.cell:hover { border-color: var(--rule); }
     var j = job(type.id);
     var steps = type.steps;
     var i = steps.indexOf(step);
-    var prev = i > 0 ? '#/' + type.id + '/' + steps[i - 1].id : '#/start';
+    var sel = selected();
+    var ti = sel.map(function (t) { return t.id; }).indexOf(type.id);
+
+    var prev = i > 0 ? '#/' + type.id + '/' + steps[i - 1].id
+      : (ti > 0 ? '#/' + sel[ti - 1].id + '/' + sel[ti - 1].steps[sel[ti - 1].steps.length - 1].id : '#/start');
+
+    var nextType = ti >= 0 && ti < sel.length - 1 ? sel[ti + 1] : null;
     var next = i < steps.length - 1 ? '#/' + type.id + '/' + steps[i + 1].id
-                                    : '#/' + type.id + '/estimate';
+      : (nextType ? '#/' + nextType.id + '/' + nextType.steps[0].id : '#/estimate');
+    var nextLabel = i < steps.length - 1 ? 'Next'
+      : (nextType ? 'On to ' + nextType.name.toLowerCase() : 'See the estimate');
 
     var fields = asks(type).filter(function (m) { return m.ask.step === step.id; })
       .map(function (m) { return inputHtml(m, j); }).join('');
@@ -4013,13 +4286,29 @@ select.cell:hover { border-color: var(--rule); }
       '<div class="flow-fields">' + fields + (step.ground ? groundHtml(j) : '') + mods + '</div>' +
       '<div class="flow-nav">' +
         '<a class="btn btn-ghost" href="' + prev + '">← Back</a>' +
-        '<a class="btn" href="' + next + '">' +
-        (i === steps.length - 1 ? 'See the estimate' : 'Next') + ' →</a>' +
+        '<a class="btn" href="' + next + '">' + esc(nextLabel) + ' →</a>' +
       '</div>';
 
     var ask = $('flow-ask');
     ask.innerHTML = html;
     if (step.ground) paintTrees();
+
+    var tabs = $('floor-tabs');
+    if (tabs) {
+      var housey = HOUSE_TYPES.indexOf(type.id) >= 0 && step.view === 'plan';
+      tabs.hidden = !housey;
+      if (housey) {
+        var fl = floorsAvailable();
+        // show the floor the question is actually about
+        var want = type.id === 'loft' ? 'loft' : type.id === 'extension' ? 'ground' : project.floor;
+        if (fl.indexOf(want) < 0) want = 'ground';
+        project.floor = want;
+        tabs.innerHTML = fl.map(function (f) {
+          return '<button type="button" data-floor="' + f + '" aria-pressed="' +
+            (f === project.floor) + '">' + f.charAt(0).toUpperCase() + f.slice(1) + '</button>';
+        }).join('');
+      }
+    }
 
     $('draw-title').textContent = type.name + ' · ' + (step.view === 'plan' ? 'plan' : 'section');
     $('draw-note').textContent = type.id === 'renovation' && step.view === 'plan'
@@ -4033,18 +4322,17 @@ select.cell:hover { border-color: var(--rule); }
   }
 
   function paintRail(r) {
-    var type = r.type;
-    if (!type) return;
-    var here = r.name === 'estimate' ? 'estimate' : r.step.id;
-    var idx = r.name === 'estimate' ? type.steps.length
-      : type.steps.indexOf(r.step);
-    var html = type.steps.map(function (s, i) {
-      return '<a href="#/' + type.id + '/' + s.id + '" class="' +
-        (s.id === here ? 'here' : i < idx ? 'done' : '') + '"><i>' +
-        (i < idx ? '✓' : i + 1) + '</i><span>' + esc(s.short || s.id) + '</span></a>';
+    var sel = selected();
+    if (!sel.length) return;
+    var hereId = r.name === 'estimate' ? null : r.typeId;
+    var hereIdx = hereId ? sel.map(function (t) { return t.id; }).indexOf(hereId) : sel.length;
+    var html = sel.map(function (t, i) {
+      return '<a href="#/' + t.id + '/' + t.steps[0].id + '" class="' +
+        (t.id === hereId ? 'here' : i < hereIdx ? 'done' : '') + '"><i>' +
+        (i < hereIdx ? '✓' : i + 1) + '</i><span>' + esc(t.name) + '</span></a>';
     }).join('') +
-      '<a href="#/' + type.id + '/estimate" class="' + (here === 'estimate' ? 'here' : '') + '">' +
-      '<i>' + (type.steps.length + 1) + '</i><span>Estimate</span></a>';
+      '<a href="#/estimate" class="' + (r.name === 'estimate' ? 'here' : '') + '"><i>' +
+      (sel.length + 1) + '</i><span>Estimate</span></a>';
     ['steps-rail', 'steps-rail-2'].forEach(function (id) {
       var el = $(id); if (el) el.innerHTML = html;
     });
@@ -4057,7 +4345,7 @@ select.cell:hover { border-color: var(--rule); }
     var host = $('iso-wrap');
     if (!host) return;
     var j = job(r.typeId);
-    host.innerHTML = DRAW.render(r.typeId, view, j.measurements ? mergeJob(j) : j, result.ground);
+    host.innerHTML = DRAW.render(r.typeId, view, mergeJob(j), result.ground);
     if (focusDim) {
       var el = doc.querySelector('[data-dim="' + focusDim + '"]');
       if (el) el.focus();
@@ -4070,6 +4358,10 @@ select.cell:hover { border-color: var(--rule); }
     Object.keys(j.measurements).forEach(function (k) { out[k] = j.measurements[k]; });
     out.trees = j.ground.trees;
     out.soil = j.ground.soil;
+    // the plan draws the whole house, so it needs every part of the project
+    var all = {};
+    selected().forEach(function (t) { all[t.id] = derive(t.id, job(t.id)); });
+    out.project = { types: project.types.slice(), jobs: all, floor: project.floor };
     return out;
   }
 
@@ -4114,12 +4406,14 @@ select.cell:hover { border-color: var(--rule); }
       '</td><td class="amt">' + money(amount) + '</td></tr>';
   }
 
-  function paintResult(r, result) {
-    var vat = book().commercial.vatRate, conf = book().commercial.confidence;
+  function paintResult(result) {
+    var b = book(), vat = b.commercial.vatRate, conf = b.commercial.confidence;
+    var sel = selected();
+
     countTo($('fig-low'), incVat ? result.low : result.lowExVat, 'down');
     countTo($('fig-high'), incVat ? result.high : result.highExVat, 'up');
     $('readout-label').textContent = 'Estimated total, ' + (incVat ? 'including' : 'excluding') + ' VAT';
-    $('result-type').textContent = r.type.name;
+    $('result-type').textContent = sel.map(function (t) { return t.name.toLowerCase(); }).join(' + ');
 
     var spread = Math.round(result.spread * 100);
     var tight = (conf.start - result.spread) / (conf.start - conf.floor);
@@ -4127,9 +4421,21 @@ select.cell:hover { border-color: var(--rule); }
     $('gauge-label').textContent = result.spread <= conf.floor + 0.001
       ? 'Plus or minus ' + spread + '% — as tight as it gets without a survey'
       : 'Plus or minus ' + spread + '%, and it narrows once an architect has measured up';
-    $('readout-note').textContent = (result.area ? result.area.toFixed(1) + ' m² · ' : '') +
+    $('readout-note').textContent = (result.area ? result.area.toFixed(0) + ' m² of work · ' : '') +
       (result.ground ? result.ground.depth.toFixed(2) + ' m foundations · ' : '') +
       (incVat ? 'VAT included' : 'VAT not included');
+
+    // what buying these separately would have cost
+    var saveEl = $('result-saving');
+    if (saveEl) {
+      if (sel.length > 1 && result.saving > 0) {
+        saveEl.innerHTML = '<div class="flag flag-good"><span><b>One project, not ' + sel.length +
+          '.</b> Priced as separate jobs this would be ' + money(result.separately) +
+          ', because you would pay for ' + sel.length + ' surveys, ' + sel.length +
+          ' sets of drawings and ' + sel.length + ' building control applications. ' +
+          'Doing it as one job saves ' + money(result.saving) + '.</span></div>';
+      } else { saveEl.innerHTML = ''; }
+    }
 
     var segs = [
       { cls: 's-trade', v: result.trade, name: 'Building work' },
@@ -4138,20 +4444,26 @@ select.cell:hover { border-color: var(--rule); }
       { cls: 's-contingency', v: result.contingency, name: 'Contingency' }
     ];
     if (incVat) segs.push({ cls: 's-vat', v: result.vat, name: 'VAT' });
-    var total = segs.reduce(function (t, s) { return t + s.v; }, 0) || 1;
-    $('stack-bar').innerHTML = segs.map(function (s) {
-      return '<span class="' + s.cls + '" style="width:' + ((s.v / total) * 100).toFixed(2) +
-        '%" title="' + s.name + ' — ' + money(s.v) + '"></span>';
+    var total = segs.reduce(function (t, x) { return t + x.v; }, 0) || 1;
+    $('stack-bar').innerHTML = segs.map(function (x) {
+      return '<span class="' + x.cls + '" style="width:' + ((x.v / total) * 100).toFixed(2) +
+        '%" title="' + x.name + ' — ' + money(x.v) + '"></span>';
     }).join('');
 
-    var grp = function (g) { return result.lines.filter(function (l) { return l.group === g; }); };
+    // building work, grouped by what it is
     var html = '';
-    grp('trade').forEach(function (l) { html += row('', l.label, l.detail, l.amount); });
+    (result.byType || []).forEach(function (bt) {
+      if (sel.length > 1) html += '<tr class="grp"><td colspan="2">' + esc(bt.name) + '</td></tr>';
+      result.lines.filter(function (l) { return l.group === 'trade' && l.type === bt.id; })
+        .forEach(function (l) { html += row('', l.label, l.detail, l.amount); });
+      if (sel.length > 1) html += row('sub', bt.name + ' subtotal', '', bt.trade);
+    });
     html += row('sub', 'Building work', '', result.trade);
-    grp('fees').forEach(function (l) { html += row('', l.label, l.detail, l.amount); });
+    result.lines.filter(function (l) { return l.group === 'fees'; })
+      .forEach(function (l) { html += row('', l.label, l.detail, l.amount); });
     html += row('sub', 'Drawings, fees and permissions', '', result.fees);
-    grp('margin').forEach(function (l) { html += row('', l.label, l.detail, l.amount); });
-    grp('contingency').forEach(function (l) { html += row('', l.label, l.detail, l.amount); });
+    result.lines.filter(function (l) { return l.group === 'margin' || l.group === 'contingency'; })
+      .forEach(function (l) { html += row('', l.label, l.detail, l.amount); });
     if (incVat) {
       html += row('sub', 'Total, excluding VAT', '', result.exVat);
       html += row('', 'VAT at ' + (vat * 100) + '%', '', result.vat);
@@ -4166,24 +4478,36 @@ select.cell:hover { border-color: var(--rule); }
       ' goes to the builder and the consultants. It sits on the invoice rather than behind it.';
 
     var back = $('result-back');
-    if (back) back.href = '#/' + r.typeId + '/' + r.type.steps[r.type.steps.length - 1].id;
+    if (back && sel.length) {
+      var last = sel[sel.length - 1];
+      back.href = '#/' + last.id + '/' + last.steps[last.steps.length - 1].id;
+    }
     groundFlag(result, 'result-flag');
   }
 
   /* ---- the loop ---------------------------------------------------------------- */
 
   function update(redraw) {
-    if (!route || !route.typeId) return;
-    var result = price(route.typeId);
-    if (redraw !== false) drawNow(route, result);
+    if (!route) return;
+    if (!selected().length) return;
+    var proj = priceNow();
+
+    if (route.name === 'step') {
+      var t = tradeNow(route.typeId);
+      if (redraw !== false) drawNow(route, t);
+      if (route.step.ground) groundFlag({ ground: t.ground }, 'ground-flag');
+      var lvl = $('draw-level');
+      if (lvl) lvl.textContent = t.ground ? '−' + t.ground.depth.toFixed(3) : '±0.000';
+    }
+
     var fig = $('flow-total-fig');
-    if (fig) fig.textContent = rounded(incVat ? result.low : result.lowExVat, 'down') + '–' +
-      rounded(incVat ? result.high : result.highExVat, 'up');
-    var lvl = $('draw-level');
-    if (lvl) lvl.textContent = result.ground ? '−' + result.ground.depth.toFixed(3) : '±0.000';
-    if (route.name === 'estimate') paintResult(route, result);
-    if (route.name === 'step' && route.step.ground) groundFlag(result, 'ground-flag');
-    return result;
+    if (fig) fig.textContent = rounded(incVat ? proj.low : proj.lowExVat, 'down') + '–' +
+      rounded(incVat ? proj.high : proj.highExVat, 'up');
+    var lab = $('flow-total-lab');
+    if (lab) lab.textContent = selected().length > 1 ? 'Whole project' : 'Running estimate';
+
+    if (route.name === 'estimate') paintResult(proj);
+    return proj;
   }
 
   function refreshOutputs() {
@@ -4243,6 +4567,27 @@ select.cell:hover { border-color: var(--rule); }
         j2.ground.soil = v;
         j2.touched.soil = true;
       }
+      update();
+      return;
+    }
+
+    var pick = t.closest ? t.closest('[data-pick]') : null;
+    if (pick) {
+      var id = pick.getAttribute('data-pick');
+      var at = project.types.indexOf(id);
+      if (at >= 0) project.types.splice(at, 1); else project.types.push(id);
+      saveProject();
+      paintChooser();
+      return;
+    }
+
+    var fl = t.closest ? t.closest('[data-floor]') : null;
+    if (fl) {
+      project.floor = fl.getAttribute('data-floor');
+      saveProject();
+      Array.prototype.forEach.call(fl.parentNode.querySelectorAll('button'), function (x) {
+        x.setAttribute('aria-pressed', String(x === fl));
+      });
       update();
       return;
     }
@@ -4359,8 +4704,16 @@ select.cell:hover { border-color: var(--rule); }
 
   ROUTER.on(function (r) {
     route = r;
-    if (r.name === 'start') { paintChooser(); return; }
     if (r.name === 'landing') return;
+    if (r.name === 'start') { paintChooser(); return; }
+
+    // arriving straight at a build type adds it to the project
+    if (r.typeId && project.types.indexOf(r.typeId) < 0) {
+      project.types.push(r.typeId);
+      saveProject();
+    }
+    if (r.name === 'estimate' && !selected().length) { ROUTER.go('/start'); return; }
+
     paintRail(r);
     if (r.name === 'step') renderStep(r);
     update();
