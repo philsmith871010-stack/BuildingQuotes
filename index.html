@@ -475,6 +475,59 @@
   </div>
 </div>
 
+<!-- Trace a floor plan ------------------------------------------------- -->
+<div class="trace-overlay" id="trace-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Trace your floor plan">
+  <div class="trace-box">
+    <header class="trace-head">
+      <div>
+        <p class="eyebrow">Your floor plan</p>
+        <h3 id="trace-step">Step 1 — drag along a wall you know the length of.</h3>
+      </div>
+      <span class="trace-scale" id="trace-scale">Scale not set</span>
+      <button type="button" class="btn btn-ghost btn-sm" id="trace-restart">Start again</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="trace-close">Close</button>
+    </header>
+
+    <div class="trace-body">
+      <div class="trace-canvas">
+        <svg id="trace-svg" viewBox="0 0 700 960" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+
+      <aside class="trace-side">
+        <p class="trace-say" id="trace-say"></p>
+
+        <div id="trace-confirm" hidden>
+          <div class="field">
+            <label for="trace-len">How long is that line?</label>
+            <div class="stepper" style="gap:.4rem">
+              <input id="trace-len" type="number" step="0.01" min="0.1" value="8.4"
+                     style="font-family:var(--mono);text-align:right">
+              <button type="button" class="btn btn-sm" id="trace-confirm-btn">Set scale</button>
+            </div>
+            <span class="hint">The plan has 8.40 m printed across the front wall.</span>
+          </div>
+        </div>
+
+        <div>
+          <p class="eyebrow" style="margin-bottom:.5rem">Rooms measured</p>
+          <div class="trace-rooms" id="trace-rooms"></div>
+        </div>
+
+        <div class="trace-total">
+          <span class="lab">Total traced</span>
+          <span class="fig" id="trace-total">0.0 m²</span>
+        </div>
+
+        <button type="button" class="btn" id="trace-apply" disabled>Use this area →</button>
+        <p class="hint">Flood fill and outline tracing by
+          <a href="https://github.com/Kentucky-ai/opentakeoff" target="_blank" rel="noopener">OpenTakeoff</a>,
+          Apache-2.0. No image ever leaves your browser.</p>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/opentakeoff/geom.js"></script>
 <script src="vendor/gsap.min.js"></script>
 <script src="vendor/ScrollTrigger.min.js"></script>
 <script src="src/ratebook.js"></script>
@@ -483,6 +536,8 @@
 <script src="src/rates.js"></script>
 <script src="src/engine.js"></script>
 <script src="src/draw2d.js"></script>
+<script src="src/plan-sample.js"></script>
+<script src="src/trace.js"></script>
 <script src="src/router.js"></script>
 <script src="src/hero.js"></script>
 <script src="src/flow.js"></script>

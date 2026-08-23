@@ -275,10 +275,19 @@
       return found ? modifierHtml(found, j) : '';
     }).join('');
 
+    // the one step where the client's own plan can do the measuring
+    var traceable = type.id === 'renovation' && step.id === 'size' && root.DATUM.TRACE;
+
     var html =
       '<p class="flow-step-of">' + esc(type.name) + ' · step ' + (i + 1) + ' of ' + (steps.length + 1) + '</p>' +
       '<h1>' + esc(step.title) + '</h1>' +
       '<p class="lede">' + esc(step.lede) + '</p>' +
+      (traceable
+        ? '<div class="trace-cta"><div><p class="q-title">Have you got the floor plan?</p>' +
+          '<p class="q-help">Upload it and measure the rooms off it instead of guessing. ' +
+          'Nothing is sent anywhere — it is measured in your browser.</p></div>' +
+          '<button type="button" class="btn" id="do-trace">Trace my plan</button></div>'
+        : '') +
       '<div class="flow-fields">' + fields + (step.ground ? groundHtml(j) : '') + mods + '</div>' +
       '<div class="flow-nav">' +
         '<a class="btn btn-ghost" href="' + prev + '">← Back</a>' +
@@ -588,6 +597,28 @@
       return;
     }
 
+    if (t.id === 'do-trace') {
+      root.DATUM.TRACE.open(function (area, rooms) {
+        var j2 = job('renovation');
+        j2.measurements.floorArea = Math.round(area);
+        // walls and ceilings, roughly two and a half times the floor area
+        j2.measurements.replasterArea = Math.round(area * 2.35);
+        j2.measurements.rewireArea = Math.round(area);
+        j2.touched.floorArea = true;
+        j2.touched.traced = true;
+        refreshOutputs();
+        update();
+        var note = doc.querySelector('#flow-ask .trace-cta');
+        if (note) {
+          note.innerHTML = '<div><p class="q-title">Measured from your plan.</p>' +
+            '<p class="q-help">' + rooms.length + ' room' + (rooms.length === 1 ? '' : 's') +
+            ' traced, ' + area.toFixed(1) + ' m² in total. The figures below have been set from it.</p></div>' +
+            '<button type="button" class="btn btn-ghost" id="do-trace">Trace again</button>';
+        }
+      });
+      return;
+    }
+
     if (t.id === 'tree-add') {
       var j3 = job(route.typeId);
       if (j3.ground.trees.length >= (book().limits.maxTrees || 4)) return;
@@ -715,6 +746,7 @@
     update();
   });
 
+  if (D.TRACE) D.TRACE.wire();
   ROUTER.start();
   if (D.HERO) D.HERO.start();
 })(window, document);

@@ -85,7 +85,10 @@ Deployed properly these are two pages on one domain and share storage anyway.
 | `src/router.js` | Hash routing between the landing, the four steps and the result. |
 | `src/hero.js` | The hero section drawing plots itself in from the datum outwards, then the scroll descent. GSAP. |
 | `src/flow.js` | The steps, the persistent drawing and its camera, and the result. |
-| `vendor/` | GSAP 3.15 and ScrollTrigger, inlined at build time. Standard no-charge licence. |
+| `src/trace.js` | Trace a floor plan: raster to wall mask, calibration, room picking, areas. |
+| `src/plan-sample.js` | The sample plan, authored as SVG and rasterised in the browser so the trace path is the real one. |
+| `vendor/gsap*` | GSAP 3.15 and ScrollTrigger, inlined at build time. Standard no-charge licence. |
+| `vendor/opentakeoff/` | Flood fill and contour tracing from [OpenTakeoff](https://github.com/Kentucky-ai/opentakeoff), Apache-2.0. LICENSE, NOTICE and a statement of changes are alongside it. |
 | `assets/styles.css` | Design tokens and layout. Light and dark. |
 | `build.mjs` | Inlines the above into `dist/`. |
 
@@ -129,9 +132,21 @@ One wall carries the dimension they typed in, and that single number scales
 every other measurement on the drawing. Change the floor area and the plan
 rescales, so the drawing can never contradict the figure being priced.
 
-The upload and trace itself is not built. It needs no AI: the client drags a
-line along a wall they know the length of, which gives pixels per metre, then
-clicks room corners — areas come out of the shoelace formula. Pure geometry.
+**The trace tool is built.** On the renovation step, "Trace my plan" opens the
+client's floor plan, they drag a line along a wall whose length is printed on
+it and type that length, then click inside each room. Every room is flooded,
+outlined and measured, and the total is written back into the estimate.
+
+It needs no AI and nothing leaves the browser. The image is rasterised to a
+canvas, dark pixels become a wall mask, and OpenTakeoff's flood fill and
+contour tracing (Apache-2.0, vendored in `vendor/opentakeoff` with its LICENSE
+and NOTICE) turn a click into a polygon. Areas come out of the shoelace
+formula.
+
+Measured against the sample plan, calibration recovers the true scale exactly
+(1 m = 70.0 px) and the four rooms come to 74.5 m² against an 79.8 m² external
+footprint — the difference being wall thickness, since rooms are correctly
+measured to internal faces.
 
 **Not modelled yet, and said so on the page:** party wall awards, site access,
 drains in the footprint, roof glazing, heating and electrics, decoration, floor

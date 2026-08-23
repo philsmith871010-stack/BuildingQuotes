@@ -1061,6 +1061,74 @@ section[id], main[id] { scroll-margin-top: 78px; }
   color: var(--ink-3); padding-top: 1.1rem; border-bottom: 1px solid var(--rule);
 }
 
+/* --- Trace a floor plan ------------------------------------------------------ */
+.trace-cta {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  border: 1px solid var(--accent); background: var(--accent-soft);
+  border-radius: 3px; padding: .95rem 1rem;
+}
+.trace-cta > div { flex: 1 1 16rem; }
+.trace-cta .q-help { margin-top: .2rem; }
+
+.trace-overlay {
+  position: fixed; inset: 0; z-index: 90; background: rgba(10,14,16,.72);
+  display: none; align-items: center; justify-content: center; padding: clamp(.5rem, 2vw, 1.5rem);
+}
+.trace-overlay.on { display: flex; }
+.trace-box {
+  background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+  width: min(1180px, 100%); height: min(92vh, 900px);
+  display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden;
+  box-shadow: 0 30px 70px -24px rgba(0,0,0,.6);
+}
+.trace-head {
+  display: flex; align-items: center; gap: .8rem; flex-wrap: wrap;
+  padding: .75rem 1rem; border-bottom: 1px solid var(--rule-soft); background: var(--surface);
+}
+.trace-head h3 { font-size: .98rem; margin-top: .15rem; }
+.trace-head > div { flex: 1 1 18rem; }
+.trace-scale {
+  font-family: var(--mono); font-size: .64rem; letter-spacing: .1em; text-transform: uppercase;
+  border: 1px solid var(--rule); color: var(--ink-3); padding: .28rem .55rem; border-radius: 2px;
+}
+.trace-scale.on { border-color: var(--good); color: var(--good); }
+
+.trace-body { display: grid; min-height: 0; }
+@media (min-width: 900px) { .trace-body { grid-template-columns: minmax(0,1fr) 310px; } }
+
+.trace-canvas { background: var(--well); overflow: hidden; display: grid; min-height: 0; padding: .6rem; }
+#trace-svg { width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; }
+.trace-room { fill: rgba(21,76,124,.20); stroke: var(--accent); stroke-width: 2.5; }
+.trace-room-plate { fill: var(--surface); stroke: var(--accent); stroke-width: 1.4; opacity: .96; }
+.trace-room-label { font-family: var(--mono); font-size: 13px; fill: var(--accent-ink); letter-spacing: .08em; text-anchor: middle; }
+.trace-room-area { font-family: var(--mono); font-size: 13px; font-weight: 600; fill: var(--ink); }
+.trace-cal { stroke: #E4572E; stroke-width: 3; }
+.trace-cal-tick { stroke: #E4572E; stroke-width: 2.5; }
+.trace-cal-label { font-family: var(--mono); font-size: 16px; fill: #E4572E; font-weight: 600; }
+
+.trace-side {
+  border-left: 1px solid var(--rule-soft); background: var(--surface);
+  padding: 1rem; display: grid; gap: 1rem; align-content: start; overflow-y: auto; min-height: 0;
+}
+@media (max-width: 899px) { .trace-side { border-left: 0; border-top: 1px solid var(--rule-soft); } }
+.trace-say { font-size: .84rem; color: var(--ink-2); min-height: 1.2em; line-height: 1.45; }
+.trace-say.bad { color: var(--warn); }
+.trace-rooms { display: grid; gap: .35rem; }
+.trace-row { display: grid; grid-template-columns: 1fr auto 28px; gap: .4rem; align-items: center; }
+.trace-row input {
+  font-family: var(--sans); font-size: .82rem; color: var(--ink); background: var(--paper);
+  border: 1px solid var(--rule); border-radius: 2px; padding: .32rem .4rem; width: 100%;
+}
+.trace-row .num { font-family: var(--mono); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.trace-total {
+  display: flex; align-items: baseline; justify-content: space-between; gap: .6rem;
+  border-top: 1px solid var(--rule); padding-top: .7rem;
+}
+.trace-total .lab { font-family: var(--mono); font-size: .62rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+.trace-total .fig { font-family: var(--disp); font-weight: 700; font-stretch: 110%; font-size: 1.5rem; letter-spacing: -.02em; }
+.trace-side .hint { font-size: .72rem; color: var(--ink-3); line-height: 1.45; }
+.trace-side .hint a { color: var(--accent-ink); }
+
 </style>
 
 <!-- ==================================================================== -->
@@ -1525,7 +1593,82 @@ section[id], main[id] { scroll-margin-top: 78px; }
   </div>
 </div>
 
+<!-- Trace a floor plan ------------------------------------------------- -->
+<div class="trace-overlay" id="trace-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Trace your floor plan">
+  <div class="trace-box">
+    <header class="trace-head">
+      <div>
+        <p class="eyebrow">Your floor plan</p>
+        <h3 id="trace-step">Step 1 — drag along a wall you know the length of.</h3>
+      </div>
+      <span class="trace-scale" id="trace-scale">Scale not set</span>
+      <button type="button" class="btn btn-ghost btn-sm" id="trace-restart">Start again</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="trace-close">Close</button>
+    </header>
+
+    <div class="trace-body">
+      <div class="trace-canvas">
+        <svg id="trace-svg" viewBox="0 0 700 960" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+
+      <aside class="trace-side">
+        <p class="trace-say" id="trace-say"></p>
+
+        <div id="trace-confirm" hidden>
+          <div class="field">
+            <label for="trace-len">How long is that line?</label>
+            <div class="stepper" style="gap:.4rem">
+              <input id="trace-len" type="number" step="0.01" min="0.1" value="8.4"
+                     style="font-family:var(--mono);text-align:right">
+              <button type="button" class="btn btn-sm" id="trace-confirm-btn">Set scale</button>
+            </div>
+            <span class="hint">The plan has 8.40 m printed across the front wall.</span>
+          </div>
+        </div>
+
+        <div>
+          <p class="eyebrow" style="margin-bottom:.5rem">Rooms measured</p>
+          <div class="trace-rooms" id="trace-rooms"></div>
+        </div>
+
+        <div class="trace-total">
+          <span class="lab">Total traced</span>
+          <span class="fig" id="trace-total">0.0 m²</span>
+        </div>
+
+        <button type="button" class="btn" id="trace-apply" disabled>Use this area →</button>
+        <p class="hint">Flood fill and outline tracing by
+          <a href="https://github.com/Kentucky-ai/opentakeoff" target="_blank" rel="noopener">OpenTakeoff</a>,
+          Apache-2.0. No image ever leaves your browser.</p>
+      </aside>
+    </div>
+  </div>
+</div>
+
 <script>
+/*
+ * OpenTakeoff — geometry core (flood fill + contour trace)
+ * ---------------------------------------------------------------------------
+ * Vendored from https://github.com/Kentucky-ai/opentakeoff
+ * Copyright 2026 Kentucky AI and the OpenTakeoff contributors
+ * Licensed under the Apache License, Version 2.0 — see LICENSE and NOTICE
+ * alongside this file.
+ *
+ * CHANGES MADE (as Apache-2.0 §4(b) requires us to state):
+ *   - Only floodRegion, traceRegion and the sensitivity constants are bundled.
+ *     Everything else — PDF parsing, the MCP server, speech, the React app —
+ *     is dropped.
+ *   - Bundled to a browser IIFE (esbuild, minified) exposing OpenTakeoffGeom,
+ *     because Datum has no build step.
+ *   - No line of their geometry is altered.
+ *
+ * Datum drives it from a raster instead of a PDF: src/trace.js thresholds an
+ * uploaded plan image into the same mask shape their PDF path builds
+ * (Uint8Array, y*mw+x, bit 1 = wall), then hands it to floodRegion.
+ */
+var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnPropertyDescriptor;var lt=Object.getOwnPropertyNames;var ft=Object.prototype.hasOwnProperty;var ht=(t,r)=>{for(var o in r)K(t,o,{get:r[o],enumerable:!0})},mt=(t,r,o,e)=>{if(r&&typeof r=="object"||typeof r=="function")for(let n of lt(r))!ft.call(t,n)&&n!==o&&K(t,n,{get:()=>r[n],enumerable:!(e=ct(r,n))||e.enumerable});return t};var bt=t=>mt(K({},"__esModule",{value:!0}),t);var Et={};ht(Et,{MASK_MAX_DIM:()=>et,SENS_AGGRESSIVE:()=>J,SENS_BALANCED:()=>W,SENS_STRICT:()=>Q,floodRegion:()=>at,traceRegion:()=>ut});var et=3e3;var xt=.3;var dt=2,G=18,rt=30,pt=rt/(G*G),Mt=8,ot=4,yt=ot/G,gt=2,Z=3,At=Z/G;var _t=24,jt=_t/18;var st=.7,kt=.02,Rt=2.5,Q=0,W=.5,J=1,S=[[Q,st,1.5],[W,kt,Rt],[J,0,4]];function wt(t){let r=Math.max(0,Math.min(1,Number.isFinite(t)?t:W)),o=S[0],e=S[S.length-1];for(let s=1;s<S.length;s++)if(r<=S[s][0]){o=S[s-1],e=S[s];break}let n=e[0]===o[0]?0:(r-o[0])/(e[0]-o[0]);return{escalateFrac:o[1]+(e[1]-o[1])*n,growthMax:o[2]+(e[2]-o[2])*n}}var it=new WeakMap;function It(t,r,o){return it.get(t)||{x0:0,y0:0,x1:r-1,y1:o-1}}var Tt=2,j=[];function Ft(t){for(let r=j.length-1;r>=0;r--)if(j[r].length===t){let o=j.splice(r,1)[0];return o.fill(0),o}return new Uint8Array(t)}function z(t){j.length<Tt&&j.push(t)}function Y(t,r,o,e){let{mask:n,mw:s,mh:a,ws:c}=t,i=t.dilDT,f=i?t.dilR:-1,h=d=>i===void 0?n[d]:(i[d]<=f?1:0)|n[d]&2,b=t.mppf||0,x=b>0?Math.max(Mt,Math.round(pt*b*b)):rt,k=b>0?Math.max(gt,Math.round(yt*b)):ot,p=b>0?Math.max(Z,Math.round(At*b)):Z,R=Math.round(r*c),w=Math.round(o*c);if(R<0||w<0||R>=s||w>=a)return{status:"boundary"};if(h(w*s+R)&e){let d=null;for(let l=1;l<=p&&!d;l++)for(let F=-l;F<=l&&!d;F++)for(let C=-l;C<=l;C++){let g=R+C,A=w+F;if(g>=0&&A>=0&&g<s&&A<a&&!(h(A*s+g)&e)){d=[g,A];break}}if(!d)return{status:"boundary"};R=d[0],w=d[1]}let _=Ft(s*a),M=Math.floor(s*a*xt),m=0,y=0,T=0,H=R,U=R,$=w,B=w,O=new Int32Array(1024),P=0,q=(d,l)=>{if(P===O.length){let F=new Int32Array(P*2);F.set(O),O=F}O[P++]=l*s+d},L=i!==void 0,D=i;for(q(R,w);P>0;){let d=O[--P],l=d/s|0,F=d-l*s,C=l*s,g=F;for(;g!==0;){let u=C+g-1;if((L?(D[u]<=f?1:0)|n[u]&2:n[u])&e||_[u])break;g--}if(g>0){let u=C+g-1,I=L?(D[u]<=f?1:0)|n[u]&2:n[u];I&e&&(I&1?y++:T++)}let A=F;for(;!(A>=s-1);){let u=C+A+1;if((L?(D[u]<=f?1:0)|n[u]&2:n[u])&e||_[u])break;A++}if(A<s-1){let u=C+A+1,I=L?(D[u]<=f?1:0)|n[u]&2:n[u];I&e&&(I&1?y++:T++)}if(g===0||A===s-1||l===0||l===a-1)return z(_),{status:"leak"};g<H&&(H=g),A>U&&(U=A),l<$&&($=l),l>B&&(B=l);let v=!1,X=!1;for(let u=g;u<=A;u++){let I=C+u;if(_[I]){v=X=!1;continue}if(_[I]=1,m++,l>0){let N=I-s,E=L?(D[N]<=f?1:0)|n[N]&2:n[N];!(E&e)&&!_[N]?v||(q(u,l-1),v=!0):(E&e&&(E&1?y++:T++),v=!1)}if(l<a-1){let N=I+s,E=L?(D[N]<=f?1:0)|n[N]&2:n[N];!(E&e)&&!_[N]?X||(q(u,l+1),X=!0):(E&e&&(E&1?y++:T++),X=!1)}}if(m>M)return z(_),{status:"leak"}}return m<x||U-H+1<k||B-$+1<k?(z(_),{status:"tiny",count:m}):(it.set(_,{x0:H,y0:$,x1:U,y1:B}),{status:"ok",region:_,count:m,mw:s,mh:a,ws:c,mppf:b||void 0,hardHits:y,softHits:T})}function Ct(t,r){let{mask:o,mw:e,mh:n,ws:s,softCount:a,mppf:c}=t,i=new Uint8Array(o);for(let h=0;h<n;h++){let b=h*e;for(let x=0;x<e;x++)if(o[b+x]&1){let k=Math.min(e-1,x+r);for(let p=Math.max(0,x-r);p<=k;p++)i[b+p]|=1}}let f=new Uint8Array(i);for(let h=0;h<n;h++){let b=h*e;for(let x=0;x<e;x++)if(i[b+x]&1){let k=Math.min(n-1,h+r);for(let p=Math.max(0,h-r);p<=k;p++)f[p*e+x]|=1}}return{mask:f,mw:e,mh:n,ws:s,softCount:a,mppf:c}}var tt=new WeakMap;function Nt(t,r){let o=tt.get(t.mask);o||(o=[],tt.set(t.mask,o));let e=o[r];return e||(e=Ct(t,r).mask,o[r]=e),{mask:e,mw:t.mw,mh:t.mh,ws:t.ws,softCount:t.softCount,mppf:t.mppf}}function at(t,r,o,e=W){let n=nt(t,r,o,e);if(n.status!=="leak")return n;for(let s=1;s<=dt;s++){let a=nt(Nt(t,s),r,o,e);if(a.status==="ok")return a.gapBridged=s,a}return n}function nt(t,r,o,e){let n=Y(t,r,o,3);if(!t.softCount||n.status==="leak")return n;let{escalateFrac:s,growthMax:a}=wt(e),c=1/0;if(n.status==="ok"){let f=(n.hardHits||0)+(n.softHits||0),h=f?(n.softHits||0)/f:0;if(h<s)return n;h<st&&(c=a)}let i=Y(t,r,o,1);return i.status==="ok"&&(n.status!=="ok"||i.count>n.count&&i.count<=n.count*c)?(i.hatchFiltered=!0,i.hatchTier=c!==1/0?"bounded":n.status==="ok"?"override":"trapped",i):n}var Gt=3/G;function ut(t,r=1.5){let{region:o,mw:e,mh:n,ws:s}=t,a=-1,c=It(o,e,n);for(let M=c.y0;M<=c.y1&&a<0;M++){let m=M*e;for(let y=c.x0;y<=c.x1;y++)if(o[m+y]){a=m+y;break}}if(a<0)return[];let i=a%e,f=a/e|0,h=(M,m)=>M>=0&&m>=0&&M<e&&m<n&&!!o[m*e+M],b=[[-1,0],[-1,-1],[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1]],x=[],k=i,p=f,R=6,w=e*n*4;for(let M=0;M<w;M++){x.push([k,p]);let m=!1;for(let y=0;y<8;y++){let T=(R+6+y)%8,H=k+b[T][0],U=p+b[T][1];if(h(H,U)){k=H,p=U,R=T,m=!0;break}}if(!m||k===i&&p===f&&x.length>2)break}return Ut(x,r).map(([M,m])=>[M/s,m/s])}function Ht(t,r,o){let e=o[0]-r[0],n=o[1]-r[1],s=Math.hypot(e,n);return s?Math.abs(n*t[0]-e*t[1]+o[0]*r[1]-o[1]*r[0])/s:Math.hypot(t[0]-r[0],t[1]-r[1])}function V(t,r){if(t.length<3)return t.slice();let o=0,e=-1,n=t[0],s=t[t.length-1];for(let i=1;i<t.length-1;i++){let f=Ht(t[i],n,s);f>e&&(e=f,o=i)}if(e<=r)return[n,s];let a=V(t.slice(0,o+1),r),c=V(t.slice(o),r);return a.slice(0,-1).concat(c)}function Ut(t,r){if(t.length<4)return t.slice();let o=0,e=-1;for(let c=1;c<t.length;c++){let i=(t[c][0]-t[0][0])**2+(t[c][1]-t[0][1])**2;i>e&&(e=i,o=c)}let n=V(t.slice(0,o+1),r),s=V(t.slice(o).concat([t[0]]),r),a=n.slice(0,-1).concat(s.slice(0,-1));return a.length>=3?a:t.slice()}return bt(Et);})();
+
+;
 /*!
  * GSAP 3.15.0
  * https://gsap.com
@@ -3391,6 +3534,481 @@ section[id], main[id] { scroll-margin-top: 78px; }
 
 ;
 /*
+ * Datum — a sample floor plan to trace
+ * ---------------------------------------------------------------------------
+ * Stands in for the plan a client would upload. It is authored as SVG and then
+ * RASTERISED in the browser before anything touches it, so the tracing path is
+ * the real one — pixels in, polygons out — not a shortcut through geometry we
+ * already had.
+ *
+ * Drawn the way an estate agent's plan actually is: solid walls, door openings
+ * shown closed with a leaf and a swing, windows as breaks with a glazing line,
+ * room labels, and a printed overall dimension for the client to calibrate from.
+ */
+(function (root) {
+  'use strict';
+
+  var S = 70;                 // px per metre in the sample image
+  var OX = 60, OY = 92;       // where the house sits on the sheet
+  var W_EXT = 0.22, W_INT = 0.09;
+
+  function x(m) { return OX + m * S; }
+  function y(m) { return OY + m * S; }
+
+  function line(a, b, t) {
+    return '<line x1="' + x(a[0]) + '" y1="' + y(a[1]) + '" x2="' + x(b[0]) + '" y2="' + y(b[1]) +
+      '" stroke="#1a1a1a" stroke-width="' + (t * S) + '" stroke-linecap="square"/>';
+  }
+  function thin(a, b, w) {
+    return '<line x1="' + x(a[0]) + '" y1="' + y(a[1]) + '" x2="' + x(b[0]) + '" y2="' + y(b[1]) +
+      '" stroke="#1a1a1a" stroke-width="' + (w || 1.6) + '" stroke-linecap="butt"/>';
+  }
+  function label(m, t, size) {
+    return '<text x="' + x(m[0]) + '" y="' + y(m[1]) + '" text-anchor="middle" font-family="Helvetica,Arial" ' +
+      'font-size="' + (size || 15) + '" fill="#2b2b2b" letter-spacing="1">' + t + '</text>';
+  }
+
+  /** A door drawn closed: the leaf spans the opening, so the room stays sealed. */
+  function doorV(px, py, w) {
+    return thin([px, py], [px, py + w], 2.2) +
+      '<path d="M' + x(px) + ' ' + y(py + w) + ' A' + (w * S) + ' ' + (w * S) + ' 0 0 1 ' +
+      x(px + w) + ' ' + y(py) + '" fill="none" stroke="#8a8a8a" stroke-width="1.2"/>';
+  }
+  function doorH(px, py, w) {
+    return thin([px, py], [px + w, py], 2.2) +
+      '<path d="M' + x(px + w) + ' ' + y(py) + ' A' + (w * S) + ' ' + (w * S) + ' 0 0 1 ' +
+      x(px) + ' ' + y(py - w) + '" fill="none" stroke="#8a8a8a" stroke-width="1.2"/>';
+  }
+  function windowH(x0, x1, py) {
+    return '<line x1="' + x(x0) + '" y1="' + y(py) + '" x2="' + x(x1) + '" y2="' + y(py) +
+      '" stroke="#ffffff" stroke-width="' + (W_EXT * S + 2) + '"/>' + thin([x0, py], [x1, py], 2.2);
+  }
+  function windowV(px, y0, y1) {
+    return '<line x1="' + x(px) + '" y1="' + y(y0) + '" x2="' + x(px) + '" y2="' + y(y1) +
+      '" stroke="#ffffff" stroke-width="' + (W_EXT * S + 2) + '"/>' + thin([px, y0], [px, y1], 2.2);
+  }
+
+  function svg() {
+    var p = [];
+    // sheet
+    p.push('<rect width="700" height="960" fill="#f7f6f2"/>');
+
+    // external envelope, drawn as one continuous run so a flood stays inside it
+    p.push(line([0, 0], [8.4, 0], W_EXT));
+    p.push(line([8.4, 0], [8.4, 8.2], W_EXT));
+    p.push(line([8.4, 8.2], [3.4, 8.2], W_EXT));
+    p.push(line([3.4, 8.2], [3.4, 11.4], W_EXT));
+    p.push(line([3.4, 11.4], [0, 11.4], W_EXT));
+    p.push(line([0, 11.4], [0, 0], W_EXT));
+
+    // partitions
+    p.push(line([5.0, 0], [5.0, 4.8], W_INT));
+    p.push(line([0, 4.8], [8.4, 4.8], W_INT));
+    p.push(line([0, 8.2], [3.4, 8.2], W_INT));
+
+    // openings, shown closed
+    p.push(doorV(5.0, 3.55, 0.85));
+    p.push(doorH(2.35, 4.8, 0.85));
+    p.push(doorH(0.55, 8.2, 0.85));
+
+    // windows
+    p.push(windowH(1.0, 3.6, 0));
+    p.push(windowH(6.0, 7.6, 0));
+    p.push(windowV(0, 5.6, 7.4));
+    p.push(windowH(4.6, 7.4, 8.2));
+    p.push(windowH(0.6, 2.4, 11.4));
+
+    // stairs
+    for (var i = 0; i < 9; i++) {
+      p.push(thin([5.45, 1.9 + i * 0.29], [7.95, 1.9 + i * 0.29], 1.3));
+    }
+    p.push(thin([5.45, 1.9], [5.45, 4.5], 1.3));
+    p.push(thin([7.95, 1.9], [7.95, 4.5], 1.3));
+
+    // what an agent writes on it
+    p.push(label([2.5, 2.6], 'LIVING ROOM', 15));
+    p.push(label([2.5, 2.95], "4.98m x 4.58m", 12));
+    p.push(label([6.7, 0.75], 'HALL', 14));
+    p.push(label([4.2, 6.3], 'KITCHEN / DINING', 15));
+    p.push(label([4.2, 6.65], "8.18m x 3.31m", 12));
+    p.push(label([1.7, 9.9], 'UTILITY', 14));
+
+    // the printed overall dimension the client calibrates from
+    p.push('<line x1="' + x(0) + '" y1="' + (y(0) - 44) + '" x2="' + x(8.4) + '" y2="' + (y(0) - 44) +
+      '" stroke="#2b2b2b" stroke-width="1.4"/>');
+    p.push('<line x1="' + x(0) + '" y1="' + (y(0) - 52) + '" x2="' + x(0) + '" y2="' + (y(0) - 36) + '" stroke="#2b2b2b" stroke-width="1.4"/>');
+    p.push('<line x1="' + x(8.4) + '" y1="' + (y(0) - 52) + '" x2="' + x(8.4) + '" y2="' + (y(0) - 36) + '" stroke="#2b2b2b" stroke-width="1.4"/>');
+    p.push('<text x="' + x(4.2) + '" y="' + (y(0) - 52) + '" text-anchor="middle" font-family="Helvetica,Arial" font-size="16" fill="#2b2b2b">8.40 m</text>');
+
+    p.push('<text x="60" y="936" font-family="Helvetica,Arial" font-size="13" fill="#6b6b6b">GROUND FLOOR — APPROXIMATE. NOT TO SCALE. FOR ILLUSTRATION ONLY.</text>');
+
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="700" height="960" viewBox="0 0 700 960">' +
+      p.join('') + '</svg>';
+  }
+
+  root.DATUM = root.DATUM || {};
+  root.DATUM.SAMPLE_PLAN = {
+    svg: svg,
+    dataUri: function () { return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg()); },
+    /** What the printed dimension on the sheet actually is. */
+    knownDimension: { metres: 8.4, label: '8.40 m' },
+    trueFloorArea: 79.8
+  };
+})(window);
+
+;
+/*
+ * Datum — trace a floor plan
+ * ---------------------------------------------------------------------------
+ * The client's own plan, measured without anyone typing a number twice and
+ * without a model guessing at a picture.
+ *
+ *   1. the image is rasterised to a canvas
+ *   2. dark pixels become a wall mask — the same shape OpenTakeoff's PDF path
+ *      builds (Uint8Array, y*mw+x, bit 1 = wall)
+ *   3. the client drags a line along a wall whose length is printed on the
+ *      plan and types that length — which is the only scale input there is
+ *   4. clicking inside a room floods it, bounded by the walls, and traces the
+ *      outline; the area falls out of the shoelace formula
+ *
+ * Flood fill and contour tracing are OpenTakeoff's (Apache-2.0, vendored in
+ * vendor/opentakeoff). Everything else here is ours.
+ */
+(function (root, doc) {
+  'use strict';
+
+  var GEOM = root.OpenTakeoffGeom;
+  var MAX_MASK = 1100;          // working raster cap
+  var DARK = 145;               // luminance below this is a wall
+
+  var state = {
+    img: null, imgW: 0, imgH: 0, imgHref: '',
+    maskObj: null,
+    calib: null,                // { a:[x,y], b:[x,y], metres }
+    metresPerPx: 0,
+    rooms: [],                  // { poly:[[x,y]…] image px, area m², name }
+    dragging: null,
+    mode: 'calibrate'
+  };
+
+  var $ = function (id) { return doc.getElementById(id); };
+  function esc(s) {
+    return String(s === undefined ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  /* ---- raster → mask ----------------------------------------------------- */
+
+  function buildMaskFromImage(img) {
+    var scale = Math.min(1, MAX_MASK / Math.max(img.width, img.height));
+    var mw = Math.max(1, Math.round(img.width * scale));
+    var mh = Math.max(1, Math.round(img.height * scale));
+
+    var cv = doc.createElement('canvas');
+    cv.width = mw; cv.height = mh;
+    var cx = cv.getContext('2d', { willReadFrequently: true });
+    cx.fillStyle = '#fff';
+    cx.fillRect(0, 0, mw, mh);
+    cx.drawImage(img, 0, 0, mw, mh);
+
+    var px = cx.getImageData(0, 0, mw, mh).data;
+    var mask = new Uint8Array(mw * mh);
+    for (var i = 0, p = 0; i < mask.length; i++, p += 4) {
+      // Rec. 709 luminance, alpha-aware so a transparent PNG is not all wall
+      var a = px[p + 3] / 255;
+      var lum = (0.2126 * px[p] + 0.7152 * px[p + 1] + 0.0722 * px[p + 2]) * a + 255 * (1 - a);
+      if (lum < DARK) mask[i] = 1;
+    }
+    return { mask: mask, mw: mw, mh: mh, ws: scale, softCount: 0 };
+  }
+
+  /* ---- geometry ---------------------------------------------------------- */
+
+  function shoelace(poly) {
+    var a = 0;
+    for (var i = 0; i < poly.length; i++) {
+      var p1 = poly[i], p2 = poly[(i + 1) % poly.length];
+      a += p1[0] * p2[1] - p2[0] * p1[1];
+    }
+    return Math.abs(a / 2);
+  }
+
+  /** Ray casting — is the point inside this ring? */
+  function inside(px, py, poly) {
+    var hit = false;
+    for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      var xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
+      if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) hit = !hit;
+    }
+    return hit;
+  }
+
+  function centroid(poly) {
+    var x = 0, y = 0;
+    poly.forEach(function (p) { x += p[0]; y += p[1]; });
+    return [x / poly.length, y / poly.length];
+  }
+
+  function totalArea() {
+    return state.rooms.reduce(function (t, r) { return t + r.area; }, 0);
+  }
+
+  /* ---- picking a room ----------------------------------------------------- */
+
+  function pickRoom(ix, iy) {
+    if (!state.maskObj || !state.metresPerPx) return { ok: false, why: 'Set the scale first.' };
+    var mx = Math.round(ix * state.maskObj.ws);
+    var my = Math.round(iy * state.maskObj.ws);
+
+    var r;
+    try { r = GEOM.floodRegion(state.maskObj, mx, my, GEOM.SENS_BALANCED); }
+    catch (e) { return { ok: false, why: 'That did not work — try nearer the middle of the room.' }; }
+
+    if (r.status === 'boundary') return { ok: false, why: 'That is a wall. Click inside a room.' };
+    if (r.status === 'leak') return { ok: false, why: 'The fill escaped — that room is not closed on the plan. Trace it by hand instead.' };
+    if (r.status === 'tiny') return { ok: false, why: 'Too small to be a room.' };
+
+    var poly = GEOM.traceRegion(r, 1.5);
+    if (!poly || poly.length < 3) return { ok: false, why: 'Could not follow the outline.' };
+
+    var metres = poly.map(function (p) { return [p[0] * state.metresPerPx, p[1] * state.metresPerPx]; });
+    var area = shoelace(metres);
+    if (area < 1.5) return { ok: false, why: 'Too small to be a room.' };
+
+    // Already got this one? Compare by containment, not by proximity: the
+    // engine nudges a seed that lands on a wall into the nearest open cell, so
+    // a click on a partition can come back as the room next to it.
+    for (var i = 0; i < state.rooms.length; i++) {
+      var c = centroid(poly);
+      if (inside(ix, iy, state.rooms[i].poly) || inside(c[0], c[1], state.rooms[i].poly)) {
+        return { ok: false, why: 'That room is already measured.' };
+      }
+    }
+    return { ok: true, poly: poly, area: area, cx: ix, cy: iy };
+  }
+
+  /* ---- rendering ---------------------------------------------------------- */
+
+  /*
+   * Screen to image coordinates. This has to go through getScreenCTM: the SVG
+   * is letterboxed inside its box by preserveAspectRatio, so scaling by
+   * box.width alone skews every point — which silently corrupts the scale the
+   * whole measurement hangs on.
+   */
+  function svgPoint(evt) {
+    var svg = $('trace-svg');
+    var ctm = svg.getScreenCTM();
+    if (!ctm) return [0, 0];
+    var pt = svg.createSVGPoint();
+    pt.x = evt.clientX; pt.y = evt.clientY;
+    var p = pt.matrixTransform(ctm.inverse());
+    return [p.x, p.y];
+  }
+
+  function paint() {
+    var svg = $('trace-svg');
+    if (!svg) return;
+    var out = [];
+
+    // the plan itself, underneath everything — re-emitted because this
+    // function owns the SVG's whole contents
+    if (state.imgHref) {
+      out.push('<image href="' + state.imgHref + '" x="0" y="0" width="' + state.imgW +
+        '" height="' + state.imgH + '" preserveAspectRatio="none"/>');
+    }
+
+    state.rooms.forEach(function (r, i) {
+      out.push('<polygon points="' + r.poly.map(function (p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ') +
+        '" class="trace-room"/>');
+      // a plate behind the readout, so it stays legible over the plan's own labels
+      var txt = r.name + '   ' + r.area.toFixed(1) + ' m²';
+      var w = Math.max(96, txt.length * 8.6), h = 26;
+      out.push('<rect x="' + (r.cx - w / 2) + '" y="' + (r.cy - h / 2) + '" width="' + w +
+        '" height="' + h + '" rx="3" class="trace-room-plate"/>');
+      out.push('<text x="' + (r.cx - w / 2 + 8) + '" y="' + (r.cy + 5) +
+        '" text-anchor="start" class="trace-room-label">' + esc(r.name) + '</text>');
+      out.push('<text x="' + (r.cx + w / 2 - 6) + '" y="' + (r.cy + 5) +
+        '" text-anchor="end" class="trace-room-area">' + r.area.toFixed(1) + ' m²</text>');
+    });
+
+    var c = state.calib;
+    if (c) {
+      out.push('<line x1="' + c.a[0] + '" y1="' + c.a[1] + '" x2="' + c.b[0] + '" y2="' + c.b[1] + '" class="trace-cal"/>');
+      [c.a, c.b].forEach(function (p) {
+        out.push('<path d="M' + (p[0] - 9) + ' ' + p[1] + ' h18 M' + p[0] + ' ' + (p[1] - 9) + ' v18" class="trace-cal-tick"/>');
+      });
+      if (c.metres) {
+        out.push('<text x="' + ((c.a[0] + c.b[0]) / 2) + '" y="' + ((c.a[1] + c.b[1]) / 2 - 12) +
+          '" text-anchor="middle" class="trace-cal-label">' + c.metres.toFixed(2) + ' m</text>');
+      }
+    }
+    svg.innerHTML = out.join('');
+    paintPanel();
+  }
+
+  function paintPanel() {
+    var list = $('trace-rooms');
+    if (list) {
+      list.innerHTML = state.rooms.length
+        ? state.rooms.map(function (r, i) {
+            return '<div class="trace-row"><input value="' + esc(r.name) + '" data-room="' + i +
+              '" aria-label="Room name"><span class="num">' + r.area.toFixed(1) + ' m²</span>' +
+              '<button type="button" class="kill" data-roomkill="' + i + '" aria-label="Remove">×</button></div>';
+          }).join('')
+        : '<p class="q-help" style="margin:0">No rooms measured yet.</p>';
+    }
+    var tot = $('trace-total');
+    if (tot) tot.textContent = totalArea().toFixed(1) + ' m²';
+    var apply = $('trace-apply');
+    if (apply) apply.disabled = !state.rooms.length;
+
+    var step = $('trace-step');
+    if (step) {
+      step.textContent = !state.metresPerPx
+        ? 'Step 1 — drag along the wall marked 8.40 m, then type its length.'
+        : 'Step 2 — click inside each room you are refurbishing.';
+    }
+    var hint = $('trace-scale');
+    if (hint) {
+      hint.textContent = state.metresPerPx
+        ? 'Scale set: 1 m = ' + (1 / state.metresPerPx).toFixed(1) + ' px'
+        : 'Scale not set';
+      hint.className = 'trace-scale' + (state.metresPerPx ? ' on' : '');
+    }
+  }
+
+  function say(msg, bad) {
+    var el = $('trace-say');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.className = 'trace-say' + (bad ? ' bad' : '');
+  }
+
+  /* ---- events -------------------------------------------------------------- */
+
+  function onDown(e) {
+    if (state.mode !== 'calibrate') return;
+    var p = svgPoint(e);
+    state.dragging = { a: p, b: p };
+    state.calib = { a: p, b: p, metres: 0 };
+    paint();
+    e.preventDefault();
+  }
+  function onMove(e) {
+    if (!state.dragging) return;
+    state.dragging.b = svgPoint(e);
+    state.calib.b = state.dragging.b;
+    paint();
+  }
+  function onUp() {
+    if (!state.dragging) return;
+    var d = state.dragging;
+    state.dragging = null;
+    var len = Math.hypot(d.b[0] - d.a[0], d.b[1] - d.a[1]);
+    if (len < 25) { state.calib = null; paint(); return; }
+    var ask = $('trace-len');
+    if (ask) { ask.value = root.DATUM.SAMPLE_PLAN.knownDimension.metres; ask.focus(); ask.select(); }
+    $('trace-confirm').hidden = false;
+    say('How long is that line, in metres?');
+  }
+
+  function confirmScale() {
+    var v = parseFloat($('trace-len').value);
+    if (!v || v <= 0 || !state.calib) { say('Put a length in metres.', true); return; }
+    var px = Math.hypot(state.calib.b[0] - state.calib.a[0], state.calib.b[1] - state.calib.a[1]);
+    state.metresPerPx = v / px;
+    state.calib.metres = v;
+    state.mode = 'rooms';
+    $('trace-confirm').hidden = true;
+    // anything already measured was measured at the wrong scale
+    state.rooms = [];
+    say('Scale set. Now click inside each room.');
+    paint();
+  }
+
+  function onClick(e) {
+    if (state.mode !== 'rooms') return;
+    var p = svgPoint(e);
+    var r = pickRoom(p[0], p[1]);
+    if (!r.ok) { say(r.why, true); return; }
+    state.rooms.push({
+      poly: r.poly, area: r.area, cx: r.cx, cy: r.cy,
+      name: 'ROOM ' + (state.rooms.length + 1)      // the client renames it
+    });
+    say(r.area.toFixed(1) + ' m² measured.');
+    paint();
+  }
+
+  /* ---- open and close ------------------------------------------------------- */
+
+  function open(onApply) {
+    var wrap = $('trace-overlay');
+    if (!wrap) return;
+    state.rooms = []; state.calib = null; state.metresPerPx = 0; state.mode = 'calibrate';
+    wrap.classList.add('on');
+    wrap.setAttribute('aria-hidden', 'false');
+    state.onApply = onApply;
+    say('');
+
+    var img = new Image();
+    img.onload = function () {
+      state.img = img; state.imgW = img.width; state.imgH = img.height;
+      state.imgHref = img.src;
+      $('trace-svg').setAttribute('viewBox', '0 0 ' + img.width + ' ' + img.height);
+      state.maskObj = buildMaskFromImage(img);
+      var wallPx = state.maskObj.mask.reduce(function (t, v) { return t + (v & 1); }, 0);
+      say('Plan loaded — ' + img.width + ' × ' + img.height + ' px, ' +
+          Math.round(100 * wallPx / state.maskObj.mask.length) + '% of it read as wall.');
+      paint();
+    };
+    img.onerror = function () { say('That image would not load.', true); };
+    img.src = root.DATUM.SAMPLE_PLAN.dataUri();
+  }
+
+  function close() {
+    var wrap = $('trace-overlay');
+    if (!wrap) return;
+    wrap.classList.remove('on');
+    wrap.setAttribute('aria-hidden', 'true');
+  }
+
+  function wire() {
+    var svg = $('trace-svg');
+    if (!svg) return;
+    svg.addEventListener('pointerdown', onDown);
+    root.addEventListener('pointermove', onMove);
+    root.addEventListener('pointerup', onUp);
+    svg.addEventListener('click', onClick);
+
+    $('trace-confirm-btn').addEventListener('click', confirmScale);
+    $('trace-len').addEventListener('keydown', function (e) { if (e.key === 'Enter') confirmScale(); });
+    $('trace-close').addEventListener('click', close);
+    $('trace-restart').addEventListener('click', function () { open(state.onApply); });
+    $('trace-apply').addEventListener('click', function () {
+      if (state.onApply) state.onApply(totalArea(), state.rooms.slice());
+      close();
+    });
+    $('trace-overlay').addEventListener('click', function (e) { if (e.target === $('trace-overlay')) close(); });
+    doc.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && $('trace-overlay').classList.contains('on')) close();
+    });
+    $('trace-rooms').addEventListener('input', function (e) {
+      var i = e.target.getAttribute && e.target.getAttribute('data-room');
+      if (i !== null && i !== undefined) { state.rooms[+i].name = e.target.value; paint(); }
+    });
+    $('trace-rooms').addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('[data-roomkill]');
+      if (!b) return;
+      state.rooms.splice(+b.getAttribute('data-roomkill'), 1);
+      paint();
+    });
+  }
+
+  root.DATUM = root.DATUM || {};
+  root.DATUM.TRACE = { open: open, close: close, wire: wire, _state: state };
+})(window, document);
+
+;
+/*
  * Datum — router
  * ---------------------------------------------------------------------------
  * Real URLs for every question, so the back button works and a half-finished
@@ -3933,10 +4551,19 @@ section[id], main[id] { scroll-margin-top: 78px; }
       return found ? modifierHtml(found, j) : '';
     }).join('');
 
+    // the one step where the client's own plan can do the measuring
+    var traceable = type.id === 'renovation' && step.id === 'size' && root.DATUM.TRACE;
+
     var html =
       '<p class="flow-step-of">' + esc(type.name) + ' · step ' + (i + 1) + ' of ' + (steps.length + 1) + '</p>' +
       '<h1>' + esc(step.title) + '</h1>' +
       '<p class="lede">' + esc(step.lede) + '</p>' +
+      (traceable
+        ? '<div class="trace-cta"><div><p class="q-title">Have you got the floor plan?</p>' +
+          '<p class="q-help">Upload it and measure the rooms off it instead of guessing. ' +
+          'Nothing is sent anywhere — it is measured in your browser.</p></div>' +
+          '<button type="button" class="btn" id="do-trace">Trace my plan</button></div>'
+        : '') +
       '<div class="flow-fields">' + fields + (step.ground ? groundHtml(j) : '') + mods + '</div>' +
       '<div class="flow-nav">' +
         '<a class="btn btn-ghost" href="' + prev + '">← Back</a>' +
@@ -4246,6 +4873,28 @@ section[id], main[id] { scroll-margin-top: 78px; }
       return;
     }
 
+    if (t.id === 'do-trace') {
+      root.DATUM.TRACE.open(function (area, rooms) {
+        var j2 = job('renovation');
+        j2.measurements.floorArea = Math.round(area);
+        // walls and ceilings, roughly two and a half times the floor area
+        j2.measurements.replasterArea = Math.round(area * 2.35);
+        j2.measurements.rewireArea = Math.round(area);
+        j2.touched.floorArea = true;
+        j2.touched.traced = true;
+        refreshOutputs();
+        update();
+        var note = doc.querySelector('#flow-ask .trace-cta');
+        if (note) {
+          note.innerHTML = '<div><p class="q-title">Measured from your plan.</p>' +
+            '<p class="q-help">' + rooms.length + ' room' + (rooms.length === 1 ? '' : 's') +
+            ' traced, ' + area.toFixed(1) + ' m² in total. The figures below have been set from it.</p></div>' +
+            '<button type="button" class="btn btn-ghost" id="do-trace">Trace again</button>';
+        }
+      });
+      return;
+    }
+
     if (t.id === 'tree-add') {
       var j3 = job(route.typeId);
       if (j3.ground.trees.length >= (book().limits.maxTrees || 4)) return;
@@ -4373,6 +5022,7 @@ section[id], main[id] { scroll-margin-top: 78px; }
     update();
   });
 
+  if (D.TRACE) D.TRACE.wire();
   ROUTER.start();
   if (D.HERO) D.HERO.start();
 })(window, document);

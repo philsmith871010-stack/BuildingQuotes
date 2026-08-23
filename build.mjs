@@ -19,9 +19,10 @@ const PAGES = [
     title: 'Datum',
     description: 'Price your extension properly — foundations, drawings, fees and VAT — then put that exact price to vetted builders.',
     css: ['assets/styles.css', 'assets/app.css'],
-    js: ['vendor/gsap.min.js', 'vendor/ScrollTrigger.min.js',
+    js: ['vendor/opentakeoff/geom.js', 'vendor/gsap.min.js', 'vendor/ScrollTrigger.min.js',
          'src/ratebook.js', 'src/trees.js', 'src/store.js', 'src/rates.js',
-         'src/engine.js', 'src/draw2d.js', 'src/router.js', 'src/hero.js', 'src/flow.js'],
+         'src/engine.js', 'src/draw2d.js', 'src/plan-sample.js', 'src/trace.js',
+         'src/router.js', 'src/hero.js', 'src/flow.js'],
   },
   {
     src: 'admin.html',
@@ -137,10 +138,10 @@ const SWITCH_JS = `
 
 const demoCss = [read('./assets/styles.css'), read('./assets/app.css'),
                  read('./assets/admin.css'), SWITCH_CSS].join('\n\n');
-const demoJs = ['vendor/gsap.min.js', 'vendor/ScrollTrigger.min.js',
+const demoJs = ['vendor/opentakeoff/geom.js', 'vendor/gsap.min.js', 'vendor/ScrollTrigger.min.js',
                 'src/ratebook.js', 'src/trees.js', 'src/store.js', 'src/rates.js',
-                'src/engine.js', 'src/draw2d.js', 'src/router.js', 'src/hero.js',
-                'src/flow.js', 'src/admin.js']
+                'src/engine.js', 'src/draw2d.js', 'src/plan-sample.js', 'src/trace.js',
+                'src/router.js', 'src/hero.js', 'src/flow.js', 'src/admin.js']
   .map((n) => read(`./${n}`))
   .join('\n;\n');
 
