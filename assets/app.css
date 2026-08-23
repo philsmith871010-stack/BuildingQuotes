@@ -581,115 +581,174 @@ html { scroll-padding-top: 62px; }
 }
 
 /* ---------------------------------------------------------------------------
-   Sketch your house
-   The tool that turns "I think it's about four by five" into a takeoff. Kept
-   deliberately flat: a grid, black lines, a number on every wall.
+   Draw your house
+   The tool the whole thing rests on. Flat on purpose: a grid, black lines, and
+   one number on every wall once there is a scale to show it in.
    --------------------------------------------------------------------------- */
 
 .sk-overlay {
   position: fixed; inset: 0; z-index: 90; background: rgba(11,13,16,.72);
-  display: none; align-items: stretch; justify-content: center; padding: 0;
+  display: none; align-items: stretch; justify-content: center;
 }
 .sk-overlay.on { display: flex; }
+/*
+ * Every grid here pins its column to minmax(0, 1fr). An implicit grid column
+ * sizes to max-content, so the stage tabs — six of them, deliberately on one
+ * scrolling row — were making the whole dialog 575px wide inside a 390px
+ * phone, pushing the Set button clean off the screen.
+ */
 .sk-box {
   background: var(--surface); width: 100%; max-width: 1180px;
-  display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0;
+  display: grid; grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr); min-height: 0;
   border-left: 1px solid var(--rule); border-right: 1px solid var(--rule);
 }
 .sk-head {
-  display: flex; flex-wrap: wrap; gap: .7rem 1rem; align-items: center;
-  padding: .75rem 1rem; border-bottom: 1px solid var(--rule);
+  display: flex; flex-wrap: wrap; gap: .55rem .9rem; align-items: center;
+  padding: .6rem 1rem; border-bottom: 1px solid var(--rule);
 }
-.sk-head h3 { font-size: .95rem; margin-top: .15rem; }
-.sk-head > div:first-child { flex: 1 1 15rem; }
+.sk-head .eyebrow { flex: 0 0 auto; }
 
-.sk-stages { display: flex; flex-wrap: wrap; gap: .3rem; }
+.sk-stages { display: flex; flex-wrap: wrap; gap: .3rem; flex: 1 1 auto; }
 .sk-stages button {
   display: inline-flex; align-items: center; gap: .4rem;
-  font-family: var(--mono); font-size: .68rem; letter-spacing: .08em;
+  font-family: var(--mono); font-size: .66rem; letter-spacing: .07em;
   text-transform: uppercase; color: var(--ink-2); background: var(--paper);
-  border: 1px solid var(--rule); border-radius: 2px; padding: .38rem .55rem;
+  border: 1px solid var(--rule); border-radius: 2px; padding: .34rem .5rem;
   cursor: pointer;
 }
 .sk-stages button i {
   font-style: normal; display: grid; place-items: center;
-  width: 1.15rem; height: 1.15rem; border-radius: 50%;
-  background: var(--rule-soft); color: var(--ink-2); font-size: .62rem;
+  width: 1.1rem; height: 1.1rem; border-radius: 50%;
+  background: var(--rule-soft); color: var(--ink-2); font-size: .6rem;
 }
 .sk-stages button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent-ink); background: var(--surface); }
 .sk-stages button[aria-pressed="true"] i { background: var(--accent); color: #fff; }
-.sk-stages button:disabled { opacity: .4; cursor: not-allowed; }
+.sk-stages button:disabled { opacity: .38; cursor: not-allowed; }
 
-.sk-body { display: grid; min-height: 0; }
+/* the blank-or-upload choice */
+.sk-choose {
+  display: grid; align-content: center; justify-items: center; gap: .9rem;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 2rem 1.2rem; text-align: center; overflow: auto;
+}
+.sk-choose h3 { font-family: var(--disp); font-size: clamp(1.5rem, 4vw, 2.1rem); font-weight: 700; letter-spacing: -.02em; }
+.sk-choose > p { max-width: 34rem; color: var(--ink-2); line-height: 1.55; }
+.sk-choice { display: flex; flex-wrap: wrap; gap: .9rem; justify-content: center; margin-top: .4rem; }
+.sk-card {
+  display: grid; gap: .3rem; justify-items: center; text-align: center;
+  width: min(19rem, 82vw); padding: 1.5rem 1.2rem; cursor: pointer;
+  background: var(--paper); border: 1px solid var(--rule); border-radius: 3px;
+  transition: border-color .15s ease, transform .15s ease;
+}
+.sk-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.sk-card-ico { font-size: 1.7rem; line-height: 1; color: var(--accent); margin-bottom: .3rem; }
+.sk-card b { font-size: 1rem; }
+.sk-card span:last-child { font-size: .82rem; color: var(--ink-3); line-height: 1.45; }
+.sk-priv { font-size: .74rem; color: var(--ink-3); margin-top: .3rem; }
+.sk-alt {
+  background: none; border: 0; padding: .2rem; cursor: pointer;
+  font-size: .78rem; color: var(--accent-ink); text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* `display: grid` beats the user agent's [hidden] rule, so both panes have to
+   opt out of it explicitly or they stack and the drawing loses its row. */
+.sk-choose[hidden], .sk-body[hidden], .sk-calib[hidden], .sk-nextbtn[hidden],
+.sk-floors[hidden] { display: none; }
+
+.sk-body { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 0; }
 @media (min-width: 900px) { .sk-body { grid-template-columns: minmax(0,1fr) 320px; } }
 
-.sk-canvas { background: var(--well); position: relative; display: grid; min-height: 0; }
-#sk-svg { width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; }
-.sk-typed {
-  position: absolute; left: 50%; bottom: 1rem; transform: translateX(-50%);
-  font-family: var(--mono); font-size: .82rem; background: var(--ink);
-  color: var(--paper); padding: .35rem .6rem; border-radius: 2px; margin: 0;
+.sk-canvas {
+  background: var(--well); position: relative; min-height: 0;
+  display: grid; grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
+#sk-svg { width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; }
 .sk-actions { position: absolute; top: .6rem; right: .6rem; display: flex; gap: .35rem; }
+
+.sk-floors {
+  display: flex; flex-wrap: wrap; gap: .25rem;
+  padding: .45rem .6rem; border-bottom: 1px solid var(--rule-soft);
+  background: var(--surface);
+}
+.sk-floors button {
+  font-family: var(--mono); font-size: .66rem; letter-spacing: .07em; text-transform: uppercase;
+  background: var(--surface); color: var(--ink-2); border: 1px solid var(--rule);
+  border-radius: 2px; padding: .28rem .5rem; cursor: pointer;
+}
+.sk-floors button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.sk-floors .sk-addfloor { border-style: dashed; color: var(--ink-3); }
 
 .sk-side {
   padding: .9rem 1rem 1.1rem; border-left: 1px solid var(--rule);
-  overflow: auto; display: grid; gap: .85rem; align-content: start;
+  overflow: auto; display: grid; gap: .8rem; align-content: start;
+  /* implicit grid columns size to max-content, which lets a number input push
+     the whole panel wider than its track and off the edge of the box */
+  grid-template-columns: minmax(0, 1fr);
 }
-@media (max-width: 899px) {
-  .sk-side { border-left: 0; border-top: 1px solid var(--rule-soft); }
-  /* the drawing must stay on screen while the tools scroll under it */
-  .sk-body { grid-template-rows: 52svh minmax(0, 1fr); }
-  .sk-canvas { position: sticky; top: 0; }
+@media (max-width: 899px) { .sk-side { border-left: 0; border-top: 1px solid var(--rule-soft); } }
+.sk-hint { font-size: .92rem; color: var(--ink); line-height: 1.45; margin: 0; font-weight: 500; }
+.sk-say { font-size: .78rem; color: var(--warn); margin: 0; }
+.sk-say:empty { display: none; }
+.sk-nextbtn { width: 100%; }
+
+.sk-calib { display: grid; gap: .35rem; padding: .7rem; background: rgba(228,87,46,.07); border: 1px solid #E4572E; border-radius: 3px; }
+.sk-calib label {
+  font-family: var(--mono); font-size: .62rem; letter-spacing: .13em;
+  text-transform: uppercase; color: #E4572E;
 }
-/* On a phone the header was taking a quarter of the screen before a single
-   wall had been drawn. The title goes, the stages become one scrolling row. */
-@media (max-width: 640px) {
-  .sk-head { padding: .5rem .7rem; gap: .45rem .6rem; }
-  .sk-head h3 { display: none; }
-  .sk-head > div:first-child { flex: 1 1 auto; }
-  .sk-stages {
-    flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-  .sk-stages::-webkit-scrollbar { display: none; }
-  .sk-stages button { flex: 0 0 auto; }
-  .sk-side { padding: .7rem .8rem 1rem; }
+.sk-calib-row { display: flex; align-items: center; gap: .4rem; }
+.sk-calib-row input {
+  flex: 1 1 4rem; min-width: 0; width: 100%; font-family: var(--mono); font-size: 1.05rem; font-weight: 600;
+  text-align: right; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--rule); border-radius: 2px; padding: .4rem .5rem;
 }
-.sk-hint { font-size: .84rem; color: var(--ink-2); line-height: 1.45; margin: 0; }
-.sk-say { font-size: .78rem; color: var(--warn); min-height: 1em; margin: 0; }
-.sk-tools { display: grid; gap: .7rem; }
+.sk-calib-row span { font-family: var(--mono); font-size: .85rem; color: var(--ink-3); }
+.sk-calib .hint { font-size: .72rem; color: var(--ink-3); line-height: 1.4; }
+
+.sk-tools { display: grid; gap: .55rem; }
+.sk-tools:empty { display: none; }
 .sk-tool { display: grid; gap: .3rem; }
 .sk-tool label {
   font-family: var(--mono); font-size: .62rem; letter-spacing: .13em;
   text-transform: uppercase; color: var(--ink-3);
 }
-.sk-tool .seg button { font-size: .76rem; padding: .34rem .5rem; }
-.sk-tool .seg-wrap { flex-wrap: wrap; }
+.sk-tool .seg button { font-size: .74rem; padding: .32rem .48rem; }
+.seg-wrap { flex-wrap: wrap; }
 
 .sk-read { display: grid; gap: 0; border-top: 1px solid var(--rule); }
 .sk-row {
   display: flex; align-items: baseline; justify-content: space-between; gap: .6rem;
-  padding: .32rem 0; border-bottom: 1px solid var(--rule-soft); font-size: .8rem;
+  padding: .3rem 0; border-bottom: 1px solid var(--rule-soft); font-size: .8rem;
 }
 .sk-row span { color: var(--ink-3); }
 .sk-row b { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 500; }
 .sk-row.strong b { font-weight: 700; color: var(--accent-ink); }
 
-/* the drawing itself */
+/* the drawing */
 .sk-grid { stroke: var(--rule-soft); stroke-width: 1; }
 .sk-grid.major { stroke: var(--rule); stroke-width: 1.4; }
+.sk-photo { opacity: .55; }
+.sk-under { fill: rgba(90,100,110,.10); stroke: var(--ink-3); stroke-width: 2; stroke-dasharray: 7 6; }
 .sk-floor { fill: rgba(21,76,124,.09); stroke: none; }
 .sk-ext { fill: none; stroke: var(--ink); stroke-width: 7; stroke-linejoin: round; stroke-linecap: round; }
-.sk-int { fill: none; stroke: var(--ink-2); stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; }
+.sk-int { stroke: var(--ink-2); stroke-width: 4; stroke-linecap: round; }
+.sk-extension { fill: rgba(42,157,143,.14); stroke: none; }
+.sk-extline { fill: none; stroke: #2A9D8F; stroke-width: 6; stroke-linejoin: round; stroke-linecap: round; }
 .sk-draft { fill: none; stroke: var(--accent); stroke-width: 6; stroke-linejoin: round; stroke-linecap: round; }
 .sk-band { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 5; }
 .sk-tag rect { fill: var(--surface); stroke: var(--rule); stroke-width: 1; }
 .sk-tag text { font-family: var(--mono); font-size: 12px; fill: var(--ink-2); }
 .sk-tag.live rect { fill: var(--accent); stroke: var(--accent); }
 .sk-tag.live text { fill: #fff; font-weight: 600; }
+.sk-tag.calib rect { fill: #E4572E; stroke: #E4572E; }
+.sk-tag.calib text { fill: #fff; font-weight: 700; }
+.sk-pick { stroke: transparent; stroke-width: 22; cursor: pointer; }
+.sk-pick.on { stroke: #E4572E; stroke-width: 9; }
 .sk-node { fill: var(--surface); stroke: var(--ink); stroke-width: 2.4; }
-.sk-node.start { fill: var(--accent); stroke: var(--accent); }
+.sk-node.start { fill: var(--accent); stroke: var(--surface); stroke-width: 3; }
 .sk-open { stroke-linecap: butt; cursor: pointer; }
 .sk-window { stroke: #2A9D8F; stroke-width: 9; }
 .sk-door { stroke: #E4572E; stroke-width: 9; }
@@ -700,11 +759,27 @@ html { scroll-padding-top: 62px; }
 .sk-pin text { font-family: var(--mono); font-size: 12px; font-weight: 600; fill: #fff; pointer-events: none; }
 .sk-area {
   font-family: var(--disp); font-weight: 700; font-stretch: 110%; font-size: 20px;
-  fill: var(--accent-ink); opacity: .55; pointer-events: none;
+  fill: var(--accent-ink); opacity: .5; pointer-events: none;
 }
 
-/* the button that opens it, alongside "trace my plan" */
-.sk-cta { display: flex; flex-wrap: wrap; gap: .6rem; }
+@media (max-width: 899px) {
+  .sk-body { grid-template-rows: 52svh minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); }
+  .sk-canvas { position: sticky; top: 0; }
+}
+/* On a phone the header was taking a quarter of the screen before a single
+   wall had been drawn. The stages become one scrolling row. */
+@media (max-width: 640px) {
+  .sk-head { padding: .45rem .7rem; gap: .4rem .55rem; }
+  .sk-stages {
+    flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+    -webkit-overflow-scrolling: touch; order: 3;
+  }
+  .sk-stages::-webkit-scrollbar { display: none; }
+  .sk-stages button { flex: 0 0 auto; }
+  .sk-side { padding: .7rem .8rem 1rem; }
+  .sk-choose { padding: 1.2rem .9rem; }
+  .sk-card { padding: 1.1rem 1rem; }
+}
 
 /* ---------------------------------------------------------------------------
    Room by room

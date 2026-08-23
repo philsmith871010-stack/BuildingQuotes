@@ -292,13 +292,30 @@
         j.touched.rooms = true;
       }
     } else if (typeId === 'newbuild') {
-      set('footprintArea', m.area);
+      set('footprintArea', m.footprint);
       set('floorArea', m.totalArea);
       set('perimeter', m.perimeter);
-      set('roofArea', m.area * 1.22);
+      set('roofArea', m.footprint * 1.22);
     }
     if (m.counts.kitchen) set('kitchens', m.counts.kitchen);
     if (baths) set('bathrooms', baths);
+
+    // Drawing an extension is how you say you want one. It selects the build
+    // type as well as sizing it — otherwise the client draws the new bit and
+    // then has to go and tick a box saying they drew it.
+    if (m.extension && m.extension.area > 1) {
+      var jx = job('extension');
+      jx.measurements.width = Math.round(m.extension.width * 4) / 4;
+      jx.measurements.depth = Math.round(m.extension.depth * 4) / 4;
+      jx.touched.width = true;
+      jx.touched.depth = true;
+      jx.touched.sketched = true;
+      if (project.types.indexOf('extension') < 0) {
+        project.types.push('extension');
+        saveProject();
+        paintRail(route);
+      }
+    }
 
     j.touched.sketched = true;
     refreshOutputs();
@@ -306,13 +323,16 @@
 
     var note = doc.querySelector('#flow-ask .trace-cta');
     if (note) {
-      note.innerHTML = '<div><p class="q-title">Measured from your sketch.</p>' +
-        '<p class="q-help">' + m.totalArea.toFixed(1) + ' m²' +
-        (m.rooms && m.rooms.length ? ' over ' + m.rooms.length + ' rooms' : '') +
+      note.innerHTML = '<div><p class="q-title">Measured from your drawing.</p>' +
+        '<p class="q-help">' + m.totalArea.toFixed(1) + ' m² over ' + m.floors +
+        ' floor' + (m.floors === 1 ? '' : 's') +
+        (m.rooms && m.rooms.length ? ', ' + m.rooms.length + ' rooms' : '') +
         ', ' + m.windows + ' window' + (m.windows === 1 ? '' : 's') +
         ' and ' + baths + ' bathroom' + (baths === 1 ? '' : 's') +
+        (m.extension ? ', plus a ' + (m.extension.area * m.extension.storeys).toFixed(1) +
+          ' m² extension which has been added to your project' : '') +
         '. The figures below have been set from it.</p></div>' +
-        '<div class="sk-cta"><button type="button" class="btn btn-ghost" id="do-sketch">Change the sketch</button></div>';
+        '<div class="sk-cta"><button type="button" class="btn btn-ghost" id="do-sketch">Change the drawing</button></div>';
     }
   }
 
@@ -382,6 +402,50 @@
     host.outerHTML = roomsHtml(route.typeId, j);
   }
 
+  /*
+   * The automatic trace hands back polygons with whatever the client called
+   * them. The names are the only clue to what kind of room each one is, and a
+   * kitchen or a bathroom carries a fixed labour sum, so it is worth reading
+   * them rather than treating every room as generic.
+   */
+  var ROOM_WORDS = [
+    ['kitchen', 'kitchen'], ['diner', 'kitchen'],
+    ['bath', 'bathroom'], ['shower', 'bathroom'], ['ensuite', 'bathroom'], ['en suite', 'bathroom'],
+    ['wc', 'wc'], ['cloak', 'wc'], ['toilet', 'wc'],
+    ['bed', 'bedroom'],
+    ['living', 'living'], ['lounge', 'living'], ['sitting', 'living'], ['dining', 'living'], ['recep', 'living'],
+    ['hall', 'hall'], ['landing', 'hall'], ['stair', 'hall']
+  ];
+  function roomTypeFromName(name) {
+    var n = String(name || '').toLowerCase();
+    var found = 'other';
+    ROOM_WORDS.forEach(function (w) { if (found === 'other' && n.indexOf(w[0]) >= 0) found = w[1]; });
+    return found;
+  }
+
+  function applyTrace(area, rooms) {
+    var j = job('renovation');
+    j.measurements.floorArea = Math.round(area);
+    j.touched.floorArea = true;
+    j.touched.traced = true;
+    if (rooms && rooms.length) {
+      j.rooms = rooms.map(function (r) {
+        var type = roomTypeFromName(r.name);
+        return { type: type, level: (type === 'kitchen' || type === 'bathroom') ? 'strip' : 'refit' };
+      });
+      j.touched.rooms = true;
+    }
+    refreshOutputs();
+    update();
+    var note = doc.querySelector('#flow-ask .trace-cta');
+    if (note) {
+      note.innerHTML = '<div><p class="q-title">Measured from your plan.</p>' +
+        '<p class="q-help">' + rooms.length + ' room' + (rooms.length === 1 ? '' : 's') +
+        ' traced, ' + area.toFixed(1) + ' m² in total. The figures below have been set from it.</p></div>' +
+        '<div class="sk-cta"><button type="button" class="btn btn-ghost" id="do-sketch">Draw it instead</button></div>';
+    }
+  }
+
   function renderStep(r) {
     var type = r.type, step = r.step;
     var j = job(type.id);
@@ -408,26 +472,22 @@
       return found ? modifierHtml(found, j) : '';
     }).join('');
 
-    // the two steps where the client's own house can do the measuring: trace an
-    // existing plan, or sketch one in a couple of minutes if they haven't got one
-    var traceable = type.id === 'renovation' && step.id === 'size' && root.DATUM.TRACE;
+    // One way in, not two. The tool asks whether they have a plan; making that
+    // a choice between two buttons on the page before it just moves the
+    // decision somewhere it has less context.
     var sketchable = SKETCH_TYPES.indexOf(type.id) >= 0 && step.id === 'size' && root.DATUM.SKETCH;
 
     var html =
       '<p class="flow-step-of">' + esc(type.name) + ' · step ' + (i + 1) + ' of ' + (steps.length + 1) + '</p>' +
       '<h1>' + esc(step.title) + '</h1>' +
       '<p class="lede">' + esc(step.lede) + '</p>' +
-      (traceable || sketchable
+      (sketchable
         ? '<div class="trace-cta"><div>' +
-          '<p class="q-title">' + (traceable ? 'Have you got the floor plan?' : 'Rather draw it than guess it?') + '</p>' +
-          '<p class="q-help">' +
-          (traceable ? 'Upload it and measure the rooms off it instead of guessing. ' : 'Sketch the outline, drop in the windows, doors and rooms, and every figure below is measured rather than estimated. ') +
-          'Nothing is sent anywhere — it is measured in your browser.</p></div>' +
-          '<div class="sk-cta">' +
-          (traceable ? '<button type="button" class="btn" id="do-trace">Trace my plan</button>' : '') +
-          (sketchable ? '<button type="button" class="btn' + (traceable ? ' btn-ghost' : '') +
-             '" id="do-sketch">Sketch my house</button>' : '') +
-          '</div></div>'
+          '<p class="q-title">Rather draw it than guess it?</p>' +
+          '<p class="q-help">Trace round the outside of the house — on a blank grid or over your own ' +
+          'floor plan — say how long one wall is, and every figure below is measured instead of estimated. ' +
+          'Nothing is sent anywhere.</p></div>' +
+          '<div class="sk-cta"><button type="button" class="btn" id="do-sketch">Draw my house</button></div></div>'
         : '') +
       (step.rooms && j.rooms ? roomsHtml(type.id, j) : '') +
       '<div class="flow-fields">' + fields + (step.ground ? groundHtml(j) : '') + mods + '</div>' +
@@ -747,24 +807,7 @@
     }
 
     if (t.id === 'do-trace') {
-      root.DATUM.TRACE.open(function (area, rooms) {
-        var j2 = job('renovation');
-        j2.measurements.floorArea = Math.round(area);
-        // walls and ceilings, roughly two and a half times the floor area
-        j2.measurements.replasterArea = Math.round(area * 2.35);
-        j2.measurements.rewireArea = Math.round(area);
-        j2.touched.floorArea = true;
-        j2.touched.traced = true;
-        refreshOutputs();
-        update();
-        var note = doc.querySelector('#flow-ask .trace-cta');
-        if (note) {
-          note.innerHTML = '<div><p class="q-title">Measured from your plan.</p>' +
-            '<p class="q-help">' + rooms.length + ' room' + (rooms.length === 1 ? '' : 's') +
-            ' traced, ' + area.toFixed(1) + ' m² in total. The figures below have been set from it.</p></div>' +
-            '<button type="button" class="btn btn-ghost" id="do-trace">Trace again</button>';
-        }
-      });
+      root.DATUM.TRACE.open(function (area, rooms) { applyTrace(area, rooms); });
       return;
     }
 
@@ -811,7 +854,10 @@
     }
 
     if (t.id === 'do-sketch') {
-      root.DATUM.SKETCH.open(function (m) { applySketch(route.typeId, m); });
+      root.DATUM.SKETCH.open(
+        function (m) { applySketch(route.typeId, m); },
+        function (area, rooms) { applyTrace(area, rooms); }
+      );
       return;
     }
 

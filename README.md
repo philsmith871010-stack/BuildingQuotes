@@ -152,16 +152,23 @@ One wall carries the dimension they typed in, and that single number scales
 every other measurement on the drawing. Change the floor area and the plan
 rescales, so the drawing can never contradict the figure being priced.
 
-**The sketch tool is built**, and it is the part of this worth owning. A client
-with no floor plan draws one in about ninety seconds: outline, windows, doors,
-internal walls, then a pin per room. It measures floor area, perimeter, internal
-wall runs, the plaster area net of openings, and the room list, and writes all of
-it into the estimate. Two decisions make it quick — rooms are dropped pins rather
-than computed polygons, because position never affects a price; and you type wall
-lengths rather than dragging them, because typing `4.2` is faster *and* more
-accurate. See `docs/sketch-tool.md`.
+**The drawing tool is built**, and it is the part of this worth owning. One
+button, "Draw my house", and one idea: **you draw the shape, then measure it
+once.** Nothing on screen is in metres while you draw. You trace round the
+outside on a plain grid — blank, or over your own uploaded floor plan — close
+it, and type the length of one wall you happen to know. That single number
+scales every other wall, floor and area on the drawing.
 
-**The trace tool is built.** On the renovation step, "Trace my plan" opens the
+Six stages in the order a builder walks a house: outline (per floor, copy the
+one below or draw a new one) → inside walls → doors → windows → a pin per room →
+the extension. Drawing an extension is how you say you want one: it selects the
+extension build type and sizes it.
+
+It writes floor area, perimeter, internal wall runs, the plaster area net of
+openings, and the room list into the estimate. See `docs/sketch-tool.md`.
+
+**Automatic tracing is still there** as a subordinate option, for anyone with a
+clean estate agent plan. On the renovation step, the link under the two cards opens the
 client's floor plan, they drag a line along a wall whose length is printed on
 it and type that length, then click inside each room. Every room is flooded,
 outlined and measured, and the total is written back into the estimate.
