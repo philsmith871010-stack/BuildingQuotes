@@ -27,8 +27,14 @@ Routes (hash-based, so it runs from a single file anywhere):
 | Route | What it is |
 |---|---|
 | `#/` | Landing — hero section, the descent, how it works, builders |
-| `#/size` `#/build` `#/ground` `#/inside` | One question per page, drawing persists |
-| `#/estimate` | The range, the cost stack and the itemised breakdown |
+| `#/start` | Choosing what you are building |
+| `#/<type>/<step>` | One question per page, drawing alongside |
+| `#/<type>/estimate` | The range, the cost stack and the itemised breakdown |
+
+**The questions come out of the rate book.** Each measurement carries homeowner
+wording (`ask`) and each build type groups them into steps. Add a build type in
+the admin, give its measurements wording, and its public flow appears with no
+code written. The wording itself is editable in the admin too.
 
 ## Running it
 
@@ -62,7 +68,7 @@ Deployed properly these are two pages on one domain and share storage anyway.
 | `src/rates.js` | A thin live view of the published book, for the estimator. |
 | `src/trees.js` | Species table, soil types, and the NHBC-shaped foundation depth logic. |
 | `src/engine.js` | Pure pricing functions. Spec in, itemised estimate out. No DOM — this moves to a server unchanged. |
-| `src/iso.js` | The isometric drawing. Everything on screen is projected from the same metres the price uses. |
+| `src/draw2d.js` | Plans and sections. Each build type contributes both; the flow shows whichever answers the question being asked. |
 | `src/router.js` | Hash routing between the landing, the four steps and the result. |
 | `src/hero.js` | The hero section drawing plots itself in from the datum outwards, then the scroll descent. GSAP. |
 | `src/flow.js` | The steps, the persistent drawing and its camera, and the result. |
@@ -93,10 +99,21 @@ of which 37 are still placeholders waiting on real rates — the admin counts
 them for you and stops calling a figure a placeholder the moment Lee types over
 it.
 
-**The client estimator covers extensions only.** Single storey, with wall
-construction, bi-folds, wall removal, trees and foundation depth, kitchen
-fitting and bathrooms. The other four build types are priced and configurable
-but do not yet have a public question flow.
+**All five build types have a public flow.** Extensions, renovations, loft
+conversions, new builds, and patios and outdoor work — 18 question pages
+between them, all generated from the rate book.
+
+**Drawings are plans and sections, not isometric.** Only an extension suits an
+isometric; a loft conversion is entirely about head height under a pitched
+roof, a renovation starts from a floor plan, and a garden is a layout. Setting
+out is a plan, consequences are a section, and the drawing switches to whichever
+answers the current question.
+
+**Not modelled yet, and said so on the page:** party wall awards, site access,
+drains in the footprint, roof glazing, heating and electrics, decoration, floor
+finishes, planning route. Renovations still ask for a floor area rather than
+taking an uploaded plan — the intended flow is upload, drag a line along a known
+dimension to set the scale, then trace the rooms.
 
 **Not modelled yet, and said so on the page:** party wall awards, site access,
 drains in the footprint, roof glazing, heating and electrics, decoration, floor

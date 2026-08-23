@@ -318,3 +318,102 @@
       transparent 76%);
   }
 }
+
+/* --- 2D drawing tokens ------------------------------------------------------
+   Plans and sections share one palette: blue is the work being priced, warm
+   neutral is what is already there, red is a warning or something coming out. */
+:root {
+  --d2-new-fill:    #DCE8F1;
+  --d2-new-line:    #154C7C;
+  --d2-old-fill:    #E4E1DA;
+  --d2-old-line:    #8C867B;
+  --d2-earth-fill:  #D6D0C2;
+  --d2-earth-line:  #7E7665;
+  --d2-hatch:       rgba(74,68,55,.5);
+  --d2-ground:      #3F443F;
+  --d2-dim:         #6C7479;
+  --d2-chip:        #F5F7F4;
+  --d2-glass:       #8FC2E8;
+  --d2-warn:        #9A3B24;
+  --d2-accent:      #154C7C;
+  --d2-accentfill:  rgba(21,76,124,.18);
+  --d2-canopy:      #CBD6C6;
+  --d2-canopy-line: #7E9479;
+  --d2-deck:        #E0D2BE;
+  --d2-drive:       #DCDCD6;
+  --d2-lawn:        #D8E4D2;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --d2-new-fill:    #1D3448;
+    --d2-new-line:    #6BA6E8;
+    --d2-old-fill:    #26241F;
+    --d2-old-line:    #7E7768;
+    --d2-earth-fill:  #2A2620;
+    --d2-earth-line:  #776E5C;
+    --d2-hatch:       rgba(196,185,158,.4);
+    --d2-ground:      #B6BDB8;
+    --d2-dim:         #8A9297;
+    --d2-chip:        #171C1F;
+    --d2-glass:       #3E7BAE;
+    --d2-warn:        #E0795E;
+    --d2-accent:      #6BA6E8;
+    --d2-accentfill:  rgba(107,166,232,.22);
+    --d2-canopy:      #2D3B2B;
+    --d2-canopy-line: #6E8A69;
+    --d2-deck:        #33291F;
+    --d2-drive:       #262825;
+    --d2-lawn:        #23301F;
+  }
+}
+:root[data-theme="dark"] {
+  --d2-new-fill:    #1D3448;
+  --d2-new-line:    #6BA6E8;
+  --d2-old-fill:    #26241F;
+  --d2-old-line:    #7E7768;
+  --d2-earth-fill:  #2A2620;
+  --d2-earth-line:  #776E5C;
+  --d2-hatch:       rgba(196,185,158,.4);
+  --d2-ground:      #B6BDB8;
+  --d2-dim:         #8A9297;
+  --d2-chip:        #171C1F;
+  --d2-glass:       #3E7BAE;
+  --d2-warn:        #E0795E;
+  --d2-accent:      #6BA6E8;
+  --d2-accentfill:  rgba(107,166,232,.22);
+  --d2-canopy:      #2D3B2B;
+  --d2-canopy-line: #6E8A69;
+  --d2-deck:        #33291F;
+  --d2-drive:       #262825;
+  --d2-lawn:        #23301F;
+}
+
+.d2 { display: block; width: 100%; height: 100%; touch-action: none; }
+.d2 text { font-family: var(--mono); }
+.d2-tag { font-size: 9.5px; letter-spacing: .14em; fill: var(--ink-3); }
+.d2-warn-tag { font-size: 9.5px; letter-spacing: .14em; fill: var(--d2-warn); font-weight: 600; }
+.d2-area {
+  font-family: var(--disp); font-weight: 700; font-stretch: 108%;
+  font-size: 15px; letter-spacing: -.01em; fill: var(--ink);
+}
+
+/* --- Chooser ---------------------------------------------------------------- */
+.start-wrap { max-width: var(--maxw); margin-inline: auto; padding: clamp(2rem,5vh,4rem) var(--gutter) 5rem; width: 100%; }
+.start-grid { display: grid; gap: 1px; background: var(--rule-soft); border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+@media (min-width: 700px)  { .start-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1120px) { .start-grid { grid-template-columns: repeat(3, 1fr); } }
+.pick {
+  background: var(--surface); padding: 1.3rem 1.25rem 1.15rem;
+  display: grid; gap: .5rem; align-content: start; text-decoration: none; color: inherit;
+  transition: background .16s ease;
+}
+.pick:hover { background: var(--well); }
+.pick-name { font-family: var(--disp); font-weight: 700; font-stretch: 108%; font-size: 1.2rem; letter-spacing: -.018em; }
+.pick-blurb { font-size: .85rem; color: var(--ink-3); line-height: 1.45; }
+.pick-foot { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem; margin-top: .5rem; flex-wrap: wrap; }
+.pick-typ { font-family: var(--mono); font-size: .7rem; letter-spacing: .08em; color: var(--ink-3); }
+.pick-go { font-family: var(--mono); font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); }
+.pick:hover .pick-go { color: var(--accent); }
+
+.ratebook-link { flex: none; }
+@media (max-width: 780px) { .ratebook-link { display: none; } }

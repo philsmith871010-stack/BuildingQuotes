@@ -279,6 +279,27 @@
     });
     html += '</div><p class="panel-note">1.00 leaves a rate alone. 1.10 adds ten per cent. Factors multiply together.</p></div>';
 
+    // ---- the questions the client is actually asked
+    var asked = type.measurements.filter(function (m) { return m.ask; });
+    if (asked.length) {
+      html += '<div class="panel"><div class="panel-head"><h3>Questions the client sees</h3>' +
+        '<span class="spacer"></span><span class="eyebrow">' + (type.steps || []).length + ' pages</span></div>' +
+        '<div class="tablewrap"><table class="grid-table"><thead><tr>' +
+        '<th style="width:13%">Page</th><th style="width:28%">Question</th><th>Helper text</th>' +
+        '<th style="width:12%">Answered with</th></tr></thead><tbody>';
+      (type.steps || []).forEach(function (st) {
+        asked.filter(function (m) { return m.ask.step === st.id; }).forEach(function (m) {
+          html += '<tr data-ask="' + m.id + '">' +
+            '<td class="num">' + esc(st.short || st.id) + '</td>' +
+            '<td><input class="cell" value="' + esc(m.ask.q) + '" data-askf="q" aria-label="Question for ' + esc(m.label) + '"></td>' +
+            '<td><input class="cell" value="' + esc(m.ask.help || '') + '" data-askf="help" aria-label="Helper text for ' + esc(m.label) + '"></td>' +
+            '<td class="num">' + esc(m.ask.input) + '</td></tr>';
+        });
+      });
+      html += '</tbody></table></div><p class="panel-note">This is the wording on the public estimator, ' +
+        'in the order it is asked. Change it here and the site changes.</p></div>';
+    }
+
     // ---- measurements reference
     html += '<div class="panel"><div class="panel-head"><h3>Measurements</h3><span class="spacer"></span>' +
       '<span class="eyebrow">what the client is asked for</span></div><div class="panel-body">' +
@@ -835,6 +856,19 @@
           ty.lines.forEach(function (l) {
             if (l.id === sr) { l.rate = parseFloat(t.value) || 0; l.source = 'lee'; }
           });
+        });
+      });
+      return;
+    }
+
+    var arow = t.closest ? t.closest('[data-ask]') : null;
+    if (arow && t.hasAttribute('data-askf')) {
+      live(function (book) {
+        var type = RB.typeById(book, view.typeId);
+        type.measurements.forEach(function (m) {
+          if (m.id === arow.getAttribute('data-ask') && m.ask) {
+            m.ask[t.getAttribute('data-askf')] = t.value;
+          }
         });
       });
       return;

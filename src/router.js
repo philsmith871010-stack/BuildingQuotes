@@ -1,68 +1,85 @@
 /*
  * Datum — router
  * ---------------------------------------------------------------------------
- * Hash routing, so the estimator is a sequence of real pages with real URLs
- * you can go back through, while the whole thing still runs from a single
- * file on any static host.
+ * Real URLs for every question, so the back button works and a half-finished
+ * estimate can be linked to. Hash-based, so the whole thing still runs from a
+ * single file on any static host.
+ *
+ *   #/                    the landing page
+ *   #/start               choosing what you are building
+ *   #/<type>/<step>       one question page
+ *   #/<type>/estimate     the result
  */
 (function (root, doc) {
   'use strict';
 
-  var ROUTES = {
-    '/':         { view: 'view-landing' },
-    '/size':     { view: 'view-flow',     step: 'size' },
-    '/build':    { view: 'view-flow',     step: 'build' },
-    '/ground':   { view: 'view-flow',     step: 'ground' },
-    '/inside':   { view: 'view-flow',     step: 'inside' },
-    '/estimate': { view: 'view-estimate', step: 'estimate' }
-  };
-
+  var VIEWS = ['view-landing', 'view-start', 'view-flow', 'view-estimate'];
   var listeners = [];
-  var current = null;
+  var current = '';
 
-  function path() {
+  function book() { return root.DATUM.STORE.published(); }
+
+  function typeOf(id) {
+    var t = root.DATUM.RATEBOOK.typeById(book(), id);
+    return t && t.enabled ? t : null;
+  }
+
+  function parse() {
     var h = root.location.hash.replace(/^#/, '');
-    if (!h || h.charAt(0) !== '/') return '/';
-    return ROUTES[h] ? h : '/';
+    if (!h || h.charAt(0) !== '/') return { name: 'landing', path: '/' };
+
+    var parts = h.split('/').filter(Boolean);
+    if (!parts.length) return { name: 'landing', path: '/' };
+    if (parts[0] === 'start') return { name: 'start', path: '/start' };
+
+    var type = typeOf(parts[0]);
+    if (!type) return { name: 'start', path: '/start' };
+
+    var step = parts[1];
+    if (step === 'estimate') {
+      return { name: 'estimate', typeId: type.id, type: type, path: '/' + type.id + '/estimate' };
+    }
+    var found = null;
+    (type.steps || []).forEach(function (s) { if (s.id === step) found = s; });
+    if (!found) found = (type.steps || [])[0];
+    if (!found) return { name: 'start', path: '/start' };
+
+    return { name: 'step', typeId: type.id, type: type, step: found,
+             path: '/' + type.id + '/' + found.id };
+  }
+
+  function viewFor(name) {
+    return name === 'landing' ? 'view-landing'
+         : name === 'start' ? 'view-start'
+         : name === 'estimate' ? 'view-estimate' : 'view-flow';
   }
 
   function apply() {
-    var p = path();
-    var route = ROUTES[p];
-    if (current === p) return;
-    current = p;
+    var r = parse();
+    if (current === r.path) return;
+    current = r.path;
 
-    Object.keys(ROUTES).forEach(function (k) {
-      var el = doc.getElementById(ROUTES[k].view);
-      if (el) el.classList.toggle('on', ROUTES[k].view === route.view);
+    var target = viewFor(r.name);
+    VIEWS.forEach(function (id) {
+      var el = doc.getElementById(id);
+      if (el) el.classList.toggle('on', id === target);
     });
 
-    // An in-page anchor on the landing page keeps its own scroll position.
-    if (!root.location.hash || root.location.hash.charAt(1) === '/') {
-      root.scrollTo(0, 0);
-    }
-
-    listeners.forEach(function (fn) { fn(p, route); });
-  }
-
-  function go(p) {
-    if (root.location.hash === '#' + p) apply();
-    else root.location.hash = p;
+    if (!root.location.hash || root.location.hash.charAt(1) === '/') root.scrollTo(0, 0);
+    listeners.forEach(function (fn) { fn(r); });
   }
 
   root.addEventListener('hashchange', function () {
-    // section anchors like #how are not routes; leave them alone
     var h = root.location.hash.replace(/^#/, '');
-    if (h && h.charAt(0) !== '/') return;
+    if (h && h.charAt(0) !== '/') return;   // in-page anchors are not routes
     apply();
   });
 
   root.DATUM = root.DATUM || {};
   root.DATUM.ROUTER = {
     on: function (fn) { listeners.push(fn); },
-    go: go,
+    go: function (p) { if (root.location.hash === '#' + p) apply(); else root.location.hash = p; },
     start: apply,
-    path: path,
-    routes: ROUTES
+    parse: parse
   };
 })(window, document);

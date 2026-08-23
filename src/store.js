@@ -16,11 +16,18 @@
   var RB = root.DATUM.RATEBOOK;
   var KEY = 'datum.ratebook.v1';
 
+  /* Bumped whenever the SHAPE of the book changes — new build types, new steps,
+     new question wording. A stored book from an older shape is rebuilt from the
+     current defaults with the rates carried across, so nobody is left on a
+     structure the app no longer understands. */
+  var SCHEMA = 2;
+
   function now() { return new Date().toISOString(); }
 
   function blank() {
     var book = RB.defaultBook();
     return {
+      schema: SCHEMA,
       published: JSON.parse(JSON.stringify(book)),
       draft: JSON.parse(JSON.stringify(book)),
       dirty: false,
@@ -29,12 +36,42 @@
     };
   }
 
+  /** Rebuild on the current structure, keeping every rate that still exists. */
+  function migrate(old) {
+    var fresh = blank();
+    try {
+      var kept = {};
+      ((old.published && old.published.buildTypes) || []).forEach(function (t) {
+        (t.lines || []).forEach(function (l) { kept[l.id] = l; });
+      });
+      ['published', 'draft'].forEach(function (k) {
+        fresh[k].buildTypes.forEach(function (t) {
+          t.lines.forEach(function (l) {
+            var was = kept[l.id];
+            if (!was) return;
+            l.rate = was.rate;
+            l.source = was.source;
+            l.enabled = was.enabled !== false;
+          });
+        });
+        if (old.published && old.published.commercial) fresh[k].commercial = old.published.commercial;
+        if (old.published && old.published.fees) fresh[k].fees = old.published.fees;
+        if (old.published && old.published.foundations) fresh[k].foundations = old.published.foundations;
+      });
+      fresh.log = (old.log || []).slice(0, 200);
+      fresh.log.unshift({ at: now(), who: 'Datum', kind: 'edit',
+        what: 'Rate book structure updated. Your rates were carried across.' });
+    } catch (e) { /* a fresh book is better than a broken one */ }
+    return write(fresh);
+  }
+
   function read() {
     try {
       var raw = root.localStorage.getItem(KEY);
       if (!raw) return blank();
       var parsed = JSON.parse(raw);
       if (!parsed || !parsed.draft || !parsed.published) return blank();
+      if (parsed.schema !== SCHEMA) return migrate(parsed);
       return parsed;
     } catch (e) {
       return blank();

@@ -21,7 +21,7 @@ const PAGES = [
     css: ['assets/styles.css', 'assets/app.css'],
     js: ['vendor/gsap.min.js', 'vendor/ScrollTrigger.min.js',
          'src/ratebook.js', 'src/trees.js', 'src/store.js', 'src/rates.js',
-         'src/engine.js', 'src/iso.js', 'src/router.js', 'src/hero.js', 'src/flow.js'],
+         'src/engine.js', 'src/draw2d.js', 'src/router.js', 'src/hero.js', 'src/flow.js'],
   },
   {
     src: 'admin.html',
@@ -139,7 +139,7 @@ const demoCss = [read('./assets/styles.css'), read('./assets/app.css'),
                  read('./assets/admin.css'), SWITCH_CSS].join('\n\n');
 const demoJs = ['vendor/gsap.min.js', 'vendor/ScrollTrigger.min.js',
                 'src/ratebook.js', 'src/trees.js', 'src/store.js', 'src/rates.js',
-                'src/engine.js', 'src/iso.js', 'src/router.js', 'src/hero.js',
+                'src/engine.js', 'src/draw2d.js', 'src/router.js', 'src/hero.js',
                 'src/flow.js', 'src/admin.js']
   .map((n) => read(`./${n}`))
   .join('\n;\n');

@@ -987,13 +987,28 @@ select.cell:hover { border-color: var(--rule); }
       enabled: true,
       usesFoundations: true,
       measurements: [
-        { id: 'floorArea',    label: 'New floor area',      unit: 'm²' },
-        { id: 'perimeter',    label: 'External perimeter',  unit: 'm', derived: true },
-        { id: 'bifoldWidth',  label: 'Bi-fold width',       unit: 'm' },
-        { id: 'wallRemoval',  label: 'Wall removed',        unit: 'm' },
-        { id: 'kitchens',     label: 'Kitchens',            unit: 'no.' },
-        { id: 'bathrooms',    label: 'Bathrooms',           unit: 'no.' },
-        { id: 'rooflights',   label: 'Rooflights',          unit: 'no.' }
+        { id: 'floorArea', label: 'New floor area', unit: 'm²', derived: true },
+        { id: 'perimeter', label: 'External perimeter', unit: 'm', derived: true },
+        { id: 'width', label: 'Width', unit: 'm',
+          ask: { step: 'size', q: 'Width', help: 'Across the back of the house.', input: 'dim', min: 2, max: 12, by: 0.25, value: 5 } },
+        { id: 'depth', label: 'Projection', unit: 'm',
+          ask: { step: 'size', q: 'Projection', help: 'How far it comes out into the garden.', input: 'dim', min: 2, max: 8, by: 0.25, value: 4 } },
+        { id: 'bifoldWidth', label: 'Bi-fold width', unit: 'm',
+          ask: { step: 'build', q: 'Bi-fold doors', help: 'Total width across the opening. Leave at none for a window instead.', input: 'length', min: 0, max: 6, by: 0.3, value: 3, zero: 'None' } },
+        { id: 'rooflights', label: 'Rooflights', unit: 'no.',
+          ask: { step: 'build', q: 'Rooflights', help: 'Flat roof lights over the new space.', input: 'count', max: 6, value: 0 } },
+        { id: 'wallRemoval', label: 'Wall removed', unit: 'm',
+          ask: { step: 'inside', q: 'Walls coming out', help: 'Existing wall removed so the new space opens into the house. Steel and making good included.', input: 'length', min: 0, max: 12, by: 0.5, value: 3, zero: 'None' } },
+        { id: 'kitchens', label: 'Kitchens', unit: 'no.',
+          ask: { step: 'inside', q: 'A new kitchen?', help: 'Fitting only. You buy the units and appliances you want.', input: 'yesno', value: 1 } },
+        { id: 'bathrooms', label: 'Bathrooms', unit: 'no.',
+          ask: { step: 'inside', q: 'Bathrooms in the extension', help: 'Labour only, same principle as the kitchen.', input: 'count', max: 3, value: 0 } }
+      ],
+      steps: [
+        { id: 'size',   view: 'plan',    short: 'Size', title: 'How big is it going to be?', lede: 'Drag either dimension on the drawing. Everything else on this site is measured from these two numbers.' },
+        { id: 'build',  view: 'plan',    short: 'Build', title: 'How is it built?', lede: 'The construction of the external walls, and how much of the garden wall is glass.', modifiers: ['wallType'] },
+        { id: 'ground', view: 'section', short: 'Ground', title: 'What is underneath?', lede: 'The question that catches people out. On shrinkable clay a thirsty tree decides how deep you dig, and depth is expensive.', ground: true },
+        { id: 'inside', view: 'plan',    short: 'Inside', title: 'What is going inside?', lede: 'Opening the new space into the house, and the two rooms that carry real labour.', modifiers: ['access', 'spec'] }
       ],
       lines: [
         L('ext.shell',     'Extension shell',      'Foundations to standard depth, walls, flat roof, windows, plaster, first and second fix', 'per_m2', 'floorArea', 3000, 'lee'),
@@ -1031,13 +1046,26 @@ select.cell:hover { border-color: var(--rule); }
       enabled: true,
       usesFoundations: false,
       measurements: [
-        { id: 'floorArea',     label: 'Floor area treated', unit: 'm²' },
-        { id: 'replasterArea', label: 'Area replastered',   unit: 'm²' },
-        { id: 'rewireArea',    label: 'Area rewired',       unit: 'm²' },
-        { id: 'wallRemoval',   label: 'Wall removed',       unit: 'm' },
-        { id: 'windows',       label: 'Windows replaced',   unit: 'no.' },
-        { id: 'kitchens',      label: 'Kitchens',           unit: 'no.' },
-        { id: 'bathrooms',     label: 'Bathrooms',          unit: 'no.' }
+        { id: 'floorArea', label: 'Floor area treated', unit: 'm²',
+          ask: { step: 'size', q: 'How much of the house?', help: 'Total floor area being worked on. A three-bed semi is usually 85 to 100 m².', input: 'area', min: 10, max: 500, by: 5, value: 90 } },
+        { id: 'replasterArea', label: 'Area replastered', unit: 'm²',
+          ask: { step: 'size', q: 'Wall area replastered', help: 'Walls and ceilings, not floor area. Roughly two and a half times the floor area for a full refurbishment.', input: 'area', min: 0, max: 1200, by: 10, value: 210, zero: 'None' } },
+        { id: 'rewireArea', label: 'Area rewired', unit: 'm²',
+          ask: { step: 'size', q: 'Area being rewired', help: 'Leave at none if the wiring is staying.', input: 'area', min: 0, max: 500, by: 5, value: 90, zero: 'None' } },
+        { id: 'wallRemoval', label: 'Wall removed', unit: 'm',
+          ask: { step: 'structure', q: 'Walls coming out', help: 'Knocking rooms together. Steel and making good included.', input: 'length', min: 0, max: 20, by: 0.5, value: 3, zero: 'None' } },
+        { id: 'windows', label: 'Windows replaced', unit: 'no.',
+          ask: { step: 'structure', q: 'Windows replaced', help: 'Like for like, supplied and fitted.', input: 'count', max: 24, value: 8 } },
+        { id: 'kitchens', label: 'Kitchens', unit: 'no.',
+          ask: { step: 'rooms', q: 'A new kitchen?', help: 'Fitting only.', input: 'yesno', value: 1 } },
+        { id: 'bathrooms', label: 'Bathrooms', unit: 'no.',
+          ask: { step: 'rooms', q: 'Bathrooms', help: 'Labour only.', input: 'count', max: 5, value: 2 } }
+      ],
+      steps: [
+        { id: 'size',      view: 'plan',    short: 'Scope', title: 'How much of the house?', lede: 'Upload a floor plan later and we will measure it properly. For now, roughly.' },
+        { id: 'structure', view: 'plan',    short: 'Structure', title: 'Is anything moving?', lede: 'Walls out, windows replaced. The structural work is what separates a refurbishment from redecorating.' },
+        { id: 'rooms',     view: 'plan',    short: 'Rooms', title: 'Kitchen and bathrooms', lede: 'Labour only on both — you spend what you want on units and sanitaryware.' },
+        { id: 'condition', view: 'section', short: 'Condition', title: 'What are we working with?', lede: 'Older fabric costs more to work into, and a family living upstairs costs time.', modifiers: ['age', 'occupied', 'access', 'spec'] }
       ],
       lines: [
         L('ren.strip',      'Strip out and clear',    'Removals, skips and protection', 'per_m2', 'floorArea', 85, 'placeholder'),
@@ -1087,13 +1115,25 @@ select.cell:hover { border-color: var(--rule); }
       enabled: true,
       usesFoundations: false,
       measurements: [
-        { id: 'floorArea',   label: 'New floor area',  unit: 'm²' },
-        { id: 'dormerWidth', label: 'Dormer width',    unit: 'm' },
-        { id: 'rooflights',  label: 'Rooflights',      unit: 'no.' },
-        { id: 'staircases',  label: 'Staircases',      unit: 'no.' },
-        { id: 'steels',      label: 'Steel beams',     unit: 'no.' },
-        { id: 'bathrooms',   label: 'Bathrooms',       unit: 'no.' },
-        { id: 'fireDoors',   label: 'Fire doors',      unit: 'no.' }
+        { id: 'floorArea', label: 'New floor area', unit: 'm²',
+          ask: { step: 'size', q: 'Usable floor area', help: 'Only the part with head height counts. A typical semi gives 25 to 30 m².', input: 'area', min: 8, max: 120, by: 1, value: 28 } },
+        { id: 'dormerWidth', label: 'Dormer width', unit: 'm',
+          ask: { step: 'roof', q: 'Dormer width', help: 'A dormer buys you standing room across its width. None means rooflights only.', input: 'length', min: 0, max: 8, by: 0.3, value: 3.6, zero: 'None' } },
+        { id: 'rooflights', label: 'Rooflights', unit: 'no.',
+          ask: { step: 'roof', q: 'Rooflights', help: 'In the pitch of the existing roof.', input: 'count', max: 8, value: 2 } },
+        { id: 'staircases', label: 'Staircases', unit: 'no.',
+          ask: { step: 'inside', q: 'A new staircase?', help: 'Almost always yes — a loft needs a proper fixed stair to be habitable.', input: 'yesno', value: 1 } },
+        { id: 'steels', label: 'Steel beams', unit: 'no.',
+          ask: { step: 'inside', q: 'Steel beams', help: 'The new floor has to span onto steel. Three is typical; the engineer confirms it.', input: 'count', max: 8, value: 3 } },
+        { id: 'bathrooms', label: 'Bathrooms', unit: 'no.',
+          ask: { step: 'inside', q: 'An ensuite?', help: 'Labour only.', input: 'count', max: 2, value: 1 } },
+        { id: 'fireDoors', label: 'Fire doors', unit: 'no.',
+          ask: { step: 'inside', q: 'Fire doors', help: 'Building control requires a protected escape route. Usually every door off the stairwell.', input: 'count', max: 10, value: 4 } }
+      ],
+      steps: [
+        { id: 'size',   view: 'section', short: 'Space', title: 'How much of the loft can you use?', lede: 'Head height decides everything up here. Below 2.2 m the ridge has to come up or the ceilings below go down.', modifiers: ['headroom'] },
+        { id: 'roof',   view: 'section', short: 'Roof', title: 'Dormer, or rooflights?', lede: 'A dormer adds standing room and costs real money. Rooflights are cheaper and give you light rather than space.', modifiers: ['roofStructure'] },
+        { id: 'inside', view: 'plan',    short: 'Inside', title: 'What is going in?', lede: 'Stairs, steel and the things building control will insist on.', modifiers: ['access', 'spec'] }
       ],
       lines: [
         L('loft.shell',     'Conversion shell',    'Floor strengthening, insulation, plasterboard, electrics and heating', 'per_m2', 'floorArea', 1850, 'placeholder'),
@@ -1139,15 +1179,30 @@ select.cell:hover { border-color: var(--rule); }
       enabled: true,
       usesFoundations: true,
       measurements: [
-        { id: 'footprintArea', label: 'Ground floor footprint', unit: 'm²' },
-        { id: 'floorArea',     label: 'Total internal area',    unit: 'm²' },
-        { id: 'perimeter',     label: 'External perimeter',     unit: 'm', derived: true },
-        { id: 'roofArea',      label: 'Roof area',              unit: 'm²' },
-        { id: 'garageArea',    label: 'Garage area',            unit: 'm²' },
-        { id: 'externalArea',  label: 'External works area',    unit: 'm²' },
-        { id: 'plots',         label: 'Plots',                  unit: 'no.' },
-        { id: 'kitchens',      label: 'Kitchens',               unit: 'no.' },
-        { id: 'bathrooms',     label: 'Bathrooms',              unit: 'no.' }
+        { id: 'perimeter', label: 'External perimeter', unit: 'm', derived: true },
+        { id: 'floorArea', label: 'Total internal area', unit: 'm²', derived: true },
+        { id: 'footprintArea', label: 'Ground floor footprint', unit: 'm²',
+          ask: { step: 'size', q: 'Ground floor footprint', help: 'The area the house covers on the ground.', input: 'area', min: 30, max: 400, by: 5, value: 78 } },
+        { id: 'storeys', label: 'Storeys', unit: 'no.',
+          ask: { step: 'size', q: 'How many storeys?', help: 'Total internal area is the footprint multiplied by this.', input: 'count', min: 1, max: 3, value: 2 } },
+        { id: 'roofArea', label: 'Roof area', unit: 'm²',
+          ask: { step: 'form', q: 'Roof area', help: 'On the slope, so larger than the footprint. Roughly one and a quarter times for a normal pitch.', input: 'area', min: 20, max: 500, by: 5, value: 96 } },
+        { id: 'garageArea', label: 'Garage area', unit: 'm²',
+          ask: { step: 'form', q: 'Garage', help: 'A single garage is about 18 m². Leave at none if there isn’t one.', input: 'area', min: 0, max: 120, by: 2, value: 18, zero: 'None' } },
+        { id: 'plots', label: 'Plots', unit: 'no.',
+          ask: { step: 'size', q: 'How many plots?', help: 'Service connections are charged per plot.', input: 'count', min: 1, max: 12, value: 1 } },
+        { id: 'kitchens', label: 'Kitchens', unit: 'no.',
+          ask: { step: 'inside', q: 'Kitchens', help: 'Labour only.', input: 'count', min: 0, max: 12, value: 1 } },
+        { id: 'bathrooms', label: 'Bathrooms', unit: 'no.',
+          ask: { step: 'inside', q: 'Bathrooms', help: 'Labour only, including ensuites and the cloakroom.', input: 'count', max: 8, value: 3 } },
+        { id: 'externalArea', label: 'External works area', unit: 'm²',
+          ask: { step: 'inside', q: 'Drives, paths and garden', help: 'Everything outside the walls that still has to be built.', input: 'area', min: 0, max: 1500, by: 10, value: 120, zero: 'None' } }
+      ],
+      steps: [
+        { id: 'size',   view: 'plan',    short: 'Size', title: 'How big is the house?', lede: 'Footprint and storeys. Everything else follows from those two.' },
+        { id: 'form',   view: 'section', short: 'Form', title: 'Roof and garage', lede: 'The roof is priced on its slope area, which is always more than the footprint.' },
+        { id: 'ground', view: 'section', short: 'Ground', title: 'What are you building on?', lede: 'Substructure is the biggest single unknown on a new build, and trees on clay decide it.', ground: true },
+        { id: 'inside', view: 'plan',    short: 'Fit-out', title: 'Inside and out', lede: 'Rooms that carry labour, and everything beyond the walls.', modifiers: ['method', 'efficiency', 'access', 'spec'] }
       ],
       lines: [
         L('nb.substructure', 'Substructure',        'Dig, footings, oversite and drainage below slab', 'per_m2', 'footprintArea', 480, 'placeholder'),
@@ -1198,16 +1253,31 @@ select.cell:hover { border-color: var(--rule); }
       enabled: true,
       usesFoundations: false,
       measurements: [
-        { id: 'patioArea',      label: 'Paved area',        unit: 'm²' },
-        { id: 'deckingArea',    label: 'Decked area',       unit: 'm²' },
-        { id: 'drivewayArea',   label: 'Driveway area',     unit: 'm²' },
-        { id: 'turfArea',       label: 'Turfed area',       unit: 'm²' },
-        { id: 'excavationVol',  label: 'Excavation',        unit: 'm³' },
-        { id: 'wallLength',     label: 'Retaining wall',    unit: 'm' },
-        { id: 'fenceLength',    label: 'Fencing',           unit: 'm' },
-        { id: 'drainageLength', label: 'Drainage run',      unit: 'm' },
-        { id: 'lightPoints',    label: 'Light fittings',    unit: 'no.' },
-        { id: 'steps',          label: 'Step flights',      unit: 'no.' }
+        { id: 'patioArea', label: 'Paved area', unit: 'm²',
+          ask: { step: 'area', q: 'Paving', help: 'Porcelain or natural stone. A generous patio is 30 to 50 m².', input: 'area', min: 0, max: 400, by: 2, value: 40, zero: 'None' } },
+        { id: 'deckingArea', label: 'Decked area', unit: 'm²',
+          ask: { step: 'area', q: 'Decking', help: 'Framed and boarded, balustrade included.', input: 'area', min: 0, max: 300, by: 2, value: 0, zero: 'None' } },
+        { id: 'drivewayArea', label: 'Driveway area', unit: 'm²',
+          ask: { step: 'area', q: 'Driveway', help: 'Block paving or resin bound, edgings included.', input: 'area', min: 0, max: 400, by: 5, value: 0, zero: 'None' } },
+        { id: 'turfArea', label: 'Turfed area', unit: 'm²',
+          ask: { step: 'area', q: 'Lawn', help: 'Topsoil, preparation and turf.', input: 'area', min: 0, max: 800, by: 5, value: 30, zero: 'None' } },
+        { id: 'excavationVol', label: 'Excavation', unit: 'm³',
+          ask: { step: 'ground', q: 'Muck to shift', help: 'Everything dug out and carted away. About 0.3 m³ per m² of paving on level ground, far more on a slope.', input: 'volume', min: 0, max: 300, by: 1, value: 12, zero: 'None' } },
+        { id: 'wallLength', label: 'Retaining wall', unit: 'm',
+          ask: { step: 'edges', q: 'Retaining wall', help: 'Holding back a level change. Foundation, blockwork, facing and coping.', input: 'length', min: 0, max: 60, by: 0.5, value: 12, zero: 'None' } },
+        { id: 'fenceLength', label: 'Fencing', unit: 'm',
+          ask: { step: 'edges', q: 'Fencing', help: 'Posts, panels and gravel boards.', input: 'length', min: 0, max: 150, by: 1, value: 20, zero: 'None' } },
+        { id: 'drainageLength', label: 'Drainage run', unit: 'm',
+          ask: { step: 'edges', q: 'Drainage', help: 'Channel drain, soakaway and connection. Any paving next to the house needs it.', input: 'length', min: 0, max: 100, by: 1, value: 8, zero: 'None' } },
+        { id: 'steps', label: 'Step flights', unit: 'no.',
+          ask: { step: 'edges', q: 'Flights of steps', help: 'Each formed and finished to match.', input: 'count', max: 6, value: 1 } },
+        { id: 'lightPoints', label: 'Light fittings', unit: 'no.',
+          ask: { step: 'edges', q: 'External lighting', help: 'Fitting, cable and controls.', input: 'count', max: 20, value: 4 } }
+      ],
+      steps: [
+        { id: 'area',   view: 'plan',    short: 'Areas', title: 'What are you laying?', lede: 'Set the areas roughly. You can pace a garden out surprisingly accurately.' },
+        { id: 'ground', view: 'section', short: 'Ground', title: 'What is it going on?', lede: 'Wet clay, made ground and a slope all cost more than the paving does.', modifiers: ['groundConditions', 'levels'] },
+        { id: 'edges',  view: 'plan',    short: 'Edges', title: 'Edges and extras', lede: 'Walls, fences, drainage and steps. Usually more than half the bill on a garden.', modifiers: ['access', 'spec'] }
       ],
       lines: [
         L('ex.dig',      'Excavation and cart away', 'Dig, load and dispose', 'per_m3', 'excavationVol', 95, 'placeholder'),
@@ -1303,7 +1373,7 @@ select.cell:hover { border-color: var(--rule); }
       },
       limits: {
         minWidth: 2, maxWidth: 12, minDepth: 2, maxDepth: 8,
-        step: 0.25, maxBathrooms: 3, maxTrees: 4
+        by: 0.25, maxBathrooms: 3, maxTrees: 4
       },
       buildTypes: JSON.parse(JSON.stringify(BUILD_TYPES))
     };
@@ -1662,11 +1732,18 @@ select.cell:hover { border-color: var(--rule); }
   var RB = root.DATUM.RATEBOOK;
   var KEY = 'datum.ratebook.v1';
 
+  /* Bumped whenever the SHAPE of the book changes — new build types, new steps,
+     new question wording. A stored book from an older shape is rebuilt from the
+     current defaults with the rates carried across, so nobody is left on a
+     structure the app no longer understands. */
+  var SCHEMA = 2;
+
   function now() { return new Date().toISOString(); }
 
   function blank() {
     var book = RB.defaultBook();
     return {
+      schema: SCHEMA,
       published: JSON.parse(JSON.stringify(book)),
       draft: JSON.parse(JSON.stringify(book)),
       dirty: false,
@@ -1675,12 +1752,42 @@ select.cell:hover { border-color: var(--rule); }
     };
   }
 
+  /** Rebuild on the current structure, keeping every rate that still exists. */
+  function migrate(old) {
+    var fresh = blank();
+    try {
+      var kept = {};
+      ((old.published && old.published.buildTypes) || []).forEach(function (t) {
+        (t.lines || []).forEach(function (l) { kept[l.id] = l; });
+      });
+      ['published', 'draft'].forEach(function (k) {
+        fresh[k].buildTypes.forEach(function (t) {
+          t.lines.forEach(function (l) {
+            var was = kept[l.id];
+            if (!was) return;
+            l.rate = was.rate;
+            l.source = was.source;
+            l.enabled = was.enabled !== false;
+          });
+        });
+        if (old.published && old.published.commercial) fresh[k].commercial = old.published.commercial;
+        if (old.published && old.published.fees) fresh[k].fees = old.published.fees;
+        if (old.published && old.published.foundations) fresh[k].foundations = old.published.foundations;
+      });
+      fresh.log = (old.log || []).slice(0, 200);
+      fresh.log.unshift({ at: now(), who: 'Datum', kind: 'edit',
+        what: 'Rate book structure updated. Your rates were carried across.' });
+    } catch (e) { /* a fresh book is better than a broken one */ }
+    return write(fresh);
+  }
+
   function read() {
     try {
       var raw = root.localStorage.getItem(KEY);
       if (!raw) return blank();
       var parsed = JSON.parse(raw);
       if (!parsed || !parsed.draft || !parsed.published) return blank();
+      if (parsed.schema !== SCHEMA) return migrate(parsed);
       return parsed;
     } catch (e) {
       return blank();
@@ -2151,6 +2258,27 @@ select.cell:hover { border-color: var(--rule); }
         '</div></div>';
     });
     html += '</div><p class="panel-note">1.00 leaves a rate alone. 1.10 adds ten per cent. Factors multiply together.</p></div>';
+
+    // ---- the questions the client is actually asked
+    var asked = type.measurements.filter(function (m) { return m.ask; });
+    if (asked.length) {
+      html += '<div class="panel"><div class="panel-head"><h3>Questions the client sees</h3>' +
+        '<span class="spacer"></span><span class="eyebrow">' + (type.steps || []).length + ' pages</span></div>' +
+        '<div class="tablewrap"><table class="grid-table"><thead><tr>' +
+        '<th style="width:13%">Page</th><th style="width:28%">Question</th><th>Helper text</th>' +
+        '<th style="width:12%">Answered with</th></tr></thead><tbody>';
+      (type.steps || []).forEach(function (st) {
+        asked.filter(function (m) { return m.ask.step === st.id; }).forEach(function (m) {
+          html += '<tr data-ask="' + m.id + '">' +
+            '<td class="num">' + esc(st.short || st.id) + '</td>' +
+            '<td><input class="cell" value="' + esc(m.ask.q) + '" data-askf="q" aria-label="Question for ' + esc(m.label) + '"></td>' +
+            '<td><input class="cell" value="' + esc(m.ask.help || '') + '" data-askf="help" aria-label="Helper text for ' + esc(m.label) + '"></td>' +
+            '<td class="num">' + esc(m.ask.input) + '</td></tr>';
+        });
+      });
+      html += '</tbody></table></div><p class="panel-note">This is the wording on the public estimator, ' +
+        'in the order it is asked. Change it here and the site changes.</p></div>';
+    }
 
     // ---- measurements reference
     html += '<div class="panel"><div class="panel-head"><h3>Measurements</h3><span class="spacer"></span>' +
@@ -2708,6 +2836,19 @@ select.cell:hover { border-color: var(--rule); }
           ty.lines.forEach(function (l) {
             if (l.id === sr) { l.rate = parseFloat(t.value) || 0; l.source = 'lee'; }
           });
+        });
+      });
+      return;
+    }
+
+    var arow = t.closest ? t.closest('[data-ask]') : null;
+    if (arow && t.hasAttribute('data-askf')) {
+      live(function (book) {
+        var type = RB.typeById(book, view.typeId);
+        type.measurements.forEach(function (m) {
+          if (m.id === arow.getAttribute('data-ask') && m.ask) {
+            m.ask[t.getAttribute('data-askf')] = t.value;
+          }
         });
       });
       return;

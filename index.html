@@ -120,7 +120,7 @@
         ourselves, who take it or leave it.
       </p>
       <div class="hero-cta" id="hero-cta">
-        <a class="btn" href="#/size">Price my extension</a>
+        <a class="btn" href="#/start">Price my project</a>
         <a class="btn btn-line" href="#how">How it works</a>
       </div>
     </div>
@@ -179,7 +179,7 @@
             be true, and Datum tells you on the first screen rather than in month
             three.</p>
             <div class="hero-cta" style="margin-top:.6rem">
-              <a class="btn" href="#/size">See what yours costs</a>
+              <a class="btn" href="#/start">See what yours costs</a>
             </div>
           </div>
         </article>
@@ -291,6 +291,40 @@
 </div>
 
 <!-- ==================================================================== -->
+<!-- CHOOSER                                                              -->
+<!-- ==================================================================== -->
+<div class="view" id="view-start">
+  <div class="flow" style="grid-template-rows:auto auto">
+    <header class="flowbar">
+      <div class="flowbar-in">
+        <a class="brand" href="#/" aria-label="Datum, home">
+          <svg width="20" height="20" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+            <path d="M1 15h20" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M11 3.5 17 15H5L11 3.5Z" fill="var(--accent)"/>
+            <path d="M11 3.5 17 15H5L11 3.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+            <path d="M11 18.5v-3.5" stroke="currentColor" stroke-width="1.4"/>
+          </svg>
+          <b>Datum</b>
+        </a>
+        <span class="eyebrow" style="margin-left:auto">Step 1 · what are you building?</span>
+      </div>
+    </header>
+    <div class="start-wrap">
+      <div class="band-head">
+        <p class="eyebrow">Pick one</p>
+        <h1 style="font-family:var(--disp);font-weight:700;font-stretch:112%;font-size:clamp(2rem,4.4vw,3.3rem);line-height:1.02;letter-spacing:-.032em">What are you building?</h1>
+        <p class="lede">Each one asks a different set of questions, because each one is priced a different way. None of them take more than a couple of minutes.</p>
+      </div>
+      <div class="start-grid" id="start-grid"></div>
+      <p class="foot-note" style="margin-top:1.6rem">
+        Every figure is indicative and not a quotation. Rates are placeholders pending a
+        quantity surveyor's schedule.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================================================================== -->
 <!-- FLOW — one shell, the question panel swaps per step                   -->
 <!-- ==================================================================== -->
 <div class="view" id="view-flow">
@@ -311,6 +345,7 @@
           <div class="lab" id="flow-total-lab">Running estimate</div>
           <div class="fig" id="flow-total-fig">—</div>
         </div>
+        <a class="btn btn-ghost btn-sm ratebook-link" href="admin.html" title="Lee's rate book">Rate book</a>
       </div>
     </header>
 
@@ -355,13 +390,14 @@
           <b>Datum</b>
         </a>
         <nav class="steps-rail" id="steps-rail-2" aria-label="Estimator steps"></nav>
+        <a class="btn btn-ghost btn-sm ratebook-link" href="admin.html">Rate book</a>
       </div>
     </header>
 
     <div class="result">
       <div class="result-top">
         <div style="display:grid;gap:1.1rem">
-          <p class="eyebrow">Your estimate</p>
+          <p class="eyebrow"><span id="result-type">Your project</span> · your estimate</p>
           <div class="readout" style="box-shadow:none">
             <div class="readout-main">
               <p class="eyebrow" id="readout-label">Estimated total, including VAT</p>
@@ -418,7 +454,7 @@
             <p id="margin-note">—</p>
           </div>
           <div class="flow-nav">
-            <a class="btn btn-ghost btn-sm" href="#/inside">← Change something</a>
+            <a class="btn btn-ghost btn-sm" id="result-back" href="#/start">← Change something</a>
             <a class="skip" href="#/">Back to the start</a>
           </div>
         </div>
@@ -439,7 +475,7 @@
 <script src="src/store.js"></script>
 <script src="src/rates.js"></script>
 <script src="src/engine.js"></script>
-<script src="src/iso.js"></script>
+<script src="src/draw2d.js"></script>
 <script src="src/router.js"></script>
 <script src="src/hero.js"></script>
 <script src="src/flow.js"></script>
