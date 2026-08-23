@@ -110,14 +110,34 @@ assumptions.
 ## Scope
 
 **The rate book covers all five build types:** extensions, renovations, loft
-conversions, new builds, and patios and outdoor work. 44 priced items in total,
-of which 37 are still placeholders waiting on real rates — the admin counts
+conversions, new builds, and patios and outdoor work. 53 priced items in total,
+of which 46 are still placeholders waiting on real rates — the admin counts
 them for you and stops calling a figure a placeholder the moment Lee types over
 it.
 
 **All five build types have a public flow.** Extensions, renovations, loft
 conversions, new builds, and patios and outdoor work — 18 question pages
 between them, all generated from the rate book.
+
+**Renovations are priced a room at a time.** A refurbishment is never one
+intensity spread over a whole house — the kitchen goes back to brick, the
+bedrooms get a skim and a coat, the hall gets painted. Pricing that off a single
+"floor area treated" figure is wrong for almost every real job.
+
+So the renovation flow asks **one question per room**, with four answers: leave
+it, decorate, refit, or strip out. Each level switches a bundle of trade lines
+on for that room, and every row carries its own price, because a figure per room
+is what makes a client believe the total.
+
+Room areas are never asked for. The total is measured from the sketch or the
+trace; each room takes a share of it weighted by what kind of room it is. An
+individual room will be out; across a house the errors cancel.
+
+Everything that is genuinely bought once for the whole house — the consumer
+unit, the boiler, structural openings, windows, external doors, the roof — sits
+on its own page, six questions long. The whole flow is **fewer** questions than
+the version it replaced, and produces a room-by-room breakdown instead of one
+number.
 
 **Drawings are plans and sections, not isometric.** Only an extension suits an
 isometric; a loft conversion is entirely about head height under a pitched
@@ -131,6 +151,15 @@ of square the way a photographed plan always is, with the trace over the top.
 One wall carries the dimension they typed in, and that single number scales
 every other measurement on the drawing. Change the floor area and the plan
 rescales, so the drawing can never contradict the figure being priced.
+
+**The sketch tool is built**, and it is the part of this worth owning. A client
+with no floor plan draws one in about ninety seconds: outline, windows, doors,
+internal walls, then a pin per room. It measures floor area, perimeter, internal
+wall runs, the plaster area net of openings, and the room list, and writes all of
+it into the estimate. Two decisions make it quick — rooms are dropped pins rather
+than computed polygons, because position never affects a price; and you type wall
+lengths rather than dragging them, because typing `4.2` is faster *and* more
+accurate. See `docs/sketch-tool.md`.
 
 **The trace tool is built.** On the renovation step, "Trace my plan" opens the
 client's floor plan, they drag a line along a wall whose length is printed on

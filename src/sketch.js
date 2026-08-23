@@ -35,6 +35,7 @@
     { id: 'wc',       label: 'WC',       short: 'W' },
     { id: 'bedroom',  label: 'Bedroom',  short: 'Bd' },
     { id: 'living',   label: 'Living',   short: 'L' },
+    { id: 'hall',     label: 'Hall',     short: 'H' },
     { id: 'other',    label: 'Other',    short: '·' }
   ];
 
@@ -43,7 +44,7 @@
     { id: 'windows',  n: 2, label: 'Windows',  hint: 'Click a wall to put a window in it. Click a window to change its width.' },
     { id: 'doors',    n: 3, label: 'Doors',    hint: 'Click a wall to put an external door or bi-fold in it.' },
     { id: 'internal', n: 4, label: 'Inside',   hint: 'Draw the internal walls. Click along a wall, then press Enter to finish that run.' },
-    { id: 'rooms',    n: 5, label: 'Rooms',    hint: 'Drop a pin in each room and say what it is. Where you put it does not matter — only how many.' }
+    { id: 'rooms',    n: 5, label: 'Rooms',    hint: 'Drop a pin for every room in the house — upstairs too. Where you put it does not matter, only how many there are, because that is what the price is built from.' }
   ];
 
   var S = {
@@ -185,7 +186,10 @@
       plaster: plaster,
       windows: win.length, windowWidth: win.reduce(function (t, o) { return t + o.width; }, 0),
       extDoors: extDoor.length, intDoors: intDoor.length,
-      counts: counts
+      counts: counts,
+      // the pins in the order they were dropped — this becomes the room list
+      // the renovation flow prices, one question at a time
+      rooms: S.markers.map(function (m2) { return m2.type; })
     };
   }
 
@@ -402,7 +406,7 @@
 
     // room pins
     S.markers.forEach(function (m, i) {
-      var t = ROOM_TYPES.filter(function (r) { return r.id === m.type; })[0] || ROOM_TYPES[5];
+      var t = ROOM_TYPES.filter(function (r) { return r.id === m.type; })[0] || ROOM_TYPES[ROOM_TYPES.length - 1];
       out.push('<g class="sk-pin" data-marker="' + i + '"><circle cx="' + (m.x * K) + '" cy="' + (m.y * K) +
         '" r="15"/><text x="' + (m.x * K) + '" y="' + (m.y * K + 5) + '" text-anchor="middle">' +
         esc(t.short) + '</text></g>');

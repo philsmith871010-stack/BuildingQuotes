@@ -965,6 +965,109 @@ select.cell:hover { border-color: var(--rule); }
     };
   }
 
+
+  /* =====================================================================
+     Rooms — the granularity a renovation actually has
+     =====================================================================
+     A renovation is not one intensity spread over a whole house. The kitchen
+     goes back to brick, the bedrooms get a skim and a coat, the hall gets
+     painted. Pricing all of it off a single "floor area treated" figure is
+     wrong for almost every real job.
+
+     The unit that matches how people think about it is the room — and the
+     sketch tool already produces the room list, so it costs the client nothing
+     to ask.
+
+     ONE question per room, four answers. Not "does this room need electrics,
+     floors, ceilings, plaster": that is four questions times eight rooms, and
+     nobody finishes it.
+
+     Room areas are not asked for either. The total is measured accurately from
+     the sketch; each room takes a share of it weighted by what kind of room it
+     is. Individual rooms will be out; across a house the errors cancel.
+     ===================================================================== */
+
+  var ROOM_TYPES = [
+    { id: 'kitchen',  label: 'Kitchen',        weight: 12 },
+    { id: 'living',   label: 'Living room',    weight: 16 },
+    { id: 'bedroom',  label: 'Bedroom',        weight: 11 },
+    { id: 'bathroom', label: 'Bathroom',       weight: 5 },
+    { id: 'wc',       label: 'WC',             weight: 2 },
+    { id: 'hall',     label: 'Hall / landing', weight: 10 },
+    { id: 'other',    label: 'Other room',     weight: 9 }
+  ];
+
+  /* `short` is what fits on a row next to eight other rooms; `label` is what
+     the client reads when they are deciding what the four words mean. */
+  var ROOM_LEVELS = [
+    { id: 'none',     label: 'Leave it',  short: 'Leave',    blurb: 'Not touched.' },
+    { id: 'decorate', label: 'Decorate',  short: 'Decorate', blurb: 'Prep, two coats and a new floor covering.' },
+    { id: 'refit',    label: 'Refit',     short: 'Refit',    blurb: 'Plus a skim, lighting and sockets, a new door and a radiator.' },
+    { id: 'strip',    label: 'Strip out', short: 'Strip',    blurb: 'Plus back to brick and joists, first fix, a new ceiling and insulation.' }
+  ];
+
+  var RANK = { none: 0, decorate: 1, refit: 2, strip: 3 };
+
+  function roomType(id) {
+    var found = ROOM_TYPES[6];
+    ROOM_TYPES.forEach(function (t) { if (t.id === id) found = t; });
+    return found;
+  }
+
+  /** Each room's share of the measured floor area, by type weight. */
+  function roomAreas(rooms, floorArea) {
+    var total = 0;
+    rooms.forEach(function (r) { total += roomType(r.type).weight; });
+    if (!total) return rooms.map(function () { return 0; });
+    return rooms.map(function (r) {
+      return Math.round((floorArea || 0) * roomType(r.type).weight / total * 10) / 10;
+    });
+  }
+
+  /** The quantities the rate lines are driven by, worked out from the rooms. */
+  function roomMeasurements(rooms, areas) {
+    var m = { workedArea: 0, refitArea: 0, stripArea: 0,
+              doorsReplaced: 0, radiators: 0, kitchens: 0, bathrooms: 0, wcs: 0 };
+    rooms.forEach(function (r, i) {
+      var lv = RANK[r.level] || 0, a = areas[i] || 0;
+      if (lv >= 1) m.workedArea += a;
+      if (lv >= 2) {
+        m.refitArea += a;
+        m.doorsReplaced += 1;
+        m.radiators += 1;
+        if (r.type === 'kitchen') m.kitchens += 1;
+        if (r.type === 'bathroom') m.bathrooms += 1;
+        if (r.type === 'wc') m.wcs += 1;
+      }
+      if (lv >= 3) m.stripArea += a;
+    });
+    ['workedArea', 'refitArea', 'stripArea'].forEach(function (k) {
+      m[k] = Math.round(m[k] * 10) / 10;
+    });
+    return m;
+  }
+
+  /** A three-bed semi being done properly — the shape most jobs start from. */
+  function defaultRooms() {
+    return [
+      { type: 'kitchen',  level: 'strip' },
+      { type: 'living',   level: 'refit' },
+      { type: 'living',   level: 'refit' },
+      { type: 'bedroom',  level: 'refit' },
+      { type: 'bedroom',  level: 'refit' },
+      { type: 'bedroom',  level: 'refit' },
+      { type: 'bathroom', level: 'strip' },
+      { type: 'wc',       level: 'refit' },
+      { type: 'hall',     level: 'decorate' }
+    ];
+  }
+
+  var ROOMS = {
+    types: ROOM_TYPES, levels: ROOM_LEVELS, rank: RANK,
+    typeOf: roomType, areas: roomAreas, measurements: roomMeasurements,
+    defaults: defaultRooms
+  };
+
   /* =====================================================================
      Build types
      ===================================================================== */
@@ -1034,42 +1137,66 @@ select.cell:hover { border-color: var(--rule); }
     {
       id: 'renovation',
       name: 'Renovations',
-      blurb: 'Whole-house and room-by-room refurbishment. Priced from an uploaded floor plan.',
+      blurb: 'Whole-house and room-by-room refurbishment, priced a room at a time.',
       enabled: true,
       usesFoundations: false,
       measurements: [
-        { id: 'floorArea', label: 'Floor area treated', unit: 'm²',
-          ask: { step: 'size', q: 'Total floor area', help: 'Traced from your plan. A three-bed semi is usually 85 to 100 m² — adjust it and the plan rescales.', input: 'area', min: 10, max: 500, by: 5, value: 90 } },
-        { id: 'replasterArea', label: 'Area replastered', unit: 'm²',
-          ask: { step: 'size', q: 'Wall area replastered', help: 'Walls and ceilings, not floor area. Roughly two and a half times the floor area for a full refurbishment.', input: 'area', min: 0, max: 1200, by: 10, value: 210, zero: 'None' } },
-        { id: 'rewireArea', label: 'Area rewired', unit: 'm²',
-          ask: { step: 'size', q: 'Area being rewired', help: 'Leave at none if the wiring is staying.', input: 'area', min: 0, max: 500, by: 5, value: 90, zero: 'None' } },
+        { id: 'floorArea', label: 'Floor area', unit: 'm²',
+          ask: { step: 'size', q: 'Total floor area', help: 'Every storey added together. Sketch the house and this is measured rather than guessed. A three-bed semi is usually 85 to 100 m².', input: 'area', min: 10, max: 500, by: 5, value: 90 } },
+
+        /* worked out from the room list — never asked directly */
+        { id: 'workedArea',    label: 'Area being worked on', unit: 'm²' },
+        { id: 'refitArea',     label: 'Area refitted',        unit: 'm²' },
+        { id: 'stripArea',     label: 'Area stripped out',    unit: 'm²' },
+        { id: 'doorsReplaced', label: 'Internal doors',       unit: 'no.' },
+        { id: 'radiators',     label: 'Radiators',            unit: 'no.' },
+        { id: 'kitchens',      label: 'Kitchens',             unit: 'no.' },
+        { id: 'bathrooms',     label: 'Bathrooms',            unit: 'no.' },
+        { id: 'wcs',           label: 'WCs',                  unit: 'no.' },
+
+        /* the things that are not room by room */
         { id: 'wallRemoval', label: 'Wall removed', unit: 'm',
-          ask: { step: 'structure', q: 'Walls coming out', help: 'Knocking rooms together. Steel and making good included.', input: 'length', min: 0, max: 20, by: 0.5, value: 3, zero: 'None' } },
+          ask: { step: 'house', q: 'Walls coming out', help: 'Knocking rooms together. Steel, padstones and making good included.', input: 'length', min: 0, max: 20, by: 0.5, value: 3, zero: 'None' } },
         { id: 'windows', label: 'Windows replaced', unit: 'no.',
-          ask: { step: 'structure', q: 'Windows replaced', help: 'Like for like, supplied and fitted.', input: 'count', max: 24, value: 8 } },
-        { id: 'kitchens', label: 'Kitchens', unit: 'no.',
-          ask: { step: 'rooms', q: 'A new kitchen?', help: 'Fitting only.', input: 'yesno', value: 1 } },
-        { id: 'bathrooms', label: 'Bathrooms', unit: 'no.',
-          ask: { step: 'rooms', q: 'Bathrooms', help: 'Labour only.', input: 'count', max: 5, value: 2 } }
+          ask: { step: 'house', q: 'Windows replaced', help: 'Like for like, supplied and fitted. Scaffolding is in the rate.', input: 'count', max: 24, value: 8 } },
+        { id: 'extDoors', label: 'External doors', unit: 'no.',
+          ask: { step: 'house', q: 'External doors', help: 'Front, back or French doors, supplied and fitted.', input: 'count', max: 6, value: 1 } },
+        { id: 'consumerUnit', label: 'Consumer unit and mains', unit: 'no.',
+          ask: { step: 'house', q: 'New consumer unit?', help: 'The board, the mains work and the electrical certificate. Needed once, however many rooms are rewired.', input: 'yesno', value: 1 } },
+        { id: 'newBoiler', label: 'Boiler and heating plant', unit: 'no.',
+          ask: { step: 'house', q: 'New boiler?', help: 'Boiler, controls, flue and cylinder. The radiators themselves are counted room by room.', input: 'yesno', value: 1 } },
+        { id: 'roofArea', label: 'Roof recovered', unit: 'm²',
+          ask: { step: 'house', q: 'Roof recovered', help: 'Strip and re-tile, including battens, felt and scaffolding. Leave at none if the roof is sound.', input: 'area', min: 0, max: 300, by: 5, value: 0, zero: 'Not this time' } }
       ],
       steps: [
-        { id: 'size',      view: 'plan',    short: 'Scope', title: 'How much of the house?', lede: 'The drawing is your own floor plan, uploaded and traced. You drag one line along a wall whose length you know, and that single measurement scales everything else on it.' },
-        { id: 'structure', view: 'plan',    short: 'Structure', title: 'Is anything moving?', lede: 'Walls out, windows replaced. The structural work is what separates a refurbishment from redecorating.' },
-        { id: 'rooms',     view: 'plan',    short: 'Rooms', title: 'Kitchen and bathrooms', lede: 'Labour only on both — you spend what you want on units and sanitaryware.' },
+        { id: 'size',      view: 'plan',    short: 'Size',  title: 'How big is the house?', lede: 'One number drives everything else. Sketch the house or trace your floor plan and it is measured rather than estimated.' },
+        { id: 'work',      view: 'plan',    short: 'Rooms', title: 'How much work, room by room?', lede: 'One answer per room. Most refurbishments are a mix — the kitchen back to brick, the bedrooms skimmed and painted, the hall just decorated.', rooms: true },
+        { id: 'house',     view: 'section', short: 'House', title: 'The things that are not room by room', lede: 'Six questions covering the work you buy once for the whole house, however many rooms are involved.' },
         { id: 'condition', view: 'section', short: 'Condition', title: 'What are we working with?', lede: 'Older fabric costs more to work into, and a family living upstairs costs time.', modifiers: ['age', 'occupied', 'access', 'spec'] }
       ],
       lines: [
-        L('ren.strip',      'Strip out and clear',    'Removals, skips and protection', 'per_m2', 'floorArea', 85, 'placeholder'),
-        L('ren.rewire',     'Rewire',                 'New circuits, consumer unit, testing and certificate', 'per_m2', 'rewireArea', 78, 'placeholder'),
-        L('ren.plumbing',   'Plumbing and heating',   'First and second fix, radiators, boiler allowance', 'per_m2', 'floorArea', 96, 'placeholder'),
-        L('ren.replaster',  'Plastering',             'Overboard or hack off and re-skim', 'per_m2', 'replasterArea', 42, 'placeholder'),
-        L('ren.opening',    'Structural openings',    'Steel, padstones and making good', 'per_linear_m', 'wallRemoval', 1000, 'lee'),
-        L('ren.windows',    'Windows',                'Supplied and fitted, like for like', 'per_unit', 'windows', 850, 'placeholder'),
+        /* room by room — driven by how far each room is being taken */
+        L('ren.strip',      'Strip out and clear',    'Finishes off, back to brick and joists. Removals, skips and protection', 'per_m2', 'stripArea', 85, 'placeholder'),
+        L('ren.firstfix',   'First fix',              'Electrical circuits and pipework back to the board and the boiler', 'per_m2', 'stripArea', 95, 'placeholder'),
+        L('ren.ceilings',   'New ceilings',           'Down, re-boarded and skimmed', 'per_m2', 'stripArea', 48, 'placeholder'),
+        L('ren.insulation', 'Insulation',             'Insulating the external walls while they are open', 'per_m2', 'stripArea', 26, 'placeholder'),
+        L('ren.plaster',    'Plastering',             'Walls and ceiling, overboarded or hacked off and re-skimmed', 'per_m2', 'refitArea', 62, 'placeholder'),
+        L('ren.secondfix',  'Second fix electrics',   'Sockets, switches, lighting and testing', 'per_m2', 'refitArea', 58, 'placeholder'),
+        L('ren.doors',      'Internal doors',         'Door, frame, ironmongery and hanging', 'per_unit', 'doorsReplaced', 220, 'placeholder'),
+        L('ren.radiators',  'Radiators',              'Radiator or towel rail, valves and connection', 'per_unit', 'radiators', 420, 'placeholder'),
+        L('ren.flooring',   'Floor finishes',         'Preparation and laying, materials excluded', 'per_m2', 'workedArea', 65, 'placeholder'),
+        L('ren.decoration', 'Decoration',             'Preparation and two coats', 'per_m2', 'workedArea', 38, 'placeholder'),
         L('ren.kitchen',    'Kitchen fitting',        'Labour only', 'per_unit', 'kitchens', 4500, 'lee'),
         L('ren.bathroom',   'Bathroom',               'Labour only', 'per_unit', 'bathrooms', 3000, 'lee'),
-        L('ren.flooring',   'Floor finishes',         'Preparation and laying, materials excluded', 'per_m2', 'floorArea', 65, 'placeholder'),
-        L('ren.decoration', 'Decoration',             'Two coats throughout', 'per_m2', 'floorArea', 38, 'placeholder')
+        L('ren.wc',         'Cloakroom WC',           'Labour only', 'per_unit', 'wcs', 1200, 'placeholder'),
+
+        /* bought once for the whole house */
+        L('ren.opening',    'Structural openings',    'Steel, padstones and making good', 'per_linear_m', 'wallRemoval', 1000, 'lee'),
+        L('ren.windows',    'Windows',                'Supplied and fitted, like for like, including scaffolding', 'per_unit', 'windows', 850, 'placeholder'),
+        L('ren.extdoors',   'External doors',         'Supplied and fitted', 'per_unit', 'extDoors', 1100, 'placeholder'),
+        L('ren.consumer',   'Consumer unit and mains','Board, mains work, earthing and certificate', 'per_unit', 'consumerUnit', 1450, 'placeholder'),
+        L('ren.heating',    'Boiler and heating plant','Boiler, cylinder, controls, flue and commissioning', 'per_unit', 'newBoiler', 3200, 'placeholder'),
+        L('ren.roof',       'Roof recovering',        'Strip, batten, felt, re-tile and scaffolding', 'per_m2', 'roofArea', 185, 'placeholder')
       ],
       modifiers: [
         {
@@ -1093,8 +1220,10 @@ select.cell:hover { border-color: var(--rule); }
         ACCESS, spec(1.25, 1.60)
       ],
       typical: {
-        label: '90 m² full refurbishment, kitchen and two bathrooms',
-        measurements: { floorArea: 90, replasterArea: 210, rewireArea: 90, wallRemoval: 3, windows: 8, kitchens: 1, bathrooms: 2 },
+        label: '90 m² three-bed refurbishment, kitchen and bathroom back to brick',
+        measurements: { floorArea: 90, wallRemoval: 3, windows: 8, extDoors: 1,
+                        consumerUnit: 1, newBoiler: 1, roofArea: 0 },
+        rooms: defaultRooms(),
         modifiers: { age: 'postwar', occupied: 'empty', access: 'good', spec: 'standard' }
       }
     },
@@ -1382,6 +1511,19 @@ select.cell:hover { border-color: var(--rule); }
     return null;
   }
 
+  /*
+   * A worked example has to be complete: the admin shows it as a set of
+   * editable figures and prices the rate book against them. A room-by-room
+   * type computes most of its quantities from the room list, so they are
+   * resolved here, once, and from then on it looks like every other type.
+   */
+  BUILD_TYPES.forEach(function (t) {
+    if (!t.typical || !t.typical.rooms) return;
+    var m = t.typical.measurements;
+    var derived = roomMeasurements(t.typical.rooms, roomAreas(t.typical.rooms, m.floorArea || 0));
+    Object.keys(derived).forEach(function (k) { if (m[k] === undefined) m[k] = derived[k]; });
+  });
+
   function factorFor(type, selections, lineId) {
     var f = 1;
     (type.modifiers || []).forEach(function (m) {
@@ -1571,9 +1713,13 @@ select.cell:hover { border-color: var(--rule); }
     var type = typeById(book, typeId);
     if (!type || !type.typical) return null;
     var t = type.typical;
+    var m = JSON.parse(JSON.stringify(t.measurements));
+    if (t.rooms) {
+      var rm = roomMeasurements(t.rooms, roomAreas(t.rooms, m.floorArea));
+      Object.keys(rm).forEach(function (k) { m[k] = rm[k]; });
+    }
     return priceJob(book, typeId, {
-      measurements: t.measurements, modifiers: t.modifiers,
-      ground: t.ground, answered: 6
+      measurements: m, modifiers: t.modifiers, ground: t.ground, answered: 6
     });
   }
 
@@ -1602,7 +1748,8 @@ select.cell:hover { border-color: var(--rule); }
     priceJob: priceJob,
     priceTypical: priceTypical,
     placeholders: placeholders,
-    factorFor: factorFor
+    factorFor: factorFor,
+    ROOMS: ROOMS
   };
 })(window);
 
@@ -1784,7 +1931,7 @@ select.cell:hover { border-color: var(--rule); }
      new question wording. A stored book from an older shape is rebuilt from the
      current defaults with the rates carried across, so nobody is left on a
      structure the app no longer understands. */
-  var SCHEMA = 2;
+  var SCHEMA = 3;
 
   function now() { return new Date().toISOString(); }
 

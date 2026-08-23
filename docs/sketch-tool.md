@@ -70,6 +70,12 @@ above and nothing else. `src/flow.js` maps that onto rate-book measurements in
 one function, `applySketch()` — deliberately explicit, so adding a build type
 is a five-line change rather than an abstraction.
 
+The pins do more work than their size suggests: they come back from `measure()`
+as an ordered list of room types, and that list **becomes the renovation's room
+list** — the thing the client then answers one question about per room. Sketching
+the house is therefore not just a way to get a floor area; it is what makes the
+room-by-room pricing possible without asking anyone to type a list of rooms.
+
 ## Licensing position
 
 The sketch tool has **no dependencies**. It is plain ES5-era JavaScript against

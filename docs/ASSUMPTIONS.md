@@ -149,7 +149,8 @@ misled:
 10. How many builders see each tender? First to accept, or allocated?
 11. Retention, and payment terms after each fortnightly valuation.
 12. Geography for v1.
-13. Renovations: Rightmove floor plans are the agent's copyright, so we should not pull them. The plan is for the client to upload their own and drag a line along a known dimension to set the scale. Agreed?
+13. Renovations: Rightmove floor plans are the agent's copyright, so we should not pull them. The plan is for the client to upload their own and drag a line along a known dimension to set the scale, or sketch the house from scratch. Agreed?
+13a. **Renovations are now priced a room at a time** — leave it, decorate, refit, or strip out — which needs about a dozen rates from Lee that did not exist before: first fix, new ceilings, insulation, internal doors, radiators, cloakroom WC, consumer unit, boiler and heating plant, and roof recovering. The four levels are our bundling of those trades, not Lee's. He should say whether that is how he would break a refurbishment down, and whether anything in the "refit" bundle belongs in "strip out" or the other way round.
 
 **Positioning**
 14. Datum prices the job, takes 5% of it, and signs off the valuations that release the builder's money. Someone will ask about that. The site answers it head-on under "straight answers" — Lee should be happy with how it is answered.

@@ -72,6 +72,7 @@
       jobs[typeId] = {
         measurements: m, modifiers: mods,
         ground: { soil: 'high', trees: [] },
+        rooms: type.steps.some(function (st) { return st.rooms; }) ? RB.ROOMS.defaults() : null,
         touched: {}, seen: {}
       };
     }
@@ -90,6 +91,14 @@
       m.perimeter = 4 * Math.sqrt(Math.max(m.footprintArea || 0, 1));
     }
     if (typeId === 'loft') m.perimeter = 4 * Math.sqrt(Math.max(m.floorArea || 0, 1));
+
+    // A room-by-room type prices off the room list, not off a single intensity
+    // spread over the whole house. The client answers one question per room;
+    // these are the quantities that fall out of those answers.
+    if (j.rooms) {
+      var derived = RB.ROOMS.measurements(j.rooms, RB.ROOMS.areas(j.rooms, m.floorArea || 0));
+      Object.keys(derived).forEach(function (k) { m[k] = derived[k]; });
+    }
     return j;
   }
 
@@ -272,9 +281,16 @@
 
     if (typeId === 'renovation') {
       set('floorArea', m.totalArea);
-      set('replasterArea', m.plaster);
-      set('rewireArea', m.totalArea);
       set('windows', m.windows);
+      set('extDoors', m.extDoors);
+      // the pins ARE the room list — a kitchen or a bathroom starts at a strip
+      // out because that is what people are doing when they name one
+      if (m.rooms && m.rooms.length) {
+        j.rooms = m.rooms.map(function (type) {
+          return { type: type, level: (type === 'kitchen' || type === 'bathroom') ? 'strip' : 'refit' };
+        });
+        j.touched.rooms = true;
+      }
     } else if (typeId === 'newbuild') {
       set('footprintArea', m.area);
       set('floorArea', m.totalArea);
@@ -291,12 +307,79 @@
     var note = doc.querySelector('#flow-ask .trace-cta');
     if (note) {
       note.innerHTML = '<div><p class="q-title">Measured from your sketch.</p>' +
-        '<p class="q-help">' + m.totalArea.toFixed(1) + ' m² over ' +
-        (m.counts.kitchen || 0) + ' kitchen' + ((m.counts.kitchen || 0) === 1 ? '' : 's') +
+        '<p class="q-help">' + m.totalArea.toFixed(1) + ' m²' +
+        (m.rooms && m.rooms.length ? ' over ' + m.rooms.length + ' rooms' : '') +
+        ', ' + m.windows + ' window' + (m.windows === 1 ? '' : 's') +
         ' and ' + baths + ' bathroom' + (baths === 1 ? '' : 's') +
         '. The figures below have been set from it.</p></div>' +
         '<div class="sk-cta"><button type="button" class="btn btn-ghost" id="do-sketch">Change the sketch</button></div>';
     }
+  }
+
+
+  /* ---- the room-by-room step ------------------------------------------------
+   * The one screen that carries a renovation. Every other question on the site
+   * is one field; this is a list, because a house is a list of rooms and each
+   * one is being taken a different distance.
+   *
+   * The price against each room is real — it is that room priced on its own
+   * through the same rate lines — because a figure per room is what makes a
+   * client believe the total.
+   */
+
+  function roomCost(typeId, j, room, area) {
+    var one = RB.ROOMS.measurements([room], [area]);
+    var m = {};
+    Object.keys(one).forEach(function (k) { m[k] = one[k]; });
+    var t = RB.tradeLines(book(), typeId, {
+      measurements: m, modifiers: j.modifiers, ground: null
+    });
+    return t.trade;
+  }
+
+  function roomsHtml(typeId, j) {
+    var LV = RB.ROOMS.levels;
+    var areas = RB.ROOMS.areas(j.rooms, j.measurements.floorArea || 0);
+
+    var rows = j.rooms.map(function (r, i) {
+      var t = RB.ROOMS.typeOf(r.type);
+      return '<div class="room-row" data-room="' + i + '">' +
+        '<div class="room-what">' +
+          '<b>' + esc(t.label) + '</b>' +
+          '<span class="room-area">' + areas[i].toFixed(1) + ' m²</span>' +
+        '</div>' +
+        '<div class="seg room-seg" role="group" aria-label="' + esc(t.label) + '">' +
+          LV.map(function (l) {
+            return '<button type="button" data-level="' + l.id + '" aria-pressed="' +
+              ((r.level || 'refit') === l.id) + '" title="' + esc(l.label) + ' — ' + esc(l.blurb) + '">' +
+              esc(l.short) + '</button>';
+          }).join('') +
+        '</div>' +
+        '<span class="room-cost">' + (r.level === 'none' ? '—' : money(roomCost(typeId, j, r, areas[i]))) + '</span>' +
+        '<button type="button" class="room-x" data-drop="' + i + '" aria-label="Remove this ' + esc(t.label) + '">×</button>' +
+      '</div>';
+    }).join('');
+
+    return '<div class="rooms">' +
+      '<div class="room-bulk"><span class="q-help">Set every room to</span>' +
+        '<div class="seg">' + LV.map(function (l) {
+          return '<button type="button" data-all="' + l.id + '">' + esc(l.label) + '</button>';
+        }).join('') + '</div></div>' +
+      '<div class="room-list">' + rows + '</div>' +
+      '<div class="room-add"><span class="q-help">Add a room</span>' +
+        '<div class="seg seg-wrap">' + RB.ROOMS.types.map(function (t) {
+          return '<button type="button" data-add="' + t.id + '">+ ' + esc(t.label) + '</button>';
+        }).join('') + '</div></div>' +
+      '<p class="q-help room-note">' +
+        LV.slice(1).map(function (l) { return '<b>' + esc(l.label) + '</b> — ' + esc(l.blurb); }).join('<br>') +
+      '</p></div>';
+  }
+
+  function repaintRooms() {
+    var host = doc.querySelector('#flow-ask .rooms');
+    if (!host || !route || !route.typeId) return;
+    var j = job(route.typeId);
+    host.outerHTML = roomsHtml(route.typeId, j);
   }
 
   function renderStep(r) {
@@ -346,6 +429,7 @@
              '" id="do-sketch">Sketch my house</button>' : '') +
           '</div></div>'
         : '') +
+      (step.rooms && j.rooms ? roomsHtml(type.id, j) : '') +
       '<div class="flow-fields">' + fields + (step.ground ? groundHtml(j) : '') + mods + '</div>' +
       '<div class="flow-nav">' +
         '<a class="btn btn-ghost" href="' + prev + '">← Back</a>' +
@@ -681,6 +765,48 @@
             '<button type="button" class="btn btn-ghost" id="do-trace">Trace again</button>';
         }
       });
+      return;
+    }
+
+    // room-by-room: level, bulk set, add, remove
+    var lvBtn = t.closest ? t.closest('[data-level]') : null;
+    if (lvBtn) {
+      var jr = job(route.typeId), row = lvBtn.closest('[data-room]');
+      if (row && jr.rooms) {
+        jr.rooms[+row.getAttribute('data-room')].level = lvBtn.getAttribute('data-level');
+        jr.touched.rooms = true;
+        repaintRooms(); update();
+      }
+      return;
+    }
+    var allBtn = t.closest ? t.closest('[data-all]') : null;
+    if (allBtn) {
+      var ja = job(route.typeId), lvl = allBtn.getAttribute('data-all');
+      if (ja.rooms) {
+        ja.rooms.forEach(function (r) { r.level = lvl; });
+        ja.touched.rooms = true;
+        repaintRooms(); update();
+      }
+      return;
+    }
+    var addBtn = t.closest ? t.closest('[data-add]') : null;
+    if (addBtn) {
+      var jd = job(route.typeId);
+      if (jd.rooms && jd.rooms.length < 24) {
+        jd.rooms.push({ type: addBtn.getAttribute('data-add'), level: 'refit' });
+        jd.touched.rooms = true;
+        repaintRooms(); update();
+      }
+      return;
+    }
+    var dropBtn = t.closest ? t.closest('[data-drop]') : null;
+    if (dropBtn) {
+      var jx = job(route.typeId);
+      if (jx.rooms && jx.rooms.length > 1) {
+        jx.rooms.splice(+dropBtn.getAttribute('data-drop'), 1);
+        jx.touched.rooms = true;
+        repaintRooms(); update();
+      }
       return;
     }
 
