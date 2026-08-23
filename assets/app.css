@@ -172,6 +172,8 @@
 @media (max-width: 700px) { .gauge-rail { display: none !important; } }
 
 /* --- FLOW ------------------------------------------------------------------- */
+html { scroll-padding-top: 62px; }
+
 .flow {
   min-height: 100svh;
   display: grid;
@@ -181,8 +183,9 @@
 
 .flowbar {
   border-bottom: 1px solid var(--rule-soft);
-  background: color-mix(in srgb, var(--paper) 92%, transparent);
-  backdrop-filter: blur(10px);
+  /* Opaque, not translucent: content scrolling underneath was showing through
+     and the page heading read as a ghost behind the bar. */
+  background: var(--paper);
   position: sticky; top: 0; z-index: 30;
 }
 .flowbar-in {
@@ -249,7 +252,21 @@
   /* the drawing stays put while the questions scroll past it */
   .flow-draw { position: sticky; top: 57px; height: calc(100svh - 57px); }
 }
-@media (max-width: 999px) { .flow-draw { border-left: 0; border-top: 1px solid var(--rule-soft); order: -1; min-height: 38svh; } }
+@media (max-width: 999px) {
+  /* On a phone the drawing sits above the questions and STAYS there while you
+     answer them — otherwise it scrolls away and the client never sees the thing
+     they are describing. */
+  .flow-draw {
+    border-left: 0; border-bottom: 1px solid var(--rule);
+    order: -1;
+    position: sticky; top: 52px; z-index: 20;
+    height: 34svh; min-height: 220px;
+    background: var(--surface);
+  }
+  .flow-draw-bar { padding-block: .4rem; }
+  .flow-draw-bar .legend { display: none; }
+  .flow-draw-foot { padding-block: .35rem; }
+}
 .flow-draw-bar {
   display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
   padding: .55rem .85rem; border-bottom: 1px solid var(--rule-soft); background: var(--well);

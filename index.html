@@ -7,7 +7,11 @@
 <meta name="description" content="Know the number before you build. Extensions priced properly — foundations, drawings, fees and VAT — then put to builders we have vetted.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap">
+<!-- Fonts load without blocking the page: if the font CDN is slow or blocked,
+     the site still renders immediately in the fallback stack. -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap"></noscript>
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/app.css">
 </head>
@@ -311,7 +315,7 @@
     </header>
     <div class="start-wrap">
       <div class="band-head">
-        <p class="eyebrow">Pick one</p>
+        <p class="eyebrow">Tick all that apply</p>
         <h1 style="font-family:var(--disp);font-weight:700;font-stretch:112%;font-size:clamp(2rem,4.4vw,3.3rem);line-height:1.02;letter-spacing:-.032em">What are you building?</h1>
         <p class="lede">Tick everything you are thinking about — an extension, a loft and a refurbishment are one job, not three, and cost less that way because you only pay for one set of drawings.</p>
       </div>

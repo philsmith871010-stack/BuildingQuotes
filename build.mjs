@@ -64,7 +64,9 @@ for (const page of PAGES) {
 <meta name="description" content="${page.description}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="${FONTS}">
+<link rel="preload" as="style" href="${FONTS}">
+<link rel="stylesheet" href="${FONTS}" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="${FONTS}"></noscript>
 </head>
 <body>
 ${inlined}</body>
@@ -74,7 +76,7 @@ ${inlined}</body>
 
   writeFileSync(
     new URL(`./dist/${page.out}.artifact.html`, import.meta.url),
-    `<title>${page.title}</title>\n<link rel="stylesheet" href="${FONTS}">\n${inlined}`
+    `<title>${page.title}</title>\n<link rel="preload" as="style" href="${FONTS}">\n<link rel="stylesheet" href="${FONTS}" media="print" onload="this.media=\'all\'">\n<noscript><link rel="stylesheet" href="${FONTS}"></noscript>\n${inlined}`
   );
 
   const kb = (n) => (read(`./dist/${n}`).length / 1024).toFixed(1) + ' KB';
@@ -163,7 +165,9 @@ writeFileSync(
 <meta name="description" content="Extension pricing platform — the client estimator and the rate book behind it.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="${FONTS}">
+<link rel="preload" as="style" href="${FONTS}">
+<link rel="stylesheet" href="${FONTS}" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="${FONTS}"></noscript>
 </head>
 <body>
 ${demoInlined}</body>
@@ -173,7 +177,7 @@ ${demoInlined}</body>
 
 writeFileSync(
   new URL('./dist/demo.artifact.html', import.meta.url),
-  `<title>Datum</title>\n<link rel="stylesheet" href="${FONTS}">\n${demoInlined}`
+  `<title>Datum</title>\n<link rel="preload" as="style" href="${FONTS}">\n<link rel="stylesheet" href="${FONTS}" media="print" onload="this.media='all'">\n<noscript><link rel="stylesheet" href="${FONTS}"></noscript>\n${demoInlined}`
 );
 
 console.log(`demo   → dist/demo.html ${(read('./dist/demo.html').length / 1024).toFixed(1)} KB   dist/demo.artifact.html ${(read('./dist/demo.artifact.html').length / 1024).toFixed(1)} KB`);

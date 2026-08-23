@@ -634,7 +634,8 @@
       lines = lines.concat(t.lines);
       trade += t.trade;
       openings = openings || t.hasOpenings;
-      answered += Object.keys(jb.touched || {}).length;
+      // questions put to the client, plus anything they actively changed
+      answered += Object.keys(jb.seen || {}).length + Object.keys(jb.touched || {}).length;
       if (t.ground && (!ground || t.ground.depth > ground.depth)) ground = t.ground;
       area += t.area;
       byType.push({ id: id, name: (typeById(book, id) || {}).name, trade: t.trade });

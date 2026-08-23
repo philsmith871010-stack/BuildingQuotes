@@ -1,5 +1,7 @@
 <title>Datum Rate Book</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap"></noscript>
 <style>
 /* ===========================================================================
    Datum
@@ -1540,7 +1542,8 @@ select.cell:hover { border-color: var(--rule); }
       lines = lines.concat(t.lines);
       trade += t.trade;
       openings = openings || t.hasOpenings;
-      answered += Object.keys(jb.touched || {}).length;
+      // questions put to the client, plus anything they actively changed
+      answered += Object.keys(jb.seen || {}).length + Object.keys(jb.touched || {}).length;
       if (t.ground && (!ground || t.ground.depth > ground.depth)) ground = t.ground;
       area += t.area;
       byType.push({ id: id, name: (typeById(book, id) || {}).name, trade: t.trade });

@@ -1,5 +1,7 @@
 <title>Datum</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap"></noscript>
 <style>
 /* ===========================================================================
    Datum
@@ -746,6 +748,8 @@ section[id], main[id] { scroll-margin-top: 78px; }
 @media (max-width: 700px) { .gauge-rail { display: none !important; } }
 
 /* --- FLOW ------------------------------------------------------------------- */
+html { scroll-padding-top: 62px; }
+
 .flow {
   min-height: 100svh;
   display: grid;
@@ -755,8 +759,9 @@ section[id], main[id] { scroll-margin-top: 78px; }
 
 .flowbar {
   border-bottom: 1px solid var(--rule-soft);
-  background: color-mix(in srgb, var(--paper) 92%, transparent);
-  backdrop-filter: blur(10px);
+  /* Opaque, not translucent: content scrolling underneath was showing through
+     and the page heading read as a ghost behind the bar. */
+  background: var(--paper);
   position: sticky; top: 0; z-index: 30;
 }
 .flowbar-in {
@@ -823,7 +828,21 @@ section[id], main[id] { scroll-margin-top: 78px; }
   /* the drawing stays put while the questions scroll past it */
   .flow-draw { position: sticky; top: 57px; height: calc(100svh - 57px); }
 }
-@media (max-width: 999px) { .flow-draw { border-left: 0; border-top: 1px solid var(--rule-soft); order: -1; min-height: 38svh; } }
+@media (max-width: 999px) {
+  /* On a phone the drawing sits above the questions and STAYS there while you
+     answer them — otherwise it scrolls away and the client never sees the thing
+     they are describing. */
+  .flow-draw {
+    border-left: 0; border-bottom: 1px solid var(--rule);
+    order: -1;
+    position: sticky; top: 52px; z-index: 20;
+    height: 34svh; min-height: 220px;
+    background: var(--surface);
+  }
+  .flow-draw-bar { padding-block: .4rem; }
+  .flow-draw-bar .legend { display: none; }
+  .flow-draw-foot { padding-block: .35rem; }
+}
 .flow-draw-bar {
   display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
   padding: .55rem .85rem; border-bottom: 1px solid var(--rule-soft); background: var(--well);
@@ -1437,7 +1456,7 @@ section[id], main[id] { scroll-margin-top: 78px; }
     </header>
     <div class="start-wrap">
       <div class="band-head">
-        <p class="eyebrow">Pick one</p>
+        <p class="eyebrow">Tick all that apply</p>
         <h1 style="font-family:var(--disp);font-weight:700;font-stretch:112%;font-size:clamp(2rem,4.4vw,3.3rem);line-height:1.02;letter-spacing:-.032em">What are you building?</h1>
         <p class="lede">Tick everything you are thinking about — an extension, a loft and a refurbishment are one job, not three, and cost less that way because you only pay for one set of drawings.</p>
       </div>
@@ -2355,7 +2374,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       lines = lines.concat(t.lines);
       trade += t.trade;
       openings = openings || t.hasOpenings;
-      answered += Object.keys(jb.touched || {}).length;
+      // questions put to the client, plus anything they actively changed
+      answered += Object.keys(jb.seen || {}).length + Object.keys(jb.touched || {}).length;
       if (t.ground && (!ground || t.ground.depth > ground.depth)) ground = t.ground;
       area += t.area;
       byType.push({ id: id, name: (typeById(book, id) || {}).name, trade: t.trade });
@@ -4650,7 +4670,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       jobs[typeId] = {
         measurements: m, modifiers: mods,
         ground: { soil: 'high', trees: [] },
-        touched: {}
+        touched: {}, seen: {}
       };
     }
     return jobs[typeId];
@@ -4871,6 +4891,13 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         '<a class="btn btn-ghost" href="' + prev + '">← Back</a>' +
         '<a class="btn" href="' + next + '">' + esc(nextLabel) + ' →</a>' +
       '</div>';
+
+    // Reaching a step means its questions have been put to the client. Accepting
+    // a sensible default is still an answer, so it counts towards how tight the
+    // estimate can honestly be — otherwise someone who agrees with everything we
+    // suggest is told we know nothing about their job.
+    j.seen = j.seen || {};
+    j.seen[step.id] = true;
 
     var ask = $('flow-ask');
     ask.innerHTML = html;

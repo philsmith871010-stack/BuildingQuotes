@@ -72,7 +72,7 @@
       jobs[typeId] = {
         measurements: m, modifiers: mods,
         ground: { soil: 'high', trees: [] },
-        touched: {}
+        touched: {}, seen: {}
       };
     }
     return jobs[typeId];
@@ -293,6 +293,13 @@
         '<a class="btn btn-ghost" href="' + prev + '">← Back</a>' +
         '<a class="btn" href="' + next + '">' + esc(nextLabel) + ' →</a>' +
       '</div>';
+
+    // Reaching a step means its questions have been put to the client. Accepting
+    // a sensible default is still an answer, so it counts towards how tight the
+    // estimate can honestly be — otherwise someone who agrees with everything we
+    // suggest is told we know nothing about their job.
+    j.seen = j.seen || {};
+    j.seen[step.id] = true;
 
     var ask = $('flow-ask');
     ask.innerHTML = html;
