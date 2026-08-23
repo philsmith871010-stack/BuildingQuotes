@@ -144,9 +144,20 @@ and NOTICE) turn a click into a polygon. Areas come out of the shoelace
 formula.
 
 Measured against the sample plan, calibration recovers the true scale exactly
-(1 m = 70.0 px) and the four rooms come to 74.5 m² against an 79.8 m² external
-footprint — the difference being wall thickness, since rooms are correctly
-measured to internal faces.
+(1 m = 70.0 px), and rooms come out to internal faces — 22.6 m² for a living
+room whose gross size is 5.0 × 4.8 m, the difference being wall thickness,
+which is the figure a refurbishment is priced on.
+
+**Doorways.** Most plans draw openings as holes, so a flood escapes through them
+and swallows the floor. Morphological closing cannot fix this — for a gap in a
+thin wall the erosion removes exactly what the dilation bridged — so
+`bridgeGaps()` seals the gaps directly: find the open runs that are pinched
+between nearby walls, group them, and close only the groups shallow enough to be
+a doorway rather than a corridor. A 0.85 m opening closes; a 1 m hallway does
+not. The threshold is a slider, and turning it off shows the leak it prevents.
+
+**When it fails**, and it will on a plan we do not control, "trace by hand" takes
+corner clicks instead and closes on the first one.
 
 **Not modelled yet, and said so on the page:** party wall awards, site access,
 drains in the footprint, roof glazing, heating and electrics, decoration, floor

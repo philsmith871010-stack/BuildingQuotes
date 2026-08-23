@@ -44,6 +44,20 @@
       '<path d="M' + x(px + w) + ' ' + y(py) + ' A' + (w * S) + ' ' + (w * S) + ' 0 0 1 ' +
       x(px) + ' ' + y(py - w) + '" fill="none" stroke="#8a8a8a" stroke-width="1.2"/>';
   }
+  /** An opening with a swing but no leaf — a hole in the wall. */
+  function openingV(px, py, w) {
+    return '<line x1="' + x(px) + '" y1="' + y(py) + '" x2="' + x(px) + '" y2="' + y(py + w) +
+      '" stroke="#f7f6f2" stroke-width="' + (W_INT * S + 3) + '"/>' +
+      '<path d="M' + x(px) + ' ' + y(py + w) + ' A' + (w * S) + ' ' + (w * S) + ' 0 0 1 ' +
+      x(px + w) + ' ' + y(py) + '" fill="none" stroke="#9a9a9a" stroke-width="1.2"/>';
+  }
+  function openingH(px, py, w) {
+    return '<line x1="' + x(px) + '" y1="' + y(py) + '" x2="' + x(px + w) + '" y2="' + y(py) +
+      '" stroke="#f7f6f2" stroke-width="' + (W_INT * S + 3) + '"/>' +
+      '<path d="M' + x(px + w) + ' ' + y(py) + ' A' + (w * S) + ' ' + (w * S) + ' 0 0 1 ' +
+      x(px) + ' ' + y(py - w) + '" fill="none" stroke="#9a9a9a" stroke-width="1.2"/>';
+  }
+
   function windowH(x0, x1, py) {
     return '<line x1="' + x(x0) + '" y1="' + y(py) + '" x2="' + x(x1) + '" y2="' + y(py) +
       '" stroke="#ffffff" stroke-width="' + (W_EXT * S + 2) + '"/>' + thin([x0, py], [x1, py], 2.2);
@@ -71,10 +85,12 @@
     p.push(line([0, 4.8], [8.4, 4.8], W_INT));
     p.push(line([0, 8.2], [3.4, 8.2], W_INT));
 
-    // openings, shown closed
-    p.push(doorV(5.0, 3.55, 0.85));
-    p.push(doorH(2.35, 4.8, 0.85));
-    p.push(doorH(0.55, 8.2, 0.85));
+    // Openings. Two are left OPEN, which is how most estate agents draw them —
+    // the swing is shown but nothing closes the gap. That is exactly the case
+    // a flood fill escapes through, so the sealing pass has something real to do.
+    p.push(openingV(5.0, 3.55, 0.85));
+    p.push(openingH(2.35, 4.8, 0.85));
+    p.push(doorH(0.55, 8.2, 0.85));      // this one is drawn shut
 
     // windows
     p.push(windowH(1.0, 3.6, 0));

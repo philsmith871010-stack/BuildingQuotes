@@ -544,3 +544,21 @@
 .trace-total .fig { font-family: var(--disp); font-weight: 700; font-stretch: 110%; font-size: 1.5rem; letter-spacing: -.02em; }
 .trace-side .hint { font-size: .72rem; color: var(--ink-3); line-height: 1.45; }
 .trace-side .hint a { color: var(--accent-ink); }
+.trace-manual { fill: rgba(228,87,46,.14); stroke: #E4572E; stroke-width: 2.5; }
+.trace-vertex { fill: var(--surface); stroke: #E4572E; stroke-width: 2.2; }
+.trace-vertex.first { fill: #E4572E; }
+.trace-side .seg button { font-size: .78rem; padding: .38rem .6rem; }
+.trace-side .range { width: 100%; accent-color: var(--accent); }
+
+/* Field styling for the public page — the trace overlay uses it, and admin.css
+   (where these first lived) is not loaded here. */
+.trace-side .field { display: grid; gap: .3rem; }
+.trace-side .field label {
+  font-family: var(--mono); font-size: .62rem; letter-spacing: .13em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.trace-side .field input[type="number"] {
+  font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: .88rem;
+  color: var(--ink); background: var(--paper); border: 1px solid var(--rule);
+  border-radius: 2px; padding: .42rem .5rem; width: 100%;
+}

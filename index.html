@@ -508,6 +508,22 @@
           </div>
         </div>
 
+        <div id="trace-tools" hidden style="display:grid;gap:.75rem">
+          <div>
+            <p class="eyebrow" style="margin-bottom:.4rem">How to measure</p>
+            <div class="seg" role="group" aria-label="Measuring mode">
+              <button type="button" id="mode-rooms" aria-pressed="true">Click rooms</button>
+              <button type="button" id="mode-manual" aria-pressed="false">Trace by hand</button>
+            </div>
+          </div>
+          <button type="button" class="btn btn-sm" id="trace-finish" hidden>Close this shape</button>
+          <div class="field">
+            <label for="trace-seal">Seal door openings</label>
+            <input class="range" id="trace-seal" type="range" min="0" max="1.6" step="0.05" value="1">
+            <span class="hint" id="trace-seal-out">closing gaps up to 1.00 m</span>
+          </div>
+        </div>
+
         <div>
           <p class="eyebrow" style="margin-bottom:.5rem">Rooms measured</p>
           <div class="trace-rooms" id="trace-rooms"></div>
