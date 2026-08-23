@@ -16,11 +16,11 @@
 
 name: Deploy to Pages
 
+# Pages is currently served straight from the branch root (Settings -> Pages ->
+# Source -> Deploy from a branch), so this workflow does not need to run and is
+# left on manual only. Switch Source to "GitHub Actions" and add the push
+# trigger back if you ever want the inlined single-file build deployed instead.
 on:
-  push:
-    branches:
-      - main
-      - claude/website-design-planning-cnoltd
   workflow_dispatch:
 
 permissions:
