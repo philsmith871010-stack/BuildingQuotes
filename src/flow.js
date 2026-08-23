@@ -249,6 +249,56 @@
 
   /* ---- the step page -------------------------------------------------------- */
 
+  /*
+   * A sketch onto a job.
+   *
+   * The tool measures a house; the rate book prices named quantities. This is
+   * the only place the two meet, and it is deliberately explicit rather than
+   * clever — each build type takes what it charges for and ignores the rest.
+   * Roof area is the footprint over a 35° pitch, which is where 1.22 comes from.
+   */
+  var SKETCH_TYPES = ['renovation', 'newbuild'];
+
+  function applySketch(typeId, m) {
+    var j = job(typeId);
+    // whole units — a stepper offering 186.77 m² of plaster reads like false
+    // precision on a figure that is a sketch of a house
+    var set = function (k, v) {
+      if (v === null || v === undefined || !isFinite(v)) return;
+      j.measurements[k] = Math.round(v);
+      j.touched[k] = true;
+    };
+    var baths = (m.counts.bathroom || 0) + (m.counts.wc || 0);
+
+    if (typeId === 'renovation') {
+      set('floorArea', m.totalArea);
+      set('replasterArea', m.plaster);
+      set('rewireArea', m.totalArea);
+      set('windows', m.windows);
+    } else if (typeId === 'newbuild') {
+      set('footprintArea', m.area);
+      set('floorArea', m.totalArea);
+      set('perimeter', m.perimeter);
+      set('roofArea', m.area * 1.22);
+    }
+    if (m.counts.kitchen) set('kitchens', m.counts.kitchen);
+    if (baths) set('bathrooms', baths);
+
+    j.touched.sketched = true;
+    refreshOutputs();
+    update();
+
+    var note = doc.querySelector('#flow-ask .trace-cta');
+    if (note) {
+      note.innerHTML = '<div><p class="q-title">Measured from your sketch.</p>' +
+        '<p class="q-help">' + m.totalArea.toFixed(1) + ' m² over ' +
+        (m.counts.kitchen || 0) + ' kitchen' + ((m.counts.kitchen || 0) === 1 ? '' : 's') +
+        ' and ' + baths + ' bathroom' + (baths === 1 ? '' : 's') +
+        '. The figures below have been set from it.</p></div>' +
+        '<div class="sk-cta"><button type="button" class="btn btn-ghost" id="do-sketch">Change the sketch</button></div>';
+    }
+  }
+
   function renderStep(r) {
     var type = r.type, step = r.step;
     var j = job(type.id);
@@ -275,18 +325,26 @@
       return found ? modifierHtml(found, j) : '';
     }).join('');
 
-    // the one step where the client's own plan can do the measuring
+    // the two steps where the client's own house can do the measuring: trace an
+    // existing plan, or sketch one in a couple of minutes if they haven't got one
     var traceable = type.id === 'renovation' && step.id === 'size' && root.DATUM.TRACE;
+    var sketchable = SKETCH_TYPES.indexOf(type.id) >= 0 && step.id === 'size' && root.DATUM.SKETCH;
 
     var html =
       '<p class="flow-step-of">' + esc(type.name) + ' · step ' + (i + 1) + ' of ' + (steps.length + 1) + '</p>' +
       '<h1>' + esc(step.title) + '</h1>' +
       '<p class="lede">' + esc(step.lede) + '</p>' +
-      (traceable
-        ? '<div class="trace-cta"><div><p class="q-title">Have you got the floor plan?</p>' +
-          '<p class="q-help">Upload it and measure the rooms off it instead of guessing. ' +
+      (traceable || sketchable
+        ? '<div class="trace-cta"><div>' +
+          '<p class="q-title">' + (traceable ? 'Have you got the floor plan?' : 'Rather draw it than guess it?') + '</p>' +
+          '<p class="q-help">' +
+          (traceable ? 'Upload it and measure the rooms off it instead of guessing. ' : 'Sketch the outline, drop in the windows, doors and rooms, and every figure below is measured rather than estimated. ') +
           'Nothing is sent anywhere — it is measured in your browser.</p></div>' +
-          '<button type="button" class="btn" id="do-trace">Trace my plan</button></div>'
+          '<div class="sk-cta">' +
+          (traceable ? '<button type="button" class="btn" id="do-trace">Trace my plan</button>' : '') +
+          (sketchable ? '<button type="button" class="btn' + (traceable ? ' btn-ghost' : '') +
+             '" id="do-sketch">Sketch my house</button>' : '') +
+          '</div></div>'
         : '') +
       '<div class="flow-fields">' + fields + (step.ground ? groundHtml(j) : '') + mods + '</div>' +
       '<div class="flow-nav">' +
@@ -626,6 +684,11 @@
       return;
     }
 
+    if (t.id === 'do-sketch') {
+      root.DATUM.SKETCH.open(function (m) { applySketch(route.typeId, m); });
+      return;
+    }
+
     if (t.id === 'tree-add') {
       var j3 = job(route.typeId);
       if (j3.ground.trees.length >= (book().limits.maxTrees || 4)) return;
@@ -754,6 +817,7 @@
   });
 
   if (D.TRACE) D.TRACE.wire();
+  if (D.SKETCH) D.SKETCH.wire();
   ROUTER.start();
   if (D.HERO) D.HERO.start();
 })(window, document);

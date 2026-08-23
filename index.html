@@ -547,6 +547,40 @@
   </div>
 </div>
 
+<!-- Sketch your house -------------------------------------------------- -->
+<div class="sk-overlay" id="sk-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Sketch your house">
+  <div class="sk-box">
+    <header class="sk-head">
+      <div>
+        <p class="eyebrow">Sketch your house</p>
+        <h3>Five short stages. Enough for a price, nothing more.</h3>
+      </div>
+      <div class="sk-stages" id="sk-stages" role="group" aria-label="Stage"></div>
+      <button type="button" class="btn btn-ghost btn-sm" id="sk-close-btn">Close</button>
+    </header>
+
+    <div class="sk-body">
+      <div class="sk-canvas">
+        <svg id="sk-svg" preserveAspectRatio="xMidYMid meet" aria-label="Your plan"></svg>
+        <p class="sk-typed" id="sk-typed" hidden></p>
+        <div class="sk-actions">
+          <button type="button" class="btn btn-ghost btn-sm" id="sk-undo">Undo</button>
+        </div>
+      </div>
+
+      <aside class="sk-side">
+        <p class="sk-hint" id="sk-hint"></p>
+        <p class="sk-say" id="sk-say"></p>
+        <div class="sk-tools" id="sk-tools"></div>
+        <div class="sk-read" id="sk-read"></div>
+        <button type="button" class="btn" id="sk-apply" disabled>Use these figures &rarr;</button>
+        <p class="hint">Type a number while you draw to set that wall exactly &mdash; 4.2 then Enter.
+          Nothing is sent anywhere; it is all measured in your browser.</p>
+      </aside>
+    </div>
+  </div>
+</div>
+
 <script src="vendor/opentakeoff/geom.js"></script>
 <script src="vendor/gsap.min.js"></script>
 <script src="vendor/ScrollTrigger.min.js"></script>
@@ -558,6 +592,7 @@
 <script src="src/draw2d.js"></script>
 <script src="src/plan-sample.js"></script>
 <script src="src/trace.js"></script>
+<script src="src/sketch.js"></script>
 <script src="src/router.js"></script>
 <script src="src/hero.js"></script>
 <script src="src/flow.js"></script>

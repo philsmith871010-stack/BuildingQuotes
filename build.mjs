@@ -21,7 +21,7 @@ const PAGES = [
     css: ['assets/styles.css', 'assets/app.css'],
     js: ['vendor/opentakeoff/geom.js', 'vendor/gsap.min.js', 'vendor/ScrollTrigger.min.js',
          'src/ratebook.js', 'src/trees.js', 'src/store.js', 'src/rates.js',
-         'src/engine.js', 'src/draw2d.js', 'src/plan-sample.js', 'src/trace.js',
+         'src/engine.js', 'src/draw2d.js', 'src/plan-sample.js', 'src/trace.js', 'src/sketch.js',
          'src/router.js', 'src/hero.js', 'src/flow.js'],
   },
   {
@@ -142,7 +142,7 @@ const demoCss = [read('./assets/styles.css'), read('./assets/app.css'),
                  read('./assets/admin.css'), SWITCH_CSS].join('\n\n');
 const demoJs = ['vendor/opentakeoff/geom.js', 'vendor/gsap.min.js', 'vendor/ScrollTrigger.min.js',
                 'src/ratebook.js', 'src/trees.js', 'src/store.js', 'src/rates.js',
-                'src/engine.js', 'src/draw2d.js', 'src/plan-sample.js', 'src/trace.js',
+                'src/engine.js', 'src/draw2d.js', 'src/plan-sample.js', 'src/trace.js', 'src/sketch.js',
                 'src/router.js', 'src/hero.js', 'src/flow.js', 'src/admin.js']
   .map((n) => read(`./${n}`))
   .join('\n;\n');
