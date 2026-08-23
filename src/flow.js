@@ -221,7 +221,9 @@
     if (step.ground) paintTrees();
 
     $('draw-title').textContent = type.name + ' · ' + (step.view === 'plan' ? 'plan' : 'section');
-    $('draw-note').textContent = step.view === 'plan' ? 'Plan — looking down' : 'Section — cut through';
+    $('draw-note').textContent = type.id === 'renovation' && step.view === 'plan'
+      ? 'Your uploaded plan, traced'
+      : (step.view === 'plan' ? 'Plan — looking down' : 'Section — cut through');
 
     if (!reduced && gsap) {
       gsap.fromTo(ask.children, { opacity: 0, y: 16 },

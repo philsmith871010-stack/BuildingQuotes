@@ -131,7 +131,7 @@
       usesFoundations: false,
       measurements: [
         { id: 'floorArea', label: 'Floor area treated', unit: 'm²',
-          ask: { step: 'size', q: 'How much of the house?', help: 'Total floor area being worked on. A three-bed semi is usually 85 to 100 m².', input: 'area', min: 10, max: 500, by: 5, value: 90 } },
+          ask: { step: 'size', q: 'Total floor area', help: 'Traced from your plan. A three-bed semi is usually 85 to 100 m² — adjust it and the plan rescales.', input: 'area', min: 10, max: 500, by: 5, value: 90 } },
         { id: 'replasterArea', label: 'Area replastered', unit: 'm²',
           ask: { step: 'size', q: 'Wall area replastered', help: 'Walls and ceilings, not floor area. Roughly two and a half times the floor area for a full refurbishment.', input: 'area', min: 0, max: 1200, by: 10, value: 210, zero: 'None' } },
         { id: 'rewireArea', label: 'Area rewired', unit: 'm²',
@@ -146,7 +146,7 @@
           ask: { step: 'rooms', q: 'Bathrooms', help: 'Labour only.', input: 'count', max: 5, value: 2 } }
       ],
       steps: [
-        { id: 'size',      view: 'plan',    short: 'Scope', title: 'How much of the house?', lede: 'Upload a floor plan later and we will measure it properly. For now, roughly.' },
+        { id: 'size',      view: 'plan',    short: 'Scope', title: 'How much of the house?', lede: 'The drawing is your own floor plan, uploaded and traced. You drag one line along a wall whose length you know, and that single measurement scales everything else on it.' },
         { id: 'structure', view: 'plan',    short: 'Structure', title: 'Is anything moving?', lede: 'Walls out, windows replaced. The structural work is what separates a refurbishment from redecorating.' },
         { id: 'rooms',     view: 'plan',    short: 'Rooms', title: 'Kitchen and bathrooms', lede: 'Labour only on both — you spend what you want on units and sanitaryware.' },
         { id: 'condition', view: 'section', short: 'Condition', title: 'What are we working with?', lede: 'Older fabric costs more to work into, and a family living upstairs costs time.', modifiers: ['age', 'occupied', 'access', 'spec'] }

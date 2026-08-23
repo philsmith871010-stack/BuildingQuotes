@@ -109,11 +109,20 @@ roof, a renovation starts from a floor plan, and a garden is a layout. Setting
 out is a plan, consequences are a section, and the drawing switches to whichever
 answers the current question.
 
+The renovation plan shows what the drawing looks like **after** a client has
+uploaded their floor plan and traced it: the scan sits underneath, slightly out
+of square the way a photographed plan always is, with the trace over the top.
+One wall carries the dimension they typed in, and that single number scales
+every other measurement on the drawing. Change the floor area and the plan
+rescales, so the drawing can never contradict the figure being priced.
+
+The upload and trace itself is not built. It needs no AI: the client drags a
+line along a wall they know the length of, which gives pixels per metre, then
+clicks room corners — areas come out of the shoelace formula. Pure geometry.
+
 **Not modelled yet, and said so on the page:** party wall awards, site access,
 drains in the footprint, roof glazing, heating and electrics, decoration, floor
-finishes, planning route. Renovations still ask for a floor area rather than
-taking an uploaded plan — the intended flow is upload, drag a line along a known
-dimension to set the scale, then trace the rooms.
+finishes, planning route.
 
 **Not modelled yet, and said so on the page:** party wall awards, site access,
 drains in the footprint, roof glazing, heating and electrics, decoration, floor

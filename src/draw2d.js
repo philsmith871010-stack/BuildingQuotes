@@ -25,6 +25,8 @@
   }
   Ctx.prototype.mark = function (pt) { this.xs.push(pt[0]); this.ys.push(pt[1]); return pt; };
   Ctx.prototype.add = function (svg) { this.out.push(svg); return this; };
+  /** Emit markup verbatim — used to open and close transformed layers. */
+  Ctx.prototype.raw = function (svg) { this.out.push(svg); return this; };
 
   /** plan: x across, y down the garden */
   Ctx.prototype.p = function (x, y) { return this.mark([x * S, y * S]); };
@@ -307,32 +309,83 @@
 
     /* --------------------------------------------------------- renovation */
     renovation: {
+      /*
+       * A floor plan as it looks AFTER the client has uploaded theirs and
+       * traced it: the scan sits underneath, slightly out of square the way a
+       * photographed plan always is, with the crisp trace over the top. One
+       * wall carries the dimension they typed in, and that single number sets
+       * the scale for every other measurement on the drawing.
+       */
       plan: function (c, j, g, k) {
-        var area = j.floorArea || 90;
-        var w = Math.sqrt(area * 1.5), h = area / w;
-        c.box(c.p(0, 0), c.p(w, h), 'var(--d2-new-fill)', 'var(--d2-new-line)', 2 * k);
-        // a plausible room split so it reads as a house, not a rectangle
-        c.line(c.p(w * 0.55, 0), c.p(w * 0.55, h), 'var(--d2-old-line)', 1.2 * k);
-        c.line(c.p(0, h * 0.5), c.p(w * 0.55, h * 0.5), 'var(--d2-old-line)', 1.2 * k);
-        c.label(c.p(w * 0.275, h * 0.25), 'KITCHEN', 'd2-tag');
-        c.label(c.p(w * 0.275, h * 0.75), 'LIVING', 'd2-tag');
-        c.label(c.p(w * 0.78, h * 0.5), 'HALL / STAIR', 'd2-tag');
-        c.label(c.p(w / 2, h + 0.9), area.toFixed(0) + ' m² TREATED', 'd2-area');
+        // Proportional layout of an ordinary semi, scaled to whatever floor
+        // area the client gave us, so the drawing never contradicts the number.
+        var UNITS = 72;
+        var f = Math.sqrt(Math.max(j.floorArea || 90, 10) / UNITS);
+        var W = 8 * f, H = 9 * f;
+        var rooms = [
+          { x: 0,       y: 0,       w: 5.2 * f, h: 4.5 * f, name: 'LIVING ROOM' },
+          { x: 5.2 * f, y: 0,       w: 2.8 * f, h: 4.5 * f, name: 'HALL & STAIR', labelY: 0.8 },
+          { x: 0,       y: 4.5 * f, w: W,       h: 4.5 * f, name: 'KITCHEN / DINER' }
+        ];
+
+        // ---- the uploaded scan, underneath and very slightly out of square
+        var mid = c.p(W / 2, H / 2);
+        c.raw('<g opacity="0.5" transform="rotate(-1.15 ' + n(mid[0]) + ' ' + n(mid[1]) +
+              ') translate(' + n(5 * k) + ' ' + n(4 * k) + ')">');
+        c.box(c.p(-0.5, -0.5), c.p(W + 0.5, H + 0.5), 'var(--d2-scan-paper)', 'var(--d2-scan)', 1 * k,
+          (6 * k).toFixed(1) + ' ' + (4 * k).toFixed(1));
+        rooms.forEach(function (r) {
+          c.box(c.p(r.x, r.y), c.p(r.x + r.w, r.y + r.h), 'none', 'var(--d2-scan)', 2.6 * k);
+        });
+        c.label(c.p(0.15, H + 0.55), 'YOUR FLOOR PLAN, AS UPLOADED', 'd2-scan-tag', 'start');
+        c.raw('</g>');
+
+        // ---- the trace
+        c.box(c.p(0, 0), c.p(W, H), 'var(--d2-new-fill)', 'var(--d2-new-line)', 2.4 * k);
+        rooms.forEach(function (r) {
+          c.box(c.p(r.x, r.y), c.p(r.x + r.w, r.y + r.h), 'none', 'var(--d2-new-line)', 1.6 * k);
+          var ly = r.y + r.h * (r.labelY || 0.5);
+          c.label(c.p(r.x + r.w / 2, ly - 0.12), r.name, 'd2-tag');
+          c.label(c.p(r.x + r.w / 2, ly + 0.62), (r.w * r.h).toFixed(1) + ' m²', 'd2-room-area');
+        });
+
+        // stair treads, so the hall reads as a hall
+        var hall = rooms[1];
+        var stairTop = hall.y + hall.h * 0.08, stairBot = hall.y + hall.h * 0.55;
+        c.box(c.p(hall.x + 0.3 * f, stairTop), c.p(hall.x + hall.w - 0.3 * f, stairBot),
+          'none', 'var(--d2-new-line)', 1 * k);
+        for (var t = 1; t < 7; t++) {
+          var ty = stairTop + t * (stairBot - stairTop) / 7;
+          c.line(c.p(hall.x + 0.3 * f, ty), c.p(hall.x + hall.w - 0.3 * f, ty), 'var(--d2-new-line)', 0.9 * k);
+        }
+
+        // windows on the front and rear walls
+        [[0, 0.22], [0, 0.62], [H, 0.3], [H, 0.72]].forEach(function (win) {
+          c.line(c.p(W * win[1] - 0.45 * f, win[0]), c.p(W * win[1] + 0.45 * f, win[0]), 'var(--d2-glass)', 5.5 * k);
+        });
+
+        // ---- the one measurement everything else is scaled from
+        var cy = c.p(0, -1.9)[1];
+        c.tick(c.p(0, 0), c.p(0, -2.15), k);
+        c.tick(c.p(W, 0), c.p(W, -2.15), k);
+        c.line(c.p(0, -1.9), c.p(W, -1.9), 'var(--d2-accent)', 1.6 * k);
+        c.add(arrow(c.p(0, -1.9), -1, 0, k * 1.15));
+        c.add(arrow(c.p(W, -1.9), 1, 0, k * 1.15));
+        c.chip([mid[0], cy], W.toFixed(2) + ' m', k * 1.15);
+        c.label(c.p(W / 2, -2.55), 'SCALE SET FROM THIS WALL', 'd2-cal-tag');
+
+        // ---- wall coming out
         if (j.wallRemoval > 0) {
-          var rw = Math.min(j.wallRemoval, h);
-          c.line(c.p(w * 0.55, (h - rw) / 2), c.p(w * 0.55, (h + rw) / 2), 'var(--d2-warn)', 3.5 * k,
+          var rw = Math.min(j.wallRemoval, 5.2 * f);
+          c.line(c.p(0, 4.5 * f), c.p(rw, 4.5 * f), 'var(--d2-warn)', 4 * k,
             (5 * k).toFixed(1) + ' ' + (4 * k).toFixed(1));
-          c.label(c.p(w * 0.55 + 0.1, (h) / 2 - 0.3), rw.toFixed(1) + ' m OUT', 'd2-warn-tag');
+          c.label(c.p(0.25, 4.5 * f - 0.42), rw.toFixed(1) + ' m OF WALL OUT', 'd2-warn-tag', 'start');
         }
-        // windows on the perimeter
-        var wn = Math.min(j.windows || 0, 10);
-        for (var i = 0; i < wn; i++) {
-          var t = (i + 0.5) / wn;
-          c.line(c.p(w * t - 0.45, 0), c.p(w * t + 0.45, 0), 'var(--d2-glass)', 5 * k);
-        }
-        c.dimH(c.p(0, h + 1.8)[0], c.p(w, h + 1.8)[0], c.p(0, h + 1.8)[1], w.toFixed(1) + ' m', k);
-        c.dimV(c.p(w + 1.4, 0)[1], c.p(w + 1.4, h)[1], c.p(w + 1.4, 0)[0], h.toFixed(1) + ' m', k);
+
+        c.label(c.p(W / 2, H + 1.95), (j.floorArea || 0).toFixed(0) + ' m² TRACED', 'd2-area');
+        c.dimV(c.p(W + 1.6, 0)[1], c.p(W + 1.6, H)[1], c.p(W + 1.6, 0)[0], H.toFixed(2) + ' m', k);
       },
+
       section: function (c, j, g, k) {
         var w = 9;
         groundLine(c, -1, w + 1, k);

@@ -342,6 +342,8 @@
   --d2-deck:        #E0D2BE;
   --d2-drive:       #DCDCD6;
   --d2-lawn:        #D8E4D2;
+  --d2-scan:        #A9A49A;
+  --d2-scan-paper:  #EDEAE3;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -364,6 +366,8 @@
     --d2-deck:        #33291F;
     --d2-drive:       #262825;
     --d2-lawn:        #23301F;
+    --d2-scan:        #5E574B;
+    --d2-scan-paper:  #191C1D;
   }
 }
 :root[data-theme="dark"] {
@@ -386,6 +390,8 @@
   --d2-deck:        #33291F;
   --d2-drive:       #262825;
   --d2-lawn:        #23301F;
+  --d2-scan:        #5E574B;
+  --d2-scan-paper:  #191C1D;
 }
 
 .d2 { display: block; width: 100%; height: 100%; touch-action: none; }
@@ -396,6 +402,9 @@
   font-family: var(--disp); font-weight: 700; font-stretch: 108%;
   font-size: 15px; letter-spacing: -.01em; fill: var(--ink);
 }
+.d2-room-area { font-size: 10.5px; letter-spacing: .04em; fill: var(--ink-2); }
+.d2-scan-tag { font-size: 10px; letter-spacing: .18em; fill: var(--d2-scan); }
+.d2-cal-tag { font-size: 9.5px; letter-spacing: .16em; fill: var(--d2-accent); font-weight: 600; }
 
 /* --- Chooser ---------------------------------------------------------------- */
 .start-wrap { max-width: var(--maxw); margin-inline: auto; padding: clamp(2rem,5vh,4rem) var(--gutter) 5rem; width: 100%; }
