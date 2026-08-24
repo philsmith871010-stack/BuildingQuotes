@@ -33,7 +33,7 @@ furniture, no north point, no wall types, no levels, no rendering.
 
 ## The idea the whole thing rests on
 
-**You draw the shape, then measure it once.**
+**You draw the shape, then measure it once — and the grid becomes real metres.**
 
 Nothing on screen is in metres while you are drawing. You trace round the
 outside of the house on a plain grid, close it, and then type the length of a
@@ -47,9 +47,22 @@ far worse to use, because it turns a sketch into data entry.
 
 Two consequences worth stating:
 
-- **The grid is unitless.** Dimensions do not appear on the drawing until there
-  is a scale to show them in. Before that they would be grid units, which mean
-  nothing to anybody.
+- **The grid is unitless until it isn't.** Dimensions do not appear on the
+  drawing until there is a scale to show them in — before that they would be
+  grid units, which mean nothing to anybody. The moment a wall *is* measured the
+  whole drawing is converted into metres and re-snapped to a quarter-metre grid.
+  Corners move by at most 125 mm, which is well inside the tolerance of somebody
+  remembering their front wall, and in exchange every dimension from then on is
+  a figure a builder would write down: 9.00, 4.50, 2.00 — never 4.32 or 4.71.
+  You can also aim for a length by counting squares.
+
+- **Snapping is true.** Every point is a grid intersection: not most points, not
+  points on square walls, every one. An earlier version snapped the *angle* to
+  15° and the *length* to half a unit, which is a different thing wearing the
+  same name — it put a 45° wall at 3.889, 3.889, visibly between the lines.
+  There is no angle snapping now and none is wanted. Orthogonal comes free from
+  clicking intersections, and the point about to be placed is drawn on the
+  intersection it will land on before you commit it.
 - **Uploading a plan and starting blank are the same tool.** An uploaded plan is
   a backdrop you trace over; it needs no scale of its own, because the wall you
   measure supplies one.
@@ -108,10 +121,25 @@ Two rules protect the number:
   7.5 m and that wall becomes 8.1 m; nothing else moves. Re-measure any wall at
   any time.
 
-Every edit takes a snapshot first, so one Undo walks all of it backwards in the
-order it happened.
+Every edit takes a snapshot first, so Undo and Redo walk all of it backwards
+and forwards in the order it happened — including the measurement itself, which
+puts the loose grid back.
+
+Everything on the drawing can be moved or removed by the same two gestures:
+drag it, or tap it and use the ×. Corners, inside wall ends, doors and windows
+(which slide along the wall they are in and stay in it), and room pins.
+
+The view zooms on a wheel or a pinch, pans on two fingers or a shift-drag, and
+**Fit** hands control back to the automatic framing.
 
 ## The stages
+
+Six of them, shown as a numbered rail with a line through it rather than a row
+of tabs — tabs invite random access, and this is a sequence. The side panel
+says "Step 3 of 6" and names the stage, and one primary button always says what
+comes next. The hint changes as you go: *"Keep tapping the corners"* becomes
+*"Keep going, or tap the first corner to finish"* becomes *"Now tap the other
+end of the wall"*.
 
 The order a builder walks a house:
 

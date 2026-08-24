@@ -1195,22 +1195,36 @@ html { scroll-padding-top: 62px; }
 }
 .sk-head .eyebrow { flex: 0 0 auto; }
 
-.sk-stages { display: flex; flex-wrap: wrap; gap: .3rem; flex: 1 1 auto; }
-.sk-stages button {
-  display: inline-flex; align-items: center; gap: .4rem;
-  font-family: var(--mono); font-size: .66rem; letter-spacing: .07em;
-  text-transform: uppercase; color: var(--ink-2); background: var(--paper);
-  border: 1px solid var(--rule); border-radius: 2px; padding: .34rem .5rem;
-  cursor: pointer;
+/* A rail, not a row of tabs. Tabs invite random access; this is a sequence and
+   the user should never have to wonder where they are in it. */
+.sk-stages { display: flex; align-items: center; flex: 1 1 auto; min-width: 0; }
+.sk-step {
+  display: flex; flex-direction: column; align-items: center; gap: .22rem;
+  flex: 1 1 0; min-width: 0; position: relative; padding: .1rem .1rem 0;
+  background: none; border: 0; cursor: pointer; color: var(--ink-3);
+  font-family: var(--mono); font-size: .58rem; letter-spacing: .07em;
+  text-transform: uppercase;
 }
-.sk-stages button i {
-  font-style: normal; display: grid; place-items: center;
-  width: 1.1rem; height: 1.1rem; border-radius: 50%;
-  background: var(--rule-soft); color: var(--ink-2); font-size: .6rem;
+/* the line joining the steps, drawn behind the numbers */
+.sk-step::before {
+  content: ""; position: absolute; top: .62rem; right: 50%; left: -50%;
+  height: 1px; background: var(--rule); z-index: 0;
 }
-.sk-stages button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent-ink); background: var(--surface); }
-.sk-stages button[aria-pressed="true"] i { background: var(--accent); color: #fff; }
-.sk-stages button:disabled { opacity: .38; cursor: not-allowed; }
+.sk-step:first-child::before { display: none; }
+.sk-step i {
+  position: relative; z-index: 1; font-style: normal;
+  display: grid; place-items: center; width: 1.25rem; height: 1.25rem;
+  border-radius: 50%; font-size: .62rem; font-weight: 600;
+  background: var(--surface); color: var(--ink-3);
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.sk-step span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.sk-step.done { color: var(--ink-2); }
+.sk-step.done i { background: var(--accent); color: #fff; box-shadow: none; }
+.sk-step.done::before { background: var(--accent); }
+.sk-step.here { color: var(--accent-ink); font-weight: 700; }
+.sk-step.here i { background: var(--accent); color: #fff; box-shadow: 0 0 0 3px rgba(21,76,124,.18); }
+.sk-step:disabled { opacity: .4; cursor: not-allowed; }
 
 /* the blank-or-upload choice */
 .sk-choose {
@@ -1275,7 +1289,15 @@ html { scroll-padding-top: 62px; }
   grid-template-columns: minmax(0, 1fr);
 }
 @media (max-width: 899px) { .sk-side { border-left: 0; border-top: 1px solid var(--rule-soft); } }
-.sk-hint { font-size: .92rem; color: var(--ink); line-height: 1.45; margin: 0; font-weight: 500; }
+.sk-of {
+  font-family: var(--mono); font-size: .6rem; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ink-3); margin: 0;
+}
+.sk-stagename {
+  font-family: var(--disp); font-weight: 700; font-stretch: 108%;
+  font-size: 1.5rem; letter-spacing: -.02em; line-height: 1.05; margin: -.5rem 0 0;
+}
+.sk-hint { font-size: .9rem; color: var(--ink-2); line-height: 1.45; margin: -.35rem 0 0; }
 .sk-say { font-size: .78rem; color: var(--warn); margin: 0; }
 .sk-say:empty { display: none; }
 .sk-nextbtn { width: 100%; }
@@ -1361,12 +1383,14 @@ html { scroll-padding-top: 62px; }
    wall had been drawn. The stages become one scrolling row. */
 @media (max-width: 640px) {
   .sk-head { padding: .45rem .7rem; gap: .4rem .55rem; }
-  .sk-stages {
-    flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
-    -webkit-overflow-scrolling: touch; order: 3;
-  }
-  .sk-stages::-webkit-scrollbar { display: none; }
-  .sk-stages button { flex: 0 0 auto; }
+  /* the rail is the anchor; leaving and restarting are quiet */
+  .sk-head .btn { font-size: .68rem; padding: .28rem .45rem; }
+  .sk-actions .btn { font-size: .68rem; padding: .28rem .45rem; }
+  .sk-floors { padding: .35rem .5rem; }
+  .sk-floors button { font-size: .6rem; padding: .24rem .4rem; }
+  .sk-stages { flex: 1 1 100%; order: 3; }
+  .sk-step span { display: none; }          /* the rail stays whole; names go */
+  .sk-step::before { top: .58rem; }
   .sk-side { padding: .7rem .8rem 1rem; }
   .sk-choose { padding: 1.2rem .9rem; }
   .sk-card { padding: 1.1rem 1rem; }
@@ -1439,6 +1463,23 @@ html { scroll-padding-top: 62px; }
 .sk-kill circle { fill: var(--warn, #B4432B); stroke: var(--surface); stroke-width: 2; cursor: pointer; }
 .sk-kill text { fill: #fff; font-family: var(--mono); font-weight: 700; pointer-events: none; }
 .sk-kill { cursor: pointer; }
+
+/* zoom, pan and history controls, over the drawing */
+.sk-actions { flex-wrap: wrap; gap: .3rem; align-items: center; }
+.sk-actions .btn:disabled { opacity: .35; cursor: not-allowed; }
+.sk-zoom { display: inline-flex; border: 1px solid var(--rule); border-radius: 2px; overflow: hidden; background: var(--surface); }
+.sk-zoom button {
+  border: 0; background: none; cursor: pointer; color: var(--ink-2);
+  font-family: var(--mono); font-size: .72rem; padding: .3rem .5rem; min-width: 1.9rem;
+}
+.sk-zoom button + button { border-left: 1px solid var(--rule); }
+.sk-zoom button:hover { background: var(--rule-soft); color: var(--accent-ink); }
+
+/* the grid says what it is once it means something */
+.sk-legend {
+  font-family: var(--mono); font-size: 11px; fill: var(--ink-3);
+  letter-spacing: .1em; text-transform: uppercase; pointer-events: none;
+}
 
 </style>
 
@@ -2020,11 +2061,19 @@ html { scroll-padding-top: 62px; }
         <div class="sk-floors" id="sk-floors" role="group" aria-label="Floor"></div>
         <svg id="sk-svg" preserveAspectRatio="xMidYMid meet" aria-label="Your plan"></svg>
         <div class="sk-actions">
-          <button type="button" class="btn btn-ghost btn-sm" id="sk-undo">Undo</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="sk-undo" title="Undo">&#8630; Undo</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="sk-redo" title="Redo">&#8631;</button>
+          <span class="sk-zoom">
+            <button type="button" id="sk-zoomout" aria-label="Zoom out">&minus;</button>
+            <button type="button" id="sk-fit" aria-label="Fit the drawing">Fit</button>
+            <button type="button" id="sk-zoomin" aria-label="Zoom in">+</button>
+          </span>
         </div>
       </div>
 
       <aside class="sk-side">
+        <p class="sk-of" id="sk-of"></p>
+        <h3 class="sk-stagename" id="sk-stagename"></h3>
         <p class="sk-hint" id="sk-hint"></p>
         <p class="sk-say" id="sk-say"></p>
 
@@ -2039,8 +2088,8 @@ html { scroll-padding-top: 62px; }
           <span class="hint">Tap a different wall on the drawing if you know that one instead.</span>
         </div>
 
-        <button type="button" class="btn sk-nextbtn" id="sk-next" data-act="" hidden></button>
         <div class="sk-tools" id="sk-tools"></div>
+        <button type="button" class="btn sk-nextbtn" id="sk-next" data-act="" hidden></button>
         <div class="sk-read" id="sk-read"></div>
         <button type="button" class="btn" id="sk-apply" disabled>Use these figures &rarr;</button>
       </aside>
@@ -4870,9 +4919,15 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
   /* Everything is drawn in GRID UNITS until a wall is measured. One unit is
      roughly a metre, but nothing depends on that — `scale` decides. */
-  var SNAP = 0.5;               // grid units a corner lands on
-  var ANGLE_STEP = 15;          // degrees
-  var ORTHO_PULL = 8;           // degrees — how hard 0/90 grabs you
+  /*
+   * Before a wall is measured the grid is abstract and a point lands on a half
+   * square. The moment a wall IS measured the whole drawing is converted into
+   * metres and the grid becomes a real quarter-metre grid — so every dimension
+   * from then on is a round 4.25 or 2.50 rather than an arbitrary 4.32, and
+   * you can aim for a length by counting squares.
+   */
+  var SNAP = 0.5;               // grid units a point lands on
+  var LOOSE = 0.5, METRIC_SNAP = 0.25;
   var CLOSE_UNITS = 1.1;        // click this near the first corner to close
   var K = 44;                   // SVG user units per grid unit
 
@@ -4893,7 +4948,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     { id: 'outline',   n: 1, label: 'Outline',      hint: 'Click round the outside of the house.',
       done: 'Drag a corner to move it. Tap a wall to add one.' },
     { id: 'internal',  n: 2, label: 'Inside walls', hint: 'Click each end of a wall inside the house.',
-      done: 'Drag either end to move a wall, or tap one to remove it.' },
+      done: 'Drag an end to move a wall.' },
     { id: 'doors',     n: 3, label: 'Doors',        hint: 'Click a wall to put a door in it.' },
     { id: 'windows',   n: 4, label: 'Windows',      hint: 'Click a wall to put a window in it.' },
     { id: 'rooms',     n: 5, label: 'Rooms',        hint: 'Tap a room type, then tap where it is.' },
@@ -4955,23 +5010,22 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   }
 
   /**
-   * Angle first, then length onto the grid. Orthogonal gets a wider capture
-   * window than the other increments, so a square corner takes no care at all
-   * while a 45° bay is still one click away.
+   * TRUE snap: every point is a grid intersection. Not most points, not points
+   * on square walls — every one.
+   *
+   * The previous version snapped the ANGLE to 15° and the LENGTH to half a
+   * unit, which is a different thing wearing the same name. It put a 45° wall
+   * at 3.889, 3.889 — nowhere near the grid it was drawn on, and visibly
+   * between the lines. Only pure horizontals and verticals ever landed right.
+   *
+   * There is no angle snapping now and none is wanted. The grid is drawn at
+   * this resolution and the point under the cursor is shown before it is
+   * committed, so what you see is exactly what you get. Orthogonal comes free
+   * — you are clicking intersections — and every diagonal a house actually has
+   * runs between two of them.
    */
   function snapFrom(from, to) {
-    if (!from) return [Math.round(to[0] / SNAP) * SNAP, Math.round(to[1] / SNAP) * SNAP];
-    var dx = to[0] - from[0], dy = to[1] - from[1];
-    var len = Math.hypot(dx, dy);
-    if (len < 0.05) return from.slice();
-    var deg = Math.atan2(dy, dx) * 180 / Math.PI;
-    var ortho = Math.round(deg / 90) * 90;
-    var snapped = Math.abs(((deg - ortho + 540) % 360) - 180) > 180 - ORTHO_PULL
-      ? ortho
-      : Math.round(deg / ANGLE_STEP) * ANGLE_STEP;
-    var L = Math.max(SNAP, Math.round(len / SNAP) * SNAP);
-    var r = snapped * Math.PI / 180;
-    return mm([from[0] + Math.cos(r) * L, from[1] + Math.sin(r) * L]);
+    return [Math.round(to[0] / SNAP) * SNAP, Math.round(to[1] / SNAP) * SNAP];
   }
 
   function projectOnSeg(p, a, b) {
@@ -5106,6 +5160,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
    */
   function refit() {
     if (!FRAME) FRAME = { x0: VIEW.x0, y0: VIEW.y0, x1: VIEW.x1, y1: VIEW.y1 };
+    if (MANUAL) return;
     var b = bounds();
     if (!b) return;
     if (b.x0 < FRAME.x0) FRAME.x0 = b.x0;
@@ -5114,6 +5169,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (b.y1 > FRAME.y1) FRAME.y1 = b.y1;
   }
   function refitTight() {
+    if (MANUAL) return;
     var b = bounds();
     FRAME = b ? atLeast(b) : { x0: VIEW.x0, y0: VIEW.y0, x1: VIEW.x1, y1: VIEW.y1 };
   }
@@ -5127,10 +5183,42 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     FRAME = { x0: cx - hw, x1: cx + hw, y0: cy - hh, y1: cy + hh };
   }
 
+  /*
+   * Auto-framing holds until the moment somebody zooms or pans, and then gets
+   * out of the way — nothing is more annoying than a view that keeps deciding
+   * it knows better. "Fit" hands control back.
+   */
+  var MANUAL = false;
+
+  function zoomAt(p, factor) {
+    var v = frame();
+    var w = (v.x1 - v.x0) / factor, h = (v.y1 - v.y0) / factor;
+    var minW = 4, maxW = 400;
+    if (w < minW || w > maxW) return;
+    var fx = (p[0] - v.x0) / (v.x1 - v.x0), fy = (p[1] - v.y0) / (v.y1 - v.y0);
+    FRAME = { x0: p[0] - w * fx, x1: p[0] + w * (1 - fx),
+              y0: p[1] - h * fy, y1: p[1] + h * (1 - fy) };
+    MANUAL = true;
+    render();
+  }
+
+  function panBy(dx, dy) {
+    var v = frame();
+    FRAME = { x0: v.x0 - dx, x1: v.x1 - dx, y0: v.y0 - dy, y1: v.y1 - dy };
+    MANUAL = true;
+    renderSoon();
+  }
+
+  function fitView() { MANUAL = false; refitTight(); render(); }
+  function frameCentre() {
+    var v = frame();
+    return [(v.x0 + v.x1) / 2, (v.y0 + v.y1) / 2];
+  }
+
   function frame() {
     if (!FRAME) refit();
     var v = FRAME, p = S.cursor;
-    if (p) {
+    if (p && !MANUAL) {
       if (p[0] - 1 < v.x0) v.x0 = p[0] - 1;
       if (p[0] + 1 > v.x1) v.x1 = p[0] + 1;
       if (p[1] - 1 < v.y0) v.y0 = p[1] - 1;
@@ -5256,9 +5344,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         '" class="sk-extline"/>');
     }
 
-    // what is being drawn right now, with a band to the cursor
+    // what is being drawn right now, with a band to the snap target
     if (S.drawing && S.drawing.length) {
-      out.push('<polyline points="' + poly(S.drawing) + '" class="sk-draft"/>');
+      if (S.drawing.length > 1) out.push('<polyline points="' + poly(S.drawing) + '" class="sk-draft"/>');
       if (S.cursor) {
         var last = S.drawing[S.drawing.length - 1];
         out.push('<line x1="' + P(last)[0] + '" y1="' + P(last)[1] + '" x2="' + P(S.cursor)[0] +
@@ -5266,9 +5354,17 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         out.push(lengthTag(last, S.cursor, 'live'));
       }
     }
-    if (S.stage === 'internal' && S.drawing && S.drawing.length === 1 && S.cursor) {
-      out.push('<line x1="' + P(S.drawing[0])[0] + '" y1="' + P(S.drawing[0])[1] + '" x2="' + P(S.cursor)[0] +
-        '" y2="' + P(S.cursor)[1] + '" class="sk-band"/>');
+
+    /* The snap target, drawn before it is committed. This is what makes the
+       snapping legible: the point you are about to place is shown sitting on
+       the intersection it will land on, not wherever the finger happens to be. */
+    if (S.cursor && placingStage() && !press && !S.hoverHandle) {
+      out.push('<g class="sk-snap"><circle cx="' + (S.cursor[0] * K) + '" cy="' + (S.cursor[1] * K) +
+        '" r="' + (7 * RU).toFixed(1) + '"/>' +
+        '<line x1="' + ((S.cursor[0] - 0.34) * K) + '" y1="' + (S.cursor[1] * K) +
+        '" x2="' + ((S.cursor[0] + 0.34) * K) + '" y2="' + (S.cursor[1] * K) + '"/>' +
+        '<line x1="' + (S.cursor[0] * K) + '" y1="' + ((S.cursor[1] - 0.34) * K) +
+        '" x2="' + (S.cursor[0] * K) + '" y2="' + ((S.cursor[1] + 0.34) * K) + '"/></g>');
     }
 
     out.push(openingsAndTags(f));
@@ -5319,6 +5415,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (f.closed && S.scale) {
       out.push('<text x="' + ((v.x0 + 0.5) * K) + '" y="' + ((v.y0 + 1.4) * K) + '" class="sk-area">' +
         fmt(m(shoelace(f.outline)) * m(1)) + ' m² · ' + esc(f.name.toLowerCase()) + '</text>');
+      // bottom left, where nothing is ever drawn
+      out.push('<text x="' + ((v.x0 + 0.5) * K) + '" y="' + ((v.y1 - 0.5) * K) +
+        '" class="sk-legend">1 square = ' + SNAP.toFixed(2) + ' m</text>');
     }
 
     svg.innerHTML = out.join('');
@@ -5369,12 +5468,17 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (work) work.hidden = !S.started;
     if (!S.started) return;
 
+    /* A rail, not a row of tabs. Tabs say "go anywhere"; this is a sequence,
+       and the whole point is that you always know where you are in it. */
     var tabs = $('sk-stages');
     if (tabs) {
-      tabs.innerHTML = STAGES.map(function (s) {
-        var locked = s.id !== 'outline' && !ready();
-        return '<button type="button" data-stage="' + s.id + '" aria-pressed="' + (s.id === S.stage) + '"' +
-          (locked ? ' disabled' : '') + '><i>' + (stageDone(s.id) ? '✓' : s.n) + '</i>' + esc(s.label) + '</button>';
+      tabs.innerHTML = STAGES.map(function (st) {
+        var locked = st.id !== 'outline' && !ready();
+        var state = st.id === S.stage ? ' here' : stageDone(st.id) ? ' done' : '';
+        return '<button type="button" class="sk-step' + state + '" data-stage="' + st.id +
+          '" aria-current="' + (st.id === S.stage ? 'step' : 'false') + '"' + (locked ? ' disabled' : '') +
+          '><i>' + (stageDone(st.id) && st.id !== S.stage ? '✓' : st.n) + '</i>' +
+          '<span>' + esc(st.label) + '</span></button>';
       }).join('');
     }
 
@@ -5419,15 +5523,23 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var hint = $('sk-hint');
     var f = floor();
 
+    var of = $('sk-of'), name = $('sk-stagename');
+    if (of) of.textContent = 'Step ' + stage.n + ' of ' + STAGES.length;
+    if (name) name.textContent = S.calibrating ? 'How big is it?' : stage.label;
+
     if (hint) {
       var edited = (S.stage === 'outline' && f.closed) ||
                    (S.stage === 'extension' && S.extension.closed) ||
                    (S.stage === 'internal' && f.internals.length);
-      hint.textContent = S.calibrating
-        ? 'How long is the wall highlighted in orange?'
-        : (S.stage === 'outline' && !f.closed && !f.outline.length && S.active > 0
+      var mid = S.drawing && S.drawing.length;
+      hint.textContent =
+        S.calibrating ? 'How long is the wall highlighted in orange?'
+        : mid && S.stage === 'internal' ? 'Now tap the other end of the wall.'
+        : mid && S.drawing.length > 2 ? 'Keep going, or tap the first corner to finish.'
+        : mid ? 'Keep tapping the corners.'
+        : (S.stage === 'outline' && !f.closed && !f.outline.length && S.active > 0)
             ? 'Copy the floor below, or draw this one.'
-            : (edited && stage.done ? stage.done : stage.hint));
+        : (edited && stage.done ? stage.done : stage.hint);
     }
 
     var cal = $('sk-calib');
@@ -5468,6 +5580,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
     var apply = $('sk-apply');
     if (apply) apply.disabled = !ready();
+    var u = $('sk-undo'), r = $('sk-redo');
+    if (u) u.disabled = !UNDO.length && !(S.drawing && S.drawing.length);
+    if (r) r.disabled = !REDO.length;
   }
 
   function toolsFor(stage) {
@@ -5589,11 +5704,6 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     return false;
   }
 
-  /** Corners land on the grid. Always, everywhere, no exceptions. */
-  function toGrid(p) {
-    return [Math.round(p[0] / SNAP) * SNAP, Math.round(p[1] / SNAP) * SNAP];
-  }
-
   /**
    * A new corner in the middle of a wall. It goes ON the wall, at a grid
    * intersection when the wall runs through one — which every square and every
@@ -5602,7 +5712,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
    */
   function splitPoint(a, b, t) {
     var on = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-    var g = toGrid(on);
+    var g = snapFrom(null, on);
     if (dist(g, on) < SNAP * 0.35) {
       var pr = projectOnSeg(g, a, b);
       if (pr.d < 1e-6) return g;                 // the grid point is on the wall
@@ -5652,16 +5762,30 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
    * changes the drawing takes a snapshot first, so one button walks all of it
    * backwards in the order it happened.
    */
-  var UNDO = [];
+  var UNDO = [], REDO = [];
+
+  function stateNow() {
+    return JSON.stringify({
+      floors: S.floors, extension: S.extension, scale: S.scale,
+      active: S.active, drawing: S.drawing, snap: SNAP
+    });
+  }
+  function restore(json) {
+    var o = JSON.parse(json);
+    S.floors = o.floors;
+    S.extension = o.extension;
+    S.scale = o.scale;
+    S.active = Math.min(o.active, o.floors.length - 1);
+    S.drawing = o.drawing;
+    SNAP = o.snap || LOOSE;       // undoing the measurement returns the loose grid
+    S.pick = null; S.selected = null; S.cursor = null;
+    FRAME = null;
+  }
 
   function snapshot() {
-    try {
-      UNDO.push(JSON.stringify({
-        floors: S.floors, extension: S.extension, scale: S.scale,
-        active: S.active, drawing: S.drawing
-      }));
-    } catch (e) { return; }
-    if (UNDO.length > 40) UNDO.shift();
+    REDO.length = 0;
+    try { UNDO.push(stateNow()); } catch (e) { return; }
+    if (UNDO.length > 60) UNDO.shift();
   }
 
   function undo() {
@@ -5675,16 +5799,19 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     }
     var prev = UNDO.pop();
     if (!prev) { say('Nothing left to undo.'); return; }
-    var o = JSON.parse(prev);
-    S.floors = o.floors;
-    S.extension = o.extension;
-    S.scale = o.scale;
-    S.active = Math.min(o.active, o.floors.length - 1);
-    S.drawing = o.drawing;
-    S.pick = null; S.selected = null; S.cursor = null;
+    REDO.push(stateNow());
+    restore(prev);
     say('');
-    FRAME = null;
-    settled();
+    render();
+  }
+
+  function redo() {
+    var next = REDO.pop();
+    if (!next) return;
+    UNDO.push(stateNow());
+    restore(next);
+    say('');
+    render();
   }
 
   /* ---- input ------------------------------------------------------------------ */
@@ -5712,6 +5839,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   }
 
   function drawingStage() { return S.stage === 'outline' || S.stage === 'extension' || S.stage === 'internal'; }
+  /** Stages where the next tap puts something down at a grid point. */
+  function placingStage() { return drawingStage() || S.stage === 'rooms'; }
 
   /** Which shape is being edited in this stage, if any. */
   function editable() {
@@ -5738,6 +5867,23 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         });
       });
     }
+    // a door in the wrong place should slide, not be deleted and put back
+    if (S.stage === 'doors' || S.stage === 'windows') {
+      var f = floor();
+      f.openings.forEach(function (o) {
+        var w = openingWall(f, o);
+        if (!w) return;
+        var c = [w.a[0] + (w.b[0] - w.a[0]) * o.t, w.a[1] + (w.b[1] - w.a[1]) * o.t];
+        var d = dist(p, c);
+        if (d < r && (!best || d < best.d)) best = { kind: 'opening', id: o.id, d: d };
+      });
+    }
+    if (S.stage === 'rooms') {
+      floor().markers.forEach(function (mk, i) {
+        var d = dist(p, [mk.x, mk.y]);
+        if (d < r && (!best || d < best.d)) best = { kind: 'pin', i: i, d: d };
+      });
+    }
     return best;
   }
 
@@ -5756,26 +5902,51 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     e.preventDefault();
   }
 
+  /* Rendering on every pointer move is fine for a plan this size, but only
+     once per frame. */
+  var RAF = 0;
+  function renderSoon() {
+    if (RAF) return;
+    RAF = root.requestAnimationFrame(function () { RAF = 0; render(); });
+  }
+
   function onMove(e) {
     if (!S.started || S.calibrating) return;
 
     if (press && press.handle) {
       if (Math.abs(e.clientX - press.x) + Math.abs(e.clientY - press.y) > 3) press.moved = true;
       if (!press.moved) return;
-      var g = toGrid(toWorld(e));
-      var h = press.handle;
-      if (h.kind === 'corner') shapeOf(h.which === 'ext' ? 'ext' : 'floor').outline[h.i] = g;
-      else floor().internals[h.i][h.end] = g;
-      S.pick = h.kind === 'corner' ? { kind: 'corner', which: h.which, i: h.i } : { kind: 'iwall', i: h.i };
-      render();
+      var w2 = toWorld(e), g = snapFrom(null, w2);
+      var h = press.handle, f2 = floor();
+      if (h.kind === 'corner') {
+        shapeOf(h.which === 'ext' ? 'ext' : 'floor').outline[h.i] = g;
+        S.pick = { kind: 'corner', which: h.which, i: h.i };
+      } else if (h.kind === 'iend') {
+        f2.internals[h.i][h.end] = g;
+        S.pick = { kind: 'iwall', i: h.i };
+      } else if (h.kind === 'opening') {
+        // an opening slides along the wall it is in, and stays in it
+        f2.openings.forEach(function (o) {
+          if (o.id !== h.id) return;
+          var wl = openingWall(f2, o);
+          if (wl) o.t = projectOnSeg(w2, wl.a, wl.b).t;
+        });
+        S.selected = h.id;
+      } else if (h.kind === 'pin') {
+        f2.markers[h.i].x = g[0];
+        f2.markers[h.i].y = g[1];
+      }
+      renderSoon();
       return;
     }
 
-    if (!drawingStage()) return;
-    var from = S.drawing && S.drawing.length ? S.drawing[S.drawing.length - 1] : null;
-    S.cursor = snapFrom(from, toWorld(e));
-    if (S.drawing && S.drawing.length) render();
+    if (!placingStage()) { S.cursor = null; return; }
+    S.cursor = snapFrom(null, toWorld(e));
+    S.hoverHandle = !!handleAt(S.cursor);
+    renderSoon();
   }
+
+  function onLeave() { S.cursor = null; render(); }
 
   function onUp(e) {
     if (!S.started || S.calibrating) { press = null; return; }
@@ -5806,12 +5977,17 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     }
 
     if (p.handle && !p.moved) {           // a tap on a handle selects it
-      UNDO.pop();                          // nothing changed, so nothing to undo
       var hh = p.handle;
-      S.pick = hh.kind === 'corner'
-        ? { kind: 'corner', which: hh.which, i: hh.i }
-        : { kind: 'iwall', i: hh.i };
-      S.selected = null;
+      if (hh.kind === 'pin') { floor().markers.splice(hh.i, 1); settled(); return; }
+      UNDO.pop();                          // nothing changed, so nothing to undo
+      REDO.length = 0;
+      if (hh.kind === 'opening') { S.selected = hh.id; S.pick = null; }
+      else {
+        S.pick = hh.kind === 'corner'
+          ? { kind: 'corner', which: hh.which, i: hh.i }
+          : { kind: 'iwall', i: hh.i };
+        S.selected = null;
+      }
       render();
       return;
     }
@@ -5852,7 +6028,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         // a tap on one of its end handles, which is a target nothing else uses.
         if (S.pick) { S.pick = null; }
         snapshot();
-        S.drawing = [toGrid(w)];
+        S.drawing = [snapFrom(null, w)];
         changed();
         return;
       }
@@ -5864,7 +6040,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
     if (S.stage === 'rooms') {
       snapshot();
-      f.markers.push({ x: toGrid(w)[0], y: toGrid(w)[1], type: S.roomType });
+      var g = snapFrom(null, w);
+      f.markers.push({ x: g[0], y: g[1], type: S.roomType });
       changed();
       return;
     }
@@ -5928,6 +6105,34 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (inp) { inp.value = inp.value || '8.4'; try { inp.focus(); inp.select(); } catch (e) {} }
   }
 
+  /**
+   * Redraw the whole thing in metres.
+   *
+   * Everything is multiplied by the factor the measured wall implies and then
+   * re-snapped to a quarter metre. Corners move by at most 125 mm, which is
+   * inside the tolerance of somebody remembering how long their front wall is,
+   * and in exchange every dimension on the drawing becomes a figure a builder
+   * would write down.
+   */
+  function toMetres(k) {
+    var conv = function (p) {
+      return [Math.round(p[0] * k / METRIC_SNAP) * METRIC_SNAP,
+              Math.round(p[1] * k / METRIC_SNAP) * METRIC_SNAP];
+    };
+    S.floors.forEach(function (f) {
+      f.outline = f.outline.map(conv);
+      f.internals = f.internals.map(function (sg) { return [conv(sg[0]), conv(sg[1])]; });
+      f.markers.forEach(function (mk) { var q = conv([mk.x, mk.y]); mk.x = q[0]; mk.y = q[1]; });
+      if (f.image) { f.image.x *= k; f.image.y *= k; f.image.w *= k; f.image.h *= k; }
+    });
+    S.extension.outline = S.extension.outline.map(conv);
+    if (S.drawing) S.drawing = S.drawing.map(conv);
+    SNAP = METRIC_SNAP;
+    S.scale = 1;                 // one grid unit is one metre from here on
+    FRAME = null;
+    MANUAL = false;
+  }
+
   /** The single number the whole drawing is scaled by. */
   function applyCalibration() {
     var f = floor();
@@ -5936,7 +6141,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (!metres || metres <= 0) { say('Type how long that wall is, in metres.'); return; }
     var units = dist(f.outline[S.calibIdx], f.outline[(S.calibIdx + 1) % f.outline.length]);
     if (!units) return;
-    S.scale = metres / units;
+    snapshot();
+    toMetres(metres / units);
     S.calibrating = false;
     say('');
     settled();
@@ -5971,7 +6177,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     wrap.setAttribute('aria-hidden', 'true');
   }
   function reset() {
-    UNDO.length = 0;
+    UNDO.length = 0; REDO.length = 0; MANUAL = false; SNAP = LOOSE;
     S.started = false; S.stage = 'outline'; S.scale = null;
     S.floors = [newFloor(0)]; S.active = 0;
     S.extension = { outline: [], closed: false, storeys: 1 };
@@ -6011,13 +6217,81 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     render();
   }
 
+  /* ---- zoom and pan gestures ---------------------------------------------
+   * A wheel zooms about the pointer, two fingers pinch and pan, and a drag on
+   * empty canvas with nothing under it does nothing — panning is deliberate
+   * (middle button, or two fingers) so it can never be mistaken for drawing.
+   */
+  var touches = {};       // live pointers, for the pinch
+  var pinch = null;
+
+  function pointerSpan() {
+    var ids = Object.keys(touches);
+    if (ids.length < 2) return null;
+    var a = touches[ids[0]], b = touches[ids[1]];
+    return { d: Math.hypot(b.sx - a.sx, b.sy - a.sy),
+             c: [(a.wx + b.wx) / 2, (a.wy + b.wy) / 2] };
+  }
+
   function wire() {
     var svg = $('sk-svg');
     if (!svg) return;
-    svg.addEventListener('pointerdown', onDown);
-    svg.addEventListener('pointermove', onMove);
-    svg.addEventListener('pointerup', onUp);
-    svg.addEventListener('pointercancel', function () { press = null; });
+
+    svg.addEventListener('wheel', function (e) {
+      if (!S.started) return;
+      e.preventDefault();
+      zoomAt(toWorld(e), e.deltaY < 0 ? 1.12 : 1 / 1.12);
+    }, { passive: false });
+
+    svg.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'touch') {
+        var w = toWorld(e);
+        touches[e.pointerId] = { sx: e.clientX, sy: e.clientY, wx: w[0], wy: w[1] };
+        if (Object.keys(touches).length === 2) {
+          press = null;                       // two fingers is never drawing
+          pinch = pointerSpan();
+          return;
+        }
+      }
+      if (e.button === 1 || (e.button === 0 && e.shiftKey)) {   // middle or shift: pan
+        press = { pan: true, sx: e.clientX, sy: e.clientY };
+        try { svg.setPointerCapture(e.pointerId); } catch (err) {}
+        e.preventDefault();
+        return;
+      }
+      onDown(e);
+    });
+
+    svg.addEventListener('pointermove', function (e) {
+      if (touches[e.pointerId]) { touches[e.pointerId].sx = e.clientX; touches[e.pointerId].sy = e.clientY; }
+      if (pinch) {
+        var now = pointerSpan();
+        if (now && now.d > 4 && pinch.d > 4) {
+          zoomAt(pinch.c, now.d / pinch.d);
+          pinch = { d: now.d, c: pinch.c };
+        }
+        return;
+      }
+      if (press && press.pan) {
+        var v = frame(), sc = (v.x1 - v.x0) / Math.max(svg.clientWidth, 1);
+        panBy((e.clientX - press.sx) * sc, (e.clientY - press.sy) * sc);
+        press.sx = e.clientX; press.sy = e.clientY;
+        return;
+      }
+      onMove(e);
+    });
+
+    svg.addEventListener('pointerup', function (e) {
+      delete touches[e.pointerId];
+      if (pinch) { if (Object.keys(touches).length < 2) pinch = null; press = null; return; }
+      if (press && press.pan) { press = null; return; }
+      onUp(e);
+    });
+    svg.addEventListener('pointercancel', function (e) {
+      delete touches[e.pointerId];
+      press = null; pinch = null;
+    });
+    svg.addEventListener('pointerleave', onLeave);
 
     var file = $('sk-file');
     if (file) file.addEventListener('change', function (e) { loadImage(e.target.files[0]); });
@@ -6127,6 +6401,10 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
           floor().openings = floor().openings.filter(function (o) { return o.id !== S.selected; });
           S.selected = null; changed(); return;
         case 'sk-undo':      undo(); return;
+        case 'sk-redo':      redo(); return;
+        case 'sk-fit':       fitView(); return;
+        case 'sk-zoomin':    zoomAt(frameCentre(), 1.25); return;
+        case 'sk-zoomout':   zoomAt(frameCentre(), 1 / 1.25); return;
         case 'sk-restart':   reset(); return;
         case 'sk-close-btn': close(); return;
         case 'sk-apply':
@@ -6147,12 +6425,18 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         if (n) { e.preventDefault(); var b = $('sk-next'); if (b) b.click(); }
         return;
       }
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault();
+        if (e.shiftKey) redo(); else undo();
+        return;
+      }
       if (e.key === 'Backspace' && doc.activeElement !== $('sk-len')) { e.preventDefault(); undo(); }
     });
   }
 
   root.DATUM = root.DATUM || {};
-  root.DATUM.SKETCH = { open: open, close: close, wire: wire, reset: reset, measure: measure, _S: S };
+  root.DATUM.SKETCH = { open: open, close: close, wire: wire, reset: reset, measure: measure,
+    snap: function () { return SNAP; }, _S: S };
 })(window, document);
 
 ;

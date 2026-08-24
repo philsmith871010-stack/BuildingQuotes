@@ -595,11 +595,19 @@
         <div class="sk-floors" id="sk-floors" role="group" aria-label="Floor"></div>
         <svg id="sk-svg" preserveAspectRatio="xMidYMid meet" aria-label="Your plan"></svg>
         <div class="sk-actions">
-          <button type="button" class="btn btn-ghost btn-sm" id="sk-undo">Undo</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="sk-undo" title="Undo">&#8630; Undo</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="sk-redo" title="Redo">&#8631;</button>
+          <span class="sk-zoom">
+            <button type="button" id="sk-zoomout" aria-label="Zoom out">&minus;</button>
+            <button type="button" id="sk-fit" aria-label="Fit the drawing">Fit</button>
+            <button type="button" id="sk-zoomin" aria-label="Zoom in">+</button>
+          </span>
         </div>
       </div>
 
       <aside class="sk-side">
+        <p class="sk-of" id="sk-of"></p>
+        <h3 class="sk-stagename" id="sk-stagename"></h3>
         <p class="sk-hint" id="sk-hint"></p>
         <p class="sk-say" id="sk-say"></p>
 
@@ -614,8 +622,8 @@
           <span class="hint">Tap a different wall on the drawing if you know that one instead.</span>
         </div>
 
-        <button type="button" class="btn sk-nextbtn" id="sk-next" data-act="" hidden></button>
         <div class="sk-tools" id="sk-tools"></div>
+        <button type="button" class="btn sk-nextbtn" id="sk-next" data-act="" hidden></button>
         <div class="sk-read" id="sk-read"></div>
         <button type="button" class="btn" id="sk-apply" disabled>Use these figures &rarr;</button>
       </aside>
