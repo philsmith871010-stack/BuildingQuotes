@@ -51,12 +51,15 @@
   ];
 
   var STAGES = [
-    { id: 'outline',   n: 1, label: 'Outline',      hint: 'Click round the outside of the house.' },
-    { id: 'internal',  n: 2, label: 'Inside walls', hint: 'Click each end of a wall inside the house.' },
+    { id: 'outline',   n: 1, label: 'Outline',      hint: 'Click round the outside of the house.',
+      done: 'Drag a corner to move it. Tap a wall to add one.' },
+    { id: 'internal',  n: 2, label: 'Inside walls', hint: 'Click each end of a wall inside the house.',
+      done: 'Drag either end to move a wall, or tap one to remove it.' },
     { id: 'doors',     n: 3, label: 'Doors',        hint: 'Click a wall to put a door in it.' },
     { id: 'windows',   n: 4, label: 'Windows',      hint: 'Click a wall to put a window in it.' },
     { id: 'rooms',     n: 5, label: 'Rooms',        hint: 'Tap a room type, then tap where it is.' },
-    { id: 'extension', n: 6, label: 'Extension',    hint: 'Draw the new bit, if you are adding one.' }
+    { id: 'extension', n: 6, label: 'Extension',    hint: 'Draw the new bit, if you are adding one.',
+      done: 'Drag a corner to move it. Tap a wall to add one.' }
   ];
 
   var FLOOR_NAMES = ['Ground floor', 'First floor', 'Second floor', 'Loft'];
@@ -77,6 +80,7 @@
     drawing: null,
     cursor: null,
     selected: null,      // an opening id
+    pick: null,          // a selected corner or inside wall, for moving or removing
     calibrating: false,
     calibIdx: 0,         // which outline segment is being measured
     kind: null,
@@ -303,16 +307,23 @@
   function P(p) { return [(p[0] * K).toFixed(1), (p[1] * K).toFixed(1)]; }
   function poly(pts) { return pts.map(function (p) { return P(p).join(','); }).join(' '); }
 
-  function gridSvg(v) {
-    var out = [], x, y;
-    for (x = Math.ceil(v.x0); x <= v.x1; x++) {
-      out.push('<line x1="' + (x * K) + '" y1="' + (v.y0 * K) + '" x2="' + (x * K) + '" y2="' + (v.y1 * K) +
-        '" class="sk-grid' + (x % 5 === 0 ? ' major' : '') + '"/>');
-    }
-    for (y = Math.ceil(v.y0); y <= v.y1; y++) {
-      out.push('<line x1="' + (v.x0 * K) + '" y1="' + (y * K) + '" x2="' + (v.x1 * K) + '" y2="' + (y * K) +
-        '" class="sk-grid' + (y % 5 === 0 ? ' major' : '') + '"/>');
-    }
+  /*
+   * Corners snap to SNAP, so the grid is drawn at SNAP. A snap point you cannot
+   * see is a corner that looks like it landed in the wrong place. The fine
+   * lines drop out when they would be closer together than a few pixels.
+   */
+  function gridSvg(v, px) {
+    var out = [], step = px * SNAP >= 9 ? SNAP : 1;
+    var line = function (x1, y1, x2, y2, cls) {
+      out.push('<line x1="' + (x1 * K) + '" y1="' + (y1 * K) + '" x2="' + (x2 * K) + '" y2="' +
+        (y2 * K) + '" class="' + cls + '"/>');
+    };
+    var cls = function (n) {
+      return 'sk-grid' + (Math.abs(n % 5) < 1e-6 ? ' major' : Math.abs(n % 1) < 1e-6 ? '' : ' fine');
+    };
+    var x, y;
+    for (x = Math.ceil(v.x0 / step) * step; x <= v.x1; x += step) line(x, v.y0, x, v.y1, cls(x));
+    for (y = Math.ceil(v.y0 / step) * step; y <= v.y1; y += step) line(v.x0, y, v.x1, y, cls(y));
     return out.join('');
   }
 
@@ -365,13 +376,15 @@
     var v = frame();
     svg.setAttribute('viewBox', [v.x0 * K, v.y0 * K, (v.x1 - v.x0) * K, (v.y1 - v.y0) * K].join(' '));
 
+    var px = pxPerUnit();          // screen pixels per grid unit
+    var RU = K / Math.max(px, 1);   // SVG user units per screen pixel
     var f = floor(), out = [];
 
     if (f.image) {
       out.push('<image href="' + esc(f.image.src) + '" x="' + (f.image.x * K) + '" y="' + (f.image.y * K) +
         '" width="' + (f.image.w * K) + '" height="' + (f.image.h * K) + '" class="sk-photo"/>');
     }
-    out.push(gridSvg(v));
+    out.push(gridSvg(v, px));
 
     // the floor below, faint, so an upper floor can be drawn over it
     if (S.active > 0 && S.floors[S.active - 1].closed) {
@@ -386,9 +399,16 @@
     if (f.outline.length > 1) {
       out.push('<polyline points="' + poly(f.closed ? f.outline.concat([f.outline[0]]) : f.outline) + '" class="sk-ext"/>');
     }
-    f.internals.forEach(function (seg) {
+    f.internals.forEach(function (seg, i) {
+      var on = S.pick && S.pick.kind === 'iwall' && S.pick.i === i;
       out.push('<line x1="' + P(seg[0])[0] + '" y1="' + P(seg[0])[1] + '" x2="' + P(seg[1])[0] +
-        '" y2="' + P(seg[1])[1] + '" class="sk-int"/>');
+        '" y2="' + P(seg[1])[1] + '" class="sk-int' + (on ? ' on' : '') + '"/>');
+      if (S.stage === 'internal') {
+        [0, 1].forEach(function (e) {
+          out.push('<circle cx="' + P(seg[e])[0] + '" cy="' + P(seg[e])[1] + '" r="' +
+            (8 * RU).toFixed(1) + '" class="sk-node small"/>');
+        });
+      }
     });
 
     if (S.extension.outline.length > 1) {
@@ -417,13 +437,38 @@
     // corners. The first one is fat and obvious once closing is possible, which
     // is the whole of the instruction "finish where you started".
     var live = S.drawing || [];
-    var handles = f.closed && !live.length ? f.outline : live;
+    var editing = editable();
+    var handles = live.length ? live
+      : editing === 'ext' ? S.extension.outline
+      : editing === 'floor' ? f.outline
+      : (f.closed ? f.outline : []);
     handles.forEach(function (p, i) {
-      var isTarget = !f.closed && i === 0 && live.length > 2;
-      out.push('<circle cx="' + P(p)[0] + '" cy="' + P(p)[1] + '" r="' + (isTarget ? 13 : 7) +
-        '" class="sk-node' + (isTarget ? ' start' : '') + '"/>');
+      var isTarget = live.length > 2 && i === 0;
+      var picked = !live.length && editing && S.pick && S.pick.kind === 'corner' && S.pick.i === i;
+      out.push('<circle cx="' + P(p)[0] + '" cy="' + P(p)[1] + '" r="' +
+        (isTarget ? 15 * RU : 9 * RU).toFixed(1) + '" class="sk-node' +
+        (isTarget ? ' start' : '') + (picked ? ' on' : '') + '"/>');
     });
-    if (S.stage === 'extension' && !S.extension.closed && live.length > 2) { /* handled above */ }
+
+    // the selected corner or inside wall carries the control that removes it,
+    // so a stray tap can never delete anything
+    var kill = null;
+    if (!live.length && S.pick) {
+      if (S.pick.kind === 'corner' && editing) {
+        var ring = editing === 'ext' ? S.extension.outline : f.outline;
+        var c = ring[S.pick.i];
+        if (c) kill = [c[0], c[1] - 26 * RU / K];
+      } else if (S.pick.kind === 'iwall') {
+        var seg = f.internals[S.pick.i];
+        if (seg) kill = [(seg[0][0] + seg[1][0]) / 2, (seg[0][1] + seg[1][1]) / 2 - 24 * RU / K];
+      }
+    }
+    if (kill) {
+      out.push('<g class="sk-kill" data-killpick="1"><circle cx="' + (kill[0] * K) + '" cy="' +
+        (kill[1] * K) + '" r="' + (13 * RU).toFixed(1) + '"/><text x="' + (kill[0] * K) + '" y="' +
+        (kill[1] * K + 5 * RU) + '" text-anchor="middle" font-size="' + (17 * RU).toFixed(1) +
+        '">\u00d7</text></g>');
+    }
 
     f.markers.forEach(function (mk, i) {
       var t = ROOM_TYPES.filter(function (r) { return r.id === mk.type; })[0] || ROOM_TYPES[6];
@@ -536,11 +581,14 @@
     var f = floor();
 
     if (hint) {
+      var edited = (S.stage === 'outline' && f.closed) ||
+                   (S.stage === 'extension' && S.extension.closed) ||
+                   (S.stage === 'internal' && f.internals.length);
       hint.textContent = S.calibrating
         ? 'How long is the wall highlighted in orange?'
         : (S.stage === 'outline' && !f.closed && !f.outline.length && S.active > 0
             ? 'Copy the floor below, or draw this one.'
-            : stage.hint);
+            : (edited && stage.done ? stage.done : stage.hint));
     }
 
     var cal = $('sk-calib');
@@ -630,6 +678,176 @@
     return '';
   }
 
+
+  /* =====================================================================
+     Editing a finished shape
+     =====================================================================
+     Drawing it once is never enough. A closed outline is a live thing: drag a
+     corner and both walls either side follow, tap a wall to put a corner in it,
+     select a corner and remove it so the two walls merge. The ring never opens.
+
+     The hard part is not the geometry. A window is stored as "sixty per cent of
+     the way along wall three", so every edit that renumbers or resizes walls has
+     to carry the openings with it, or somebody's front door silently moves to a
+     different wall. Rather than do index arithmetic — which has a wrap-around
+     case for every operation and gets one of them wrong — each opening is
+     remembered as a point in the world before the edit and reassigned to the
+     nearest wall afterwards. A split leaves the halves collinear so every
+     opening lands exactly where it was; a merge puts them on the chord, which
+     is the only honest answer available.
+     ===================================================================== */
+
+  /** Where each opening physically is, before geometry moves under it. */
+  function openingPoints(f) {
+    return f.openings.map(function (o) {
+      var w = openingWall(f, o);
+      if (!w) return null;
+      return [w.a[0] + (w.b[0] - w.a[0]) * o.t, w.a[1] + (w.b[1] - w.a[1]) * o.t];
+    });
+  }
+
+  /** Put them back on whichever wall now runs closest to where they were. */
+  function reassignOpenings(f, pts) {
+    var keep = [];
+    var walls = wallsOf(f);
+    f.openings.forEach(function (o, k) {
+      var p = pts[k];
+      if (!p) return;
+      var best = null;
+      walls.forEach(function (w) {
+        if (w.on !== o.on) return;
+        var pr = projectOnSeg(p, w.a, w.b);
+        if (!best || pr.d < best.d) best = { w: w, t: pr.t, d: pr.d };
+      });
+      if (!best) return;
+      o.idx = best.w.idx;
+      o.t = best.t;
+      keep.push(o);
+    });
+    f.openings = keep;
+  }
+
+  function cross(o, a, b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); }
+  function straddles(a, b, c, d) {
+    var d1 = cross(a, b, c), d2 = cross(a, b, d), d3 = cross(c, d, a), d4 = cross(c, d, b);
+    return ((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0));
+  }
+
+  /*
+   * A bow tie silently produces the wrong area — the shoelace formula cancels
+   * the crossed part against itself — and a wrong area is the one thing this
+   * tool must never hand anybody. So a drag that crosses the shape is refused.
+   */
+  function selfIntersects(poly) {
+    var n = poly.length;
+    if (n < 4) return false;
+    for (var i = 0; i < n; i++) {
+      for (var j = i + 1; j < n; j++) {
+        if (i === j || (i + 1) % n === j || (j + 1) % n === i) continue;
+        if (straddles(poly[i], poly[(i + 1) % n], poly[j], poly[(j + 1) % n])) return true;
+      }
+    }
+    return false;
+  }
+
+  /** Corners land on the grid. Always, everywhere, no exceptions. */
+  function toGrid(p) {
+    return [Math.round(p[0] / SNAP) * SNAP, Math.round(p[1] / SNAP) * SNAP];
+  }
+
+  /**
+   * A new corner in the middle of a wall. It goes ON the wall, at a grid
+   * intersection when the wall runs through one — which every square and every
+   * 45° wall does — and otherwise at the nearest point of the wall to that
+   * intersection. Splitting a wall must never move the wall.
+   */
+  function splitPoint(a, b, t) {
+    var on = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+    var g = toGrid(on);
+    if (dist(g, on) < SNAP * 0.35) {
+      var pr = projectOnSeg(g, a, b);
+      if (pr.d < 1e-6) return g;                 // the grid point is on the wall
+    }
+    var back = projectOnSeg(g, a, b);
+    var q = [a[0] + (b[0] - a[0]) * back.t, a[1] + (b[1] - a[1]) * back.t];
+    return dist(q, a) < SNAP * 0.4 || dist(q, b) < SNAP * 0.4 ? mm(on) : mm(q);
+  }
+
+  function shapeOf(which) { return which === 'ext' ? S.extension : floor(); }
+
+  function splitWall(which, i, t) {
+    var f = floor(), shape = shapeOf(which);
+    var pts = which === 'ext' ? null : openingPoints(f);
+    var p = splitPoint(shape.outline[i], shape.outline[(i + 1) % shape.outline.length], t);
+    snapshot();
+    shape.outline.splice(i + 1, 0, p);
+    if (pts) reassignOpenings(f, pts);
+    S.pick = { kind: 'corner', which: which, i: i + 1 };
+    settled();
+  }
+
+  function removeCorner(which, i) {
+    var f = floor(), shape = shapeOf(which);
+    if (shape.outline.length <= 3) { say('A shape needs at least three corners.'); return; }
+    var pts = which === 'ext' ? null : openingPoints(f);
+    snapshot();
+    shape.outline.splice(i, 1);
+    if (pts) reassignOpenings(f, pts);
+    S.pick = null;
+    say('');
+    settled();
+  }
+
+  function removeInternal(i) {
+    var f = floor();
+    var pts = openingPoints(f);
+    snapshot();
+    f.internals.splice(i, 1);
+    reassignOpenings(f, pts);
+    S.pick = null;
+    settled();
+  }
+
+  /* ---- undo ------------------------------------------------------------------
+   * Editing needs a real history, not a rule per action. Everything that
+   * changes the drawing takes a snapshot first, so one button walks all of it
+   * backwards in the order it happened.
+   */
+  var UNDO = [];
+
+  function snapshot() {
+    try {
+      UNDO.push(JSON.stringify({
+        floors: S.floors, extension: S.extension, scale: S.scale,
+        active: S.active, drawing: S.drawing
+      }));
+    } catch (e) { return; }
+    if (UNDO.length > 40) UNDO.shift();
+  }
+
+  function undo() {
+    // a run in progress steps back a corner at a time, which is what the hand
+    // expects; anything else walks the history
+    if (S.drawing && S.drawing.length) {
+      S.drawing.pop();
+      if (!S.drawing.length) S.drawing = null;
+      changed();
+      return;
+    }
+    var prev = UNDO.pop();
+    if (!prev) { say('Nothing left to undo.'); return; }
+    var o = JSON.parse(prev);
+    S.floors = o.floors;
+    S.extension = o.extension;
+    S.scale = o.scale;
+    S.active = Math.min(o.active, o.floors.length - 1);
+    S.drawing = o.drawing;
+    S.pick = null; S.selected = null; S.cursor = null;
+    say('');
+    FRAME = null;
+    settled();
+  }
+
   /* ---- input ------------------------------------------------------------------ */
 
   function toWorld(evt) {
@@ -641,29 +859,147 @@
     return [p.x / K, p.y / K];
   }
 
+  /** Screen pixels per grid unit, so handles and hit targets stay finger-sized. */
+  function pxPerUnit() {
+    var svg = $('sk-svg');
+    var v = FRAME || frame();
+    var w = (svg && svg.clientWidth) || 800;
+    var h = (svg && svg.clientHeight) || 600;
+    // preserveAspectRatio="meet" — the smaller ratio wins
+    return Math.min(w / (v.x1 - v.x0), h / (v.y1 - v.y0));
+  }
+  function grabRadius() {
+    return Math.max(0.28, Math.min(1.3, 15 / pxPerUnit()));
+  }
+
   function drawingStage() { return S.stage === 'outline' || S.stage === 'extension' || S.stage === 'internal'; }
 
-  function onMove(e) {
-    if (!S.started || S.calibrating || !drawingStage()) return;
+  /** Which shape is being edited in this stage, if any. */
+  function editable() {
+    if (S.stage === 'outline' && floor().closed) return 'floor';
+    if (S.stage === 'extension' && S.extension.closed) return 'ext';
+    return null;
+  }
+
+  /** The corner or wall end under the pointer, if there is one. */
+  function handleAt(p) {
+    var r = grabRadius(), best = null;
+    var which = editable();
+    if (which) {
+      shapeOf(which === 'ext' ? 'ext' : 'floor').outline.forEach(function (q, i) {
+        var d = dist(p, q);
+        if (d < r && (!best || d < best.d)) best = { kind: 'corner', which: which, i: i, d: d };
+      });
+    }
+    if (S.stage === 'internal') {
+      floor().internals.forEach(function (seg, i) {
+        [0, 1].forEach(function (e) {
+          var d = dist(p, seg[e]);
+          if (d < r && (!best || d < best.d)) best = { kind: 'iend', i: i, end: e, d: d };
+        });
+      });
+    }
+    return best;
+  }
+
+  var press = null;   // { x, y, world, handle, moved }
+
+  function onDown(e) {
+    if (!S.started || S.calibrating) return;
     var w = toWorld(e);
+    press = { x: e.clientX, y: e.clientY, world: w, handle: null, moved: false };
+    if (S.drawing && S.drawing.length) return;      // mid-run: taps only
+    var h = handleAt(w);
+    if (!h) return;
+    press.handle = h;
+    snapshot();
+    try { $('sk-svg').setPointerCapture(e.pointerId); } catch (err) {}
+    e.preventDefault();
+  }
+
+  function onMove(e) {
+    if (!S.started || S.calibrating) return;
+
+    if (press && press.handle) {
+      if (Math.abs(e.clientX - press.x) + Math.abs(e.clientY - press.y) > 3) press.moved = true;
+      if (!press.moved) return;
+      var g = toGrid(toWorld(e));
+      var h = press.handle;
+      if (h.kind === 'corner') shapeOf(h.which === 'ext' ? 'ext' : 'floor').outline[h.i] = g;
+      else floor().internals[h.i][h.end] = g;
+      S.pick = h.kind === 'corner' ? { kind: 'corner', which: h.which, i: h.i } : { kind: 'iwall', i: h.i };
+      render();
+      return;
+    }
+
+    if (!drawingStage()) return;
     var from = S.drawing && S.drawing.length ? S.drawing[S.drawing.length - 1] : null;
-    S.cursor = snapFrom(from, w);
+    S.cursor = snapFrom(from, toWorld(e));
     if (S.drawing && S.drawing.length) render();
   }
 
-  function onClick(e) {
-    if (!S.started) return;
-    var w = toWorld(e);
+  function onUp(e) {
+    if (!S.started || S.calibrating) { press = null; return; }
+    var p = press;
+    press = null;
+    try { $('sk-svg').releasePointerCapture(e.pointerId); } catch (err) {}
+    if (!p) return;
+
+    if (p.handle && p.moved) {
+      // a drag that crosses the shape would silently corrupt the area
+      var h = p.handle;
+      if (h.kind === 'corner') {
+        var shape = shapeOf(h.which === 'ext' ? 'ext' : 'floor');
+        if (selfIntersects(shape.outline)) {
+          say('That would fold the shape over itself.');
+          var back = UNDO.pop();
+          if (back) {
+            var o = JSON.parse(back);
+            S.floors = o.floors; S.extension = o.extension;
+          }
+          settled();
+          return;
+        }
+      }
+      say('');
+      settled();
+      return;
+    }
+
+    if (p.handle && !p.moved) {           // a tap on a handle selects it
+      UNDO.pop();                          // nothing changed, so nothing to undo
+      var hh = p.handle;
+      S.pick = hh.kind === 'corner'
+        ? { kind: 'corner', which: hh.which, i: hh.i }
+        : { kind: 'iwall', i: hh.i };
+      S.selected = null;
+      render();
+      return;
+    }
+
+    if (Math.abs(e.clientX - p.x) + Math.abs(e.clientY - p.y) > 8) return;   // a drag on nothing
+    if (e.target && e.target.closest && e.target.closest('[data-killpick]')) return;
+    onTap(p.world, e);
+  }
+
+  function onTap(w, e) {
     var f = floor();
 
-    if (S.calibrating) return;   // the wall picker handles its own clicks
-
     if (S.stage === 'outline' || S.stage === 'extension') {
-      var shape = S.stage === 'outline' ? f : S.extension;
-      if (shape.closed) return;
+      var which = S.stage === 'outline' ? 'floor' : 'ext';
+      var shape = shapeOf(which === 'ext' ? 'ext' : 'floor');
+
+      if (shape.closed) {
+        // tapping a wall puts a corner in it; tapping nothing clears the selection
+        var hit = wallOfShape(shape, w);
+        if (hit) { splitWall(which, hit.i, hit.t); return; }
+        if (S.pick) { S.pick = null; render(); }
+        return;
+      }
+
       var from = S.drawing && S.drawing.length ? S.drawing[S.drawing.length - 1] : null;
       var p = snapFrom(from, w);
-      if (!S.drawing) S.drawing = [];
+      if (!S.drawing) { snapshot(); S.drawing = []; }
       if (S.drawing.length > 2 && dist(p, S.drawing[0]) < CLOSE_UNITS) { closeShape(); return; }
       S.drawing.push(p);
       changed();
@@ -671,30 +1007,53 @@
     }
 
     if (S.stage === 'internal') {
-      var q = snapFrom(S.drawing && S.drawing.length ? S.drawing[0] : null, w);
-      if (!S.drawing || !S.drawing.length) { S.drawing = [q]; changed(); return; }
-      f.internals.push([S.drawing[0], q]);
+      if (!S.drawing || !S.drawing.length) {
+        // Anywhere is a valid start, including on top of another wall — walls
+        // meet in a T far more often than they float free. Selecting a wall is
+        // a tap on one of its end handles, which is a target nothing else uses.
+        if (S.pick) { S.pick = null; }
+        snapshot();
+        S.drawing = [toGrid(w)];
+        changed();
+        return;
+      }
+      f.internals.push([S.drawing[0], snapFrom(S.drawing[0], w)]);
       S.drawing = null;
       changed();
       return;
     }
 
     if (S.stage === 'rooms') {
-      f.markers.push({ x: Math.round(w[0] / SNAP) * SNAP, y: Math.round(w[1] / SNAP) * SNAP, type: S.roomType });
+      snapshot();
+      f.markers.push({ x: toGrid(w)[0], y: toGrid(w)[1], type: S.roomType });
       changed();
       return;
     }
 
     // doors and windows always land on a wall
     var kind = S.stage === 'windows' ? 'window' : (S.kind || 'door');
-    var hit = wallAt(w, kind === 'intDoor' ? 'int' : 'ext');
-    if (!hit) { say(kind === 'intDoor' ? 'Click on a wall inside the house.' : 'Click on an outside wall.'); return; }
-    var o = { id: 'o' + (++SEQ), on: hit.w.on, idx: hit.w.idx, t: hit.t,
+    var on = wallAt(w, kind === 'intDoor' ? 'int' : 'ext');
+    if (!on) { say(kind === 'intDoor' ? 'Tap a wall inside the house.' : 'Tap an outside wall.'); return; }
+    snapshot();
+    var o = { id: 'o' + (++SEQ), on: on.w.on, idx: on.w.idx, t: on.t,
               width: DEFAULTS[kind], kind: kind };
     f.openings.push(o);
     S.selected = o.id;
     say('');
     changed();
+  }
+
+  /** Nearest wall of one closed shape, for splitting. */
+  function wallOfShape(shape, p) {
+    var best = null, r = Math.max(0.7, grabRadius() * 1.5);
+    for (var i = 0; i < shape.outline.length; i++) {
+      var a = shape.outline[i], b = shape.outline[(i + 1) % shape.outline.length];
+      var pr = projectOnSeg(p, a, b);
+      if (pr.d < r && pr.t > 0.03 && pr.t < 0.97 && (!best || pr.d < best.d)) {
+        best = { i: i, t: pr.t, d: pr.d };
+      }
+    }
+    return best;
   }
 
   function say(msg) { var el = $('sk-say'); if (el) el.textContent = msg || ''; }
@@ -747,6 +1106,7 @@
   function copyFloorBelow() {
     var src = S.floors[S.active - 1];
     if (!src || !src.closed) return;
+    snapshot();
     var f = floor();
     f.outline = src.outline.map(function (p) { return p.slice(); });
     f.closed = true;
@@ -754,27 +1114,6 @@
     // openings and rooms are NOT copied — upstairs is a different room layout,
     // and a wrong bathroom count is worse than no bathroom count
     settled();
-  }
-
-  function undo() {
-    var f = floor();
-    if (S.drawing && S.drawing.length) { S.drawing.pop(); if (!S.drawing.length) S.drawing = null; changed(); return; }
-    if (S.stage === 'rooms' && f.markers.length) { f.markers.pop(); changed(); return; }
-    if (S.stage === 'internal' && f.internals.length) { f.internals.pop(); changed(); return; }
-    if ((S.stage === 'doors' || S.stage === 'windows') && f.openings.length) {
-      f.openings.pop(); S.selected = null; changed(); return;
-    }
-    if (S.stage === 'extension' && S.extension.closed) {
-      S.drawing = S.extension.outline.slice();
-      S.extension = { outline: [], closed: false, storeys: S.extension.storeys };
-      settled(); return;
-    }
-    if (f.closed) {
-      S.drawing = f.outline.slice();
-      f.outline = []; f.closed = false; f.openings = [];
-      S.stage = 'outline';
-      settled();
-    }
   }
 
   /* ---- wiring ------------------------------------------------------------------ */
@@ -793,10 +1132,11 @@
     wrap.setAttribute('aria-hidden', 'true');
   }
   function reset() {
+    UNDO.length = 0;
     S.started = false; S.stage = 'outline'; S.scale = null;
     S.floors = [newFloor(0)]; S.active = 0;
     S.extension = { outline: [], closed: false, storeys: 1 };
-    S.drawing = null; S.cursor = null; S.selected = null;
+    S.drawing = null; S.cursor = null; S.selected = null; S.pick = null;
     S.calibrating = false; S.kind = null;
     FRAME = null; say('');
     settled();
@@ -824,7 +1164,7 @@
     if (id !== 'outline' && !ready()) return;
     if (S.stage === 'internal' && S.drawing) S.drawing = null;
     S.stage = id;
-    S.drawing = null; S.cursor = null; S.selected = null;
+    S.drawing = null; S.cursor = null; S.selected = null; S.pick = null;
     S.kind = id === 'doors' ? (S.kind || 'door') : null;
     say('');
     refitTight();
@@ -835,8 +1175,10 @@
   function wire() {
     var svg = $('sk-svg');
     if (!svg) return;
+    svg.addEventListener('pointerdown', onDown);
     svg.addEventListener('pointermove', onMove);
-    svg.addEventListener('click', onClick);
+    svg.addEventListener('pointerup', onUp);
+    svg.addEventListener('pointercancel', function () { press = null; });
 
     var file = $('sk-file');
     if (file) file.addEventListener('change', function (e) { loadImage(e.target.files[0]); });
@@ -893,6 +1235,13 @@
       // a click lands on whatever is under the finger — often a <span> inside
       // the button — so resolve to the button before matching on id
       var btn = t.closest ? t.closest('button') : null;
+      hit = t.closest && t.closest('[data-killpick]');
+      if (hit) {
+        if (S.pick && S.pick.kind === 'corner') removeCorner(S.pick.which, S.pick.i);
+        else if (S.pick && S.pick.kind === 'iwall') removeInternal(S.pick.i);
+        return;
+      }
+
       switch ((btn && btn.id) || t.id) {
         case 'sk-blank':     S.started = true; settled(); return;
         case 'sk-upload':    if ($('sk-file')) $('sk-file').click(); return;
@@ -906,30 +1255,36 @@
         case 'sk-calib-go':  applyCalibration(); return;
         case 'sk-recal':     startCalibration(); return;
         case 'sk-redraw':
+          snapshot();
           var f = floor();
           f.outline = []; f.closed = false; f.openings = []; f.internals = []; f.markers = [];
           S.drawing = null; FRAME = null; settled(); return;
         case 'sk-rect':
+          snapshot();
           S.drawing = null;
           floor().outline = [[0, 0], [9, 0], [9, 7], [0, 7]];
           floor().closed = true;
           if (!S.scale) { settled(); startCalibration(); } else settled();
           return;
         case 'sk-addfloor':
+          snapshot();
           S.floors.push(newFloor(S.floors.length));
           S.active = S.floors.length - 1;
           S.stage = 'outline'; S.drawing = null; FRAME = null; settled(); return;
         case 'sk-dropfloor':
           if (S.floors.length > 1) {
+            snapshot();
             S.floors.splice(S.active, 1);
             S.active = Math.min(S.active, S.floors.length - 1);
             FRAME = null; settled();
           }
           return;
         case 'sk-dropext':
+          snapshot();
           S.extension = { outline: [], closed: false, storeys: S.extension.storeys };
           settled(); return;
         case 'sk-del':
+          snapshot();
           floor().openings = floor().openings.filter(function (o) { return o.id !== S.selected; });
           S.selected = null; changed(); return;
         case 'sk-undo':      undo(); return;

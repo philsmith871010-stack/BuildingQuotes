@@ -376,6 +376,115 @@
     paintChooser();
   }
 
+  /* ---- the room-by-room step ------------------------------------------------
+   * The one screen that carries a renovation. Every other question on the site
+   * is one field; this is a list, because a house is a list of rooms and each
+   * one is being taken a different distance.
+   *
+   * The price against each room is real — it is that room priced on its own
+   * through the same rate lines — because a figure per room is what makes a
+   * client believe the total.
+   */
+
+  function roomCost(typeId, j, room, area) {
+    var one = RB.ROOMS.measurements([room], [area]);
+    var m = {};
+    Object.keys(one).forEach(function (k) { m[k] = one[k]; });
+    var t = RB.tradeLines(book(), typeId, {
+      measurements: m, modifiers: j.modifiers, ground: null
+    });
+    return t.trade;
+  }
+
+  function roomsHtml(typeId, j) {
+    var LV = RB.ROOMS.levels;
+    var areas = RB.ROOMS.areas(j.rooms, j.measurements.floorArea || 0);
+
+    var rows = j.rooms.map(function (r, i) {
+      var t = RB.ROOMS.typeOf(r.type);
+      return '<div class="room-row" data-room="' + i + '">' +
+        '<div class="room-what">' +
+          '<b>' + esc(t.label) + '</b>' +
+          '<span class="room-area">' + areas[i].toFixed(1) + ' m²</span>' +
+        '</div>' +
+        '<div class="seg room-seg" role="group" aria-label="' + esc(t.label) + '">' +
+          LV.map(function (l) {
+            return '<button type="button" data-level="' + l.id + '" aria-pressed="' +
+              ((r.level || 'refit') === l.id) + '" title="' + esc(l.label) + ' — ' + esc(l.blurb) + '">' +
+              esc(l.short) + '</button>';
+          }).join('') +
+        '</div>' +
+        '<span class="room-cost">' + (r.level === 'none' ? '—' : money(roomCost(typeId, j, r, areas[i]))) + '</span>' +
+        '<button type="button" class="room-x" data-drop="' + i + '" aria-label="Remove this ' + esc(t.label) + '">×</button>' +
+      '</div>';
+    }).join('');
+
+    return '<div class="rooms">' +
+      '<div class="room-bulk"><span class="q-help">Set every room to</span>' +
+        '<div class="seg">' + LV.map(function (l) {
+          return '<button type="button" data-all="' + l.id + '">' + esc(l.label) + '</button>';
+        }).join('') + '</div></div>' +
+      '<div class="room-list">' + rows + '</div>' +
+      '<div class="room-add"><span class="q-help">Add a room</span>' +
+        '<div class="seg seg-wrap">' + RB.ROOMS.types.map(function (t) {
+          return '<button type="button" data-add="' + t.id + '">+ ' + esc(t.label) + '</button>';
+        }).join('') + '</div></div>' +
+      '<p class="q-help room-note">' +
+        LV.slice(1).map(function (l) { return '<b>' + esc(l.label) + '</b> — ' + esc(l.blurb); }).join('<br>') +
+      '</p></div>';
+  }
+
+  function repaintRooms() {
+    var host = doc.querySelector('#flow-ask .rooms');
+    if (!host || !route || !route.typeId) return;
+    var j = job(route.typeId);
+    host.outerHTML = roomsHtml(route.typeId, j);
+  }
+
+  /*
+   * The automatic trace hands back polygons with whatever the client called
+   * them. The names are the only clue to what kind of room each one is, and a
+   * kitchen or a bathroom carries a fixed labour sum, so it is worth reading
+   * them rather than treating every room as generic.
+   */
+  var ROOM_WORDS = [
+    ['kitchen', 'kitchen'], ['diner', 'kitchen'],
+    ['bath', 'bathroom'], ['shower', 'bathroom'], ['ensuite', 'bathroom'], ['en suite', 'bathroom'],
+    ['wc', 'wc'], ['cloak', 'wc'], ['toilet', 'wc'],
+    ['bed', 'bedroom'],
+    ['living', 'living'], ['lounge', 'living'], ['sitting', 'living'], ['dining', 'living'], ['recep', 'living'],
+    ['hall', 'hall'], ['landing', 'hall'], ['stair', 'hall']
+  ];
+  function roomTypeFromName(name) {
+    var n = String(name || '').toLowerCase();
+    var found = 'other';
+    ROOM_WORDS.forEach(function (w) { if (found === 'other' && n.indexOf(w[0]) >= 0) found = w[1]; });
+    return found;
+  }
+
+  function applyTrace(area, rooms) {
+    var j = job('renovation');
+    j.measurements.floorArea = Math.round(area);
+    j.touched.floorArea = true;
+    j.touched.traced = true;
+    if (rooms && rooms.length) {
+      j.rooms = rooms.map(function (r) {
+        var type = roomTypeFromName(r.name);
+        return { type: type, level: (type === 'kitchen' || type === 'bathroom') ? 'strip' : 'refit' };
+      });
+      j.touched.rooms = true;
+    }
+    refreshOutputs();
+    update();
+    var note = doc.querySelector('#flow-ask .trace-cta');
+    if (note) {
+      note.innerHTML = '<div><p class="q-title">Measured from your plan.</p>' +
+        '<p class="q-help">' + rooms.length + ' room' + (rooms.length === 1 ? '' : 's') +
+        ' traced, ' + area.toFixed(1) + ' m² in total. The figures below have been set from it.</p></div>' +
+        '<div class="sk-cta"><button type="button" class="btn btn-ghost" id="do-sketch">Draw it instead</button></div>';
+    }
+  }
+
   function renderStep(r) {
     var type = r.type, step = r.step;
     var j = job(type.id);

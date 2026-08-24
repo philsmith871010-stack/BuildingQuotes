@@ -72,6 +72,45 @@ Supporting choices:
 - **Floors replace the storeys question.** You draw or copy each floor, so
   nobody is asked how many there are.
 
+## A closed shape is a live thing
+
+Drawing it once is never enough, so a finished outline stays editable:
+
+- **Drag a corner** — both walls either side follow, the ring never opens.
+- **Tap a wall** — a corner appears in it and the wall becomes two. Splitting
+  never moves the wall: the new corner lands on it, at a grid intersection
+  where the wall passes through one, which every square and 45° wall does.
+- **Tap a corner, then the ×** — the two walls either side merge. A bare tap
+  never deletes anything.
+
+Corners always land on the grid, and the grid is drawn at the snap resolution —
+a snap point you cannot see is a corner that looks misplaced.
+
+The hard part is not the geometry. A window is stored as *"sixty per cent of the
+way along wall three"*, so every edit that renumbers or resizes walls has to
+carry the openings with it, or somebody's front door silently moves to a
+different wall. Rather than do index arithmetic — which has a wrap-around case
+for every operation and gets one of them wrong — each opening is remembered as a
+point in the world before the edit and reassigned to the nearest wall
+afterwards. A split leaves the halves collinear, so every opening lands exactly
+where it was; a merge puts them on the chord, which is the only honest answer
+available. Split a wall and remove the corner again and every opening is back at
+its original address.
+
+Two rules protect the number:
+
+- **A drag that folds the shape over itself is refused.** The shoelace formula
+  cancels the crossed part against itself, so a bow tie silently produces the
+  wrong area, and a wrong area is the one thing this tool must never hand
+  anybody.
+- **Dragging never rescales the house.** The scale belongs to the drawing, not
+  to the wall you happened to measure. Drag the corner of the wall you called
+  7.5 m and that wall becomes 8.1 m; nothing else moves. Re-measure any wall at
+  any time.
+
+Every edit takes a snapshot first, so one Undo walks all of it backwards in the
+order it happened.
+
 ## The stages
 
 The order a builder walks a house:

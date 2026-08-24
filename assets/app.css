@@ -727,9 +727,14 @@ html { scroll-padding-top: 62px; }
 .sk-row b { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 500; }
 .sk-row.strong b { font-weight: 700; color: var(--accent-ink); }
 
-/* the drawing */
-.sk-grid { stroke: var(--rule-soft); stroke-width: 1; }
-.sk-grid.major { stroke: var(--rule); stroke-width: 1.4; }
+/* The drawing. Stroke widths are in SVG user units, which scale with the
+   viewBox — so a grid line that reads at one zoom vanishes at another. Every
+   stroke here is pinned to screen pixels instead; this is a diagram, not a
+   scale drawing, and a wall should look like a wall at any size. */
+#sk-svg line, #sk-svg polyline, #sk-svg polygon, #sk-svg circle { vector-effect: non-scaling-stroke; }
+.sk-grid { stroke: var(--rule); stroke-width: 1; opacity: .8; }
+.sk-grid.fine { stroke: var(--rule); stroke-width: 1; opacity: .34; }
+.sk-grid.major { stroke: var(--ink-3); stroke-width: 1; opacity: .55; }
 .sk-photo { opacity: .55; }
 .sk-under { fill: rgba(90,100,110,.10); stroke: var(--ink-3); stroke-width: 2; stroke-dasharray: 7 6; }
 .sk-floor { fill: rgba(21,76,124,.09); stroke: none; }
@@ -839,3 +844,12 @@ html { scroll-padding-top: 62px; }
 }
 .start-draw > div { flex: 1 1 20rem; }
 .start-draw .q-help { margin-top: .25rem; }
+
+/* Corners snap to the grid, so the grid is drawn at the snap resolution — a
+   snap point you cannot see is a corner that looks misplaced. */
+.sk-node.small { stroke-width: 2; }
+.sk-node.on { fill: var(--accent); stroke: var(--surface); stroke-width: 3; }
+.sk-int.on { stroke: var(--accent); }
+.sk-kill circle { fill: var(--warn, #B4432B); stroke: var(--surface); stroke-width: 2; cursor: pointer; }
+.sk-kill text { fill: #fff; font-family: var(--mono); font-weight: 700; pointer-events: none; }
+.sk-kill { cursor: pointer; }
