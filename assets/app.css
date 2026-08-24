@@ -825,3 +825,17 @@ html { scroll-padding-top: 62px; }
   .room-seg { grid-column: 1 / -1; order: 3; }
   .room-seg button { flex: 1 1 0; }
 }
+
+/* the button that opens the drawing tool */
+.sk-cta { display: flex; flex-wrap: wrap; gap: .6rem; }
+
+/* On the chooser, so nobody has to tick the right box to find the tool. It was
+   only on two of the five build types, which meant anyone starting with an
+   extension never saw it at all. */
+.start-draw {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .9rem 1.2rem;
+  margin-top: 1.4rem; padding: 1rem 1.1rem;
+  background: var(--paper); border: 1px solid var(--rule); border-radius: 3px;
+}
+.start-draw > div { flex: 1 1 20rem; }
+.start-draw .q-help { margin-top: .25rem; }

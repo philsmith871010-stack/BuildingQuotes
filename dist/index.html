@@ -1412,6 +1412,20 @@ html { scroll-padding-top: 62px; }
   .room-seg button { flex: 1 1 0; }
 }
 
+/* the button that opens the drawing tool */
+.sk-cta { display: flex; flex-wrap: wrap; gap: .6rem; }
+
+/* On the chooser, so nobody has to tick the right box to find the tool. It was
+   only on two of the five build types, which meant anyone starting with an
+   extension never saw it at all. */
+.start-draw {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .9rem 1.2rem;
+  margin-top: 1.4rem; padding: 1rem 1.1rem;
+  background: var(--paper); border: 1px solid var(--rule); border-radius: 3px;
+}
+.start-draw > div { flex: 1 1 20rem; }
+.start-draw .q-help { margin-top: .25rem; }
+
 </style>
 
 <!-- ==================================================================== -->
@@ -1718,6 +1732,17 @@ html { scroll-padding-top: 62px; }
       </div>
       <div class="start-grid" id="start-grid"></div>
       <div id="start-note" style="margin-top:1.1rem"></div>
+
+      <!-- The drawing tool, said out loud before anybody has to find it. -->
+      <div class="start-draw">
+        <div>
+          <p class="q-title">You can draw your house instead of guessing.</p>
+          <p class="q-help">Trace round the outside on a blank grid or over your own floor plan,
+            say how long one wall is, and the areas, walls, windows and rooms are measured rather
+            than estimated. It takes about a minute and nothing leaves your browser.</p>
+        </div>
+        <button type="button" class="btn" id="do-sketch-start">Draw my house</button>
+      </div>
       <div class="flow-nav" style="margin-top:1.1rem">
         <a class="btn" id="start-go" href="#/start" hidden>Start →</a>
         <a class="skip" href="#/">Back to the start</a>
@@ -6296,7 +6321,25 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
    * clever — each build type takes what it charges for and ignores the rest.
    * Roof area is the footprint over a 35° pitch, which is where 1.22 comes from.
    */
-  var SKETCH_TYPES = ['renovation', 'newbuild'];
+  /*
+   * Every build type that starts from a house. It was renovation and new build
+   * only, which meant somebody who ticked Extensions — the first card on the
+   * chooser — never saw the drawing tool at all. Hiding the best thing on the
+   * site behind picking the right box first is not a defensible trade.
+   */
+  var SKETCH_TYPES = ['extension', 'renovation', 'loft', 'newbuild'];
+
+  /* What drawing buys you, in the words of the job you are pricing. */
+  var SKETCH_CTA = {
+    extension:  { q: 'Rather draw it than guess it?',
+                  help: 'Trace round the outside of the house, say how long one wall is, then draw the new bit against it. Both get measured instead of estimated.' },
+    renovation: { q: 'Rather draw it than guess it?',
+                  help: 'Trace round the outside of the house — on a blank grid or over your own floor plan — say how long one wall is, and every figure below is measured. Label the rooms and the next page prices them one at a time.' },
+    loft:       { q: 'Not sure how much of the loft you can use?',
+                  help: 'Draw the house and we will start you at about 60% of the footprint, which is what a typical semi gives you once the head height runs out. Adjust it from there.' },
+    newbuild:   { q: 'Rather draw it than guess it?',
+                  help: 'Trace the footprint on a blank grid, say how long one wall is, and add a floor for each storey. Footprint, floor area, perimeter and roof all come off the drawing.' }
+  };
 
   function applySketch(typeId, m) {
     var j = job(typeId);
@@ -6326,6 +6369,11 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       set('floorArea', m.totalArea);
       set('perimeter', m.perimeter);
       set('roofArea', m.footprint * 1.22);
+    } else if (typeId === 'loft') {
+      // Usable loft area is not the footprint. Below 2.2 m of head height the
+      // space does not count, and on a typical semi that leaves about 60% of
+      // the floor below. It is a starting point, and the client moves it.
+      set('floorArea', m.footprint * 0.6);
     }
     if (m.counts.kitchen) set('kitchens', m.counts.kitchen);
     if (baths) set('bathrooms', baths);
@@ -6334,146 +6382,53 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     // type as well as sizing it — otherwise the client draws the new bit and
     // then has to go and tick a box saying they drew it.
     if (m.extension && m.extension.area > 1) {
-      var jx = job('extension');
+      var jx = typeId === 'extension' ? j : job('extension');
       jx.measurements.width = Math.round(m.extension.width * 4) / 4;
       jx.measurements.depth = Math.round(m.extension.depth * 4) / 4;
       jx.touched.width = true;
       jx.touched.depth = true;
       jx.touched.sketched = true;
+      refreshOutputs();
       if (project.types.indexOf('extension') < 0) {
         project.types.push('extension');
         saveProject();
-        paintRail(route);
+        if (route) paintRail(route);   // there is no rail on the chooser
       }
     }
 
     j.touched.sketched = true;
     refreshOutputs();
     update();
-
-    var note = doc.querySelector('#flow-ask .trace-cta');
-    if (note) {
-      note.innerHTML = '<div><p class="q-title">Measured from your drawing.</p>' +
-        '<p class="q-help">' + m.totalArea.toFixed(1) + ' m² over ' + m.floors +
-        ' floor' + (m.floors === 1 ? '' : 's') +
-        (m.rooms && m.rooms.length ? ', ' + m.rooms.length + ' rooms' : '') +
-        ', ' + m.windows + ' window' + (m.windows === 1 ? '' : 's') +
-        ' and ' + baths + ' bathroom' + (baths === 1 ? '' : 's') +
-        (m.extension ? ', plus a ' + (m.extension.area * m.extension.storeys).toFixed(1) +
-          ' m² extension which has been added to your project' : '') +
-        '. The figures below have been set from it.</p></div>' +
-        '<div class="sk-cta"><button type="button" class="btn btn-ghost" id="do-sketch">Change the drawing</button></div>';
-    }
   }
 
-
-  /* ---- the room-by-room step ------------------------------------------------
-   * The one screen that carries a renovation. Every other question on the site
-   * is one field; this is a list, because a house is a list of rooms and each
-   * one is being taken a different distance.
-   *
-   * The price against each room is real — it is that room priced on its own
-   * through the same rate lines — because a figure per room is what makes a
-   * client believe the total.
-   */
-
-  function roomCost(typeId, j, room, area) {
-    var one = RB.ROOMS.measurements([room], [area]);
-    var m = {};
-    Object.keys(one).forEach(function (k) { m[k] = one[k]; });
-    var t = RB.tradeLines(book(), typeId, {
-      measurements: m, modifiers: j.modifiers, ground: null
-    });
-    return t.trade;
-  }
-
-  function roomsHtml(typeId, j) {
-    var LV = RB.ROOMS.levels;
-    var areas = RB.ROOMS.areas(j.rooms, j.measurements.floorArea || 0);
-
-    var rows = j.rooms.map(function (r, i) {
-      var t = RB.ROOMS.typeOf(r.type);
-      return '<div class="room-row" data-room="' + i + '">' +
-        '<div class="room-what">' +
-          '<b>' + esc(t.label) + '</b>' +
-          '<span class="room-area">' + areas[i].toFixed(1) + ' m²</span>' +
-        '</div>' +
-        '<div class="seg room-seg" role="group" aria-label="' + esc(t.label) + '">' +
-          LV.map(function (l) {
-            return '<button type="button" data-level="' + l.id + '" aria-pressed="' +
-              ((r.level || 'refit') === l.id) + '" title="' + esc(l.label) + ' — ' + esc(l.blurb) + '">' +
-              esc(l.short) + '</button>';
-          }).join('') +
-        '</div>' +
-        '<span class="room-cost">' + (r.level === 'none' ? '—' : money(roomCost(typeId, j, r, areas[i]))) + '</span>' +
-        '<button type="button" class="room-x" data-drop="' + i + '" aria-label="Remove this ' + esc(t.label) + '">×</button>' +
-      '</div>';
-    }).join('');
-
-    return '<div class="rooms">' +
-      '<div class="room-bulk"><span class="q-help">Set every room to</span>' +
-        '<div class="seg">' + LV.map(function (l) {
-          return '<button type="button" data-all="' + l.id + '">' + esc(l.label) + '</button>';
-        }).join('') + '</div></div>' +
-      '<div class="room-list">' + rows + '</div>' +
-      '<div class="room-add"><span class="q-help">Add a room</span>' +
-        '<div class="seg seg-wrap">' + RB.ROOMS.types.map(function (t) {
-          return '<button type="button" data-add="' + t.id + '">+ ' + esc(t.label) + '</button>';
-        }).join('') + '</div></div>' +
-      '<p class="q-help room-note">' +
-        LV.slice(1).map(function (l) { return '<b>' + esc(l.label) + '</b> — ' + esc(l.blurb); }).join('<br>') +
-      '</p></div>';
-  }
-
-  function repaintRooms() {
-    var host = doc.querySelector('#flow-ask .rooms');
-    if (!host || !route || !route.typeId) return;
-    var j = job(route.typeId);
-    host.outerHTML = roomsHtml(route.typeId, j);
+  /** Whichever card offered the drawing, tell it what came back. */
+  function sketchNote(m) {
+    var note = doc.querySelector('#flow-ask .trace-cta') || doc.querySelector('.start-draw');
+    if (!note) return;
+    var baths = (m.counts.bathroom || 0) + (m.counts.wc || 0);
+    note.innerHTML = '<div><p class="q-title">Measured from your drawing.</p>' +
+      '<p class="q-help">' + m.totalArea.toFixed(1) + ' m² over ' + m.floors +
+      ' floor' + (m.floors === 1 ? '' : 's') +
+      (m.rooms && m.rooms.length ? ', ' + m.rooms.length + ' rooms' : '') +
+      ', ' + m.windows + ' window' + (m.windows === 1 ? '' : 's') +
+      ' and ' + baths + ' bathroom' + (baths === 1 ? '' : 's') +
+      (m.extension ? ', plus a ' + (m.extension.area * m.extension.storeys).toFixed(1) +
+        ' m² extension which has been added to your project' : '') +
+      '. Every figure it can set has been set.</p></div>' +
+      '<div class="sk-cta"><button type="button" class="btn btn-ghost" id="' +
+      (doc.querySelector('#flow-ask .trace-cta') ? 'do-sketch' : 'do-sketch-start') +
+      '">Change the drawing</button></div>';
   }
 
   /*
-   * The automatic trace hands back polygons with whatever the client called
-   * them. The names are the only clue to what kind of room each one is, and a
-   * kitchen or a bathroom carries a fixed labour sum, so it is worth reading
-   * them rather than treating every room as generic.
+   * From the chooser there is no build type yet, so the drawing sizes every
+   * type it can. Pre-filling a type nobody ticks costs nothing; making someone
+   * guess which box unlocks the tool cost us the tool.
    */
-  var ROOM_WORDS = [
-    ['kitchen', 'kitchen'], ['diner', 'kitchen'],
-    ['bath', 'bathroom'], ['shower', 'bathroom'], ['ensuite', 'bathroom'], ['en suite', 'bathroom'],
-    ['wc', 'wc'], ['cloak', 'wc'], ['toilet', 'wc'],
-    ['bed', 'bedroom'],
-    ['living', 'living'], ['lounge', 'living'], ['sitting', 'living'], ['dining', 'living'], ['recep', 'living'],
-    ['hall', 'hall'], ['landing', 'hall'], ['stair', 'hall']
-  ];
-  function roomTypeFromName(name) {
-    var n = String(name || '').toLowerCase();
-    var found = 'other';
-    ROOM_WORDS.forEach(function (w) { if (found === 'other' && n.indexOf(w[0]) >= 0) found = w[1]; });
-    return found;
-  }
-
-  function applyTrace(area, rooms) {
-    var j = job('renovation');
-    j.measurements.floorArea = Math.round(area);
-    j.touched.floorArea = true;
-    j.touched.traced = true;
-    if (rooms && rooms.length) {
-      j.rooms = rooms.map(function (r) {
-        var type = roomTypeFromName(r.name);
-        return { type: type, level: (type === 'kitchen' || type === 'bathroom') ? 'strip' : 'refit' };
-      });
-      j.touched.rooms = true;
-    }
-    refreshOutputs();
-    update();
-    var note = doc.querySelector('#flow-ask .trace-cta');
-    if (note) {
-      note.innerHTML = '<div><p class="q-title">Measured from your plan.</p>' +
-        '<p class="q-help">' + rooms.length + ' room' + (rooms.length === 1 ? '' : 's') +
-        ' traced, ' + area.toFixed(1) + ' m² in total. The figures below have been set from it.</p></div>' +
-        '<div class="sk-cta"><button type="button" class="btn btn-ghost" id="do-sketch">Draw it instead</button></div>';
-    }
+  function applySketchEverywhere(m) {
+    SKETCH_TYPES.forEach(function (id) { applySketch(id, m); });
+    sketchNote(m);
+    paintChooser();
   }
 
   function renderStep(r) {
@@ -6513,10 +6468,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       '<p class="lede">' + esc(step.lede) + '</p>' +
       (sketchable
         ? '<div class="trace-cta"><div>' +
-          '<p class="q-title">Rather draw it than guess it?</p>' +
-          '<p class="q-help">Trace round the outside of the house — on a blank grid or over your own ' +
-          'floor plan — say how long one wall is, and every figure below is measured instead of estimated. ' +
-          'Nothing is sent anywhere.</p></div>' +
+          '<p class="q-title">' + esc(SKETCH_CTA[type.id].q) + '</p>' +
+          '<p class="q-help">' + esc(SKETCH_CTA[type.id].help) + ' Nothing is sent anywhere.</p></div>' +
           '<div class="sk-cta"><button type="button" class="btn" id="do-sketch">Draw my house</button></div></div>'
         : '') +
       (step.rooms && j.rooms ? roomsHtml(type.id, j) : '') +
@@ -6883,9 +6836,15 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       return;
     }
 
-    if (t.id === 'do-sketch') {
+    // the chooser carries its own copy of the button, and two elements cannot
+    // share an id without breaking every lookup that uses one
+    if (t.id === 'do-sketch' || t.id === 'do-sketch-start') {
+      var forType = route && route.typeId;
       root.DATUM.SKETCH.open(
-        function (m) { applySketch(route.typeId, m); },
+        function (m) {
+          if (forType) { applySketch(forType, m); sketchNote(m); }
+          else applySketchEverywhere(m);
+        },
         function (area, rooms) { applyTrace(area, rooms); }
       );
       return;
