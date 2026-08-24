@@ -197,10 +197,14 @@
       f.internals.forEach(function (seg) { intLen += m(dist(seg[0], seg[1])); });
       if (f.closed) extWall += m(ringLength(f.outline)) * CEILING;
       f.openings.forEach(function (o) {
-        if (o.kind === 'window') { win++; winW += o.width; }
+        // a 3 m bi-fold in a 2 m wall would over-deduct the plaster, so the
+        // figure that reaches the price is the one that physically fits
+        var wl = openingWall(f, o);
+        var fits = wl ? Math.min(o.width, m(dist(wl.a, wl.b))) : o.width;
+        if (o.kind === 'window') { win++; winW += fits; }
         else if (o.kind === 'intDoor') intDoor++;
         else extDoor++;
-        openArea += o.width * (o.kind === 'window' ? 1.3 : 2.1);
+        openArea += fits * (o.kind === 'window' ? 1.3 : 2.1);
       });
       f.markers.forEach(function (mk) {
         counts[mk.type] = (counts[mk.type] || 0) + 1;
@@ -338,8 +342,8 @@
     }
     return v;
   }
-  function changed() { refit(); render(); }
-  function settled() { refitTight(); render(); }
+  function changed() { refit(); render(); persist(); }
+  function settled() { refitTight(); render(); persist(); }
 
   /* ---- drawing --------------------------------------------------------------- */
 
@@ -594,6 +598,12 @@
       }).join('');
     }
 
+    var rst = $('sk-restart');
+    if (rst) {
+      rst.textContent = S.confirm === 'restart' ? 'Tap again to lose it all' : 'Start again';
+      rst.classList.toggle('sk-danger', S.confirm === 'restart');
+    }
+
     var floors = $('sk-floors');
     if (floors) {
       floors.hidden = S.stage === 'extension';
@@ -690,6 +700,17 @@
       row('Rooms', q.rooms.length) +
       (q.extension ? row('Extension', fmt(q.extension.area * q.extension.storeys) + ' m²', true) : '');
 
+    var warn = $('sk-checks');
+    if (warn) {
+      var list = ready() ? checks() : [];
+      warn.hidden = !list.length;
+      warn.innerHTML = list.length
+        ? '<p class="sk-checks-head">' + list.length + (list.length === 1 ? ' thing' : ' things') +
+          ' worth a look</p><ul>' +
+          list.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>'
+        : '';
+    }
+
     var apply = $('sk-apply');
     if (apply) apply.disabled = !ready();
     var u = $('sk-undo'), r = $('sk-redo');
@@ -711,7 +732,10 @@
         ? '<button type="button" class="btn btn-ghost btn-sm" id="sk-redraw">Draw this floor again</button>'
         : '<button type="button" class="btn btn-ghost btn-sm" id="sk-rect">Start from a rectangle</button>') +
         (S.scale ? '<button type="button" class="btn btn-ghost btn-sm" id="sk-recal">Change the measurement</button>' : '') +
-        (S.floors.length > 1 ? '<button type="button" class="btn btn-ghost btn-sm" id="sk-dropfloor">Remove this floor</button>' : '');
+        (S.floors.length > 1
+          ? '<button type="button" class="btn btn-ghost btn-sm' + (S.confirm === 'floor' ? ' sk-danger' : '') +
+            '" id="sk-dropfloor">' + (S.confirm === 'floor' ? 'Tap again to remove it' : 'Remove this floor') + '</button>'
+          : '');
     }
 
     var sel = null;
@@ -794,8 +818,16 @@
   }
 
   function cross(o, a, b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); }
+  /*
+   * Touching is not crossing. An inside wall that ends exactly on an outside
+   * wall — which is where most of them end — has an endpoint sitting on the
+   * other segment, and a naive straddle test calls that a crossing and refuses
+   * the commonest wall in the house.
+   */
   function straddles(a, b, c, d) {
     var d1 = cross(a, b, c), d2 = cross(a, b, d), d3 = cross(c, d, a), d4 = cross(c, d, b);
+    var E = 1e-9;
+    if (Math.abs(d1) < E || Math.abs(d2) < E || Math.abs(d3) < E || Math.abs(d4) < E) return false;
     return ((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0));
   }
 
@@ -867,6 +899,136 @@
     reassignOpenings(f, pts);
     S.pick = null;
     settled();
+  }
+
+
+  /* =====================================================================
+     Protections
+     =====================================================================
+     This drawing becomes a price, so the failure that matters is not an ugly
+     plan — it is a PLAUSIBLE one that is wrong. Nobody checks a number that
+     looks reasonable.
+
+     The rule applied throughout: refuse only what makes the number wrong and
+     cannot be interpreted; warn about everything else. A homeowner who cannot
+     get past a validation message just leaves, and a warning they can overrule
+     is worth more than a block they resent.
+     ===================================================================== */
+
+  function insidePoly(poly, p) {
+    var c = false;
+    for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      var a = poly[i], b = poly[j];
+      if ((a[1] > p[1]) !== (b[1] > p[1]) &&
+          p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0]) c = !c;
+    }
+    return c;
+  }
+
+  /** Inside, or sitting on a wall — a stud wall meeting an outside wall is fine. */
+  function within(poly, p) {
+    if (insidePoly(poly, p)) return true;
+    for (var i = 0; i < poly.length; i++) {
+      if (projectOnSeg(p, poly[i], poly[(i + 1) % poly.length]).d < 1e-6) return true;
+    }
+    return false;
+  }
+
+  /**
+   * An inside wall that strays outside the house is charged for twice over —
+   * studwork and plaster to both faces — for something that is not there. So
+   * the endpoint simply cannot go outside: it stops at the wall, the same way
+   * a corner stops on the grid. No message, no argument.
+   */
+  function keepInside(p) {
+    var f = floor();
+    if (!f.closed || within(f.outline, p)) return p;
+    var c = centroid(f.outline);
+    for (var t = 0.08; t <= 1; t += 0.08) {
+      var q = snapFrom(null, [p[0] + (c[0] - p[0]) * t, p[1] + (c[1] - p[1]) * t]);
+      if (within(f.outline, q)) return q;
+    }
+    return snapFrom(null, c);
+  }
+
+  /** Both ends inside is not enough: an L-shaped house has outside in the middle. */
+  function crossesOutline(a, b) {
+    var f = floor();
+    if (!f.closed) return false;
+    for (var i = 0; i < f.outline.length; i++) {
+      if (straddles(a, b, f.outline[i], f.outline[(i + 1) % f.outline.length])) return true;
+    }
+    return false;
+  }
+
+  /** Two corners on top of each other make a wall of no length, and openings on it. */
+  function hasZeroWall(poly) {
+    for (var i = 0; i < poly.length; i++) {
+      if (dist(poly[i], poly[(i + 1) % poly.length]) < SNAP * 0.5) return true;
+    }
+    return false;
+  }
+
+  /** Everything that must hold before a closed shape is accepted. */
+  function badShape(poly) {
+    if (poly.length < 3) return 'A shape needs at least three corners.';
+    if (hasZeroWall(poly)) return 'Two corners are on top of each other.';
+    if (selfIntersects(poly)) return 'That shape crosses over itself.';
+    if (shoelace(poly) < SNAP * SNAP * 4) return 'That shape has almost no area in it.';
+    return null;
+  }
+
+  /*
+   * Soft checks. None of these stop anybody; they sit under the figures so a
+   * number that came out of a mistake does not leave without being questioned.
+   */
+  function checks() {
+    var out = [], q = measure(), f0 = ground();
+
+    S.floors.forEach(function (f, i) {
+      if (!f.closed) return;
+      f.internals.forEach(function (sg) {
+        if (!within(f.outline, sg[0]) || !within(f.outline, sg[1]) ||
+            (function () {
+              for (var k = 0; k < f.outline.length; k++) {
+                if (straddles(sg[0], sg[1], f.outline[k], f.outline[(k + 1) % f.outline.length])) return true;
+              }
+              return false;
+            })()) {
+          out.push('An inside wall on the ' + f.name.toLowerCase() + ' runs outside the house.');
+        }
+      });
+      if (i > 0 && f0.closed && shoelace(f.outline) > shoelace(f0.outline) * 1.15) {
+        out.push('The ' + f.name.toLowerCase() + ' is bigger than the ground floor.');
+      }
+      f.markers.forEach(function (mk) {
+        if (!within(f.outline, [mk.x, mk.y])) {
+          out.push('A room pin on the ' + f.name.toLowerCase() + ' is outside the house.');
+        }
+      });
+    });
+
+    if (q.scaled && q.extDoors === 0) out.push('No way in yet — add a front or back door.');
+    if (q.scaled && q.totalArea > 0) {
+      var per = q.rooms.length ? q.totalArea / q.rooms.length : 0;
+      if (q.rooms.length && per < 4) out.push('That is a lot of rooms for the floor area.');
+      if (q.rooms.length && per > 45) out.push('That is very few rooms for the floor area.');
+      if (!q.rooms.length) out.push('No rooms marked yet, so kitchens and bathrooms are not counted.');
+    }
+    if (S.extension.closed && ground().closed) {
+      var touches = S.extension.outline.some(function (p) {
+        for (var i = 0; i < ground().outline.length; i++) {
+          if (projectOnSeg(p, ground().outline[i], ground().outline[(i + 1) % ground().outline.length]).d < SNAP * 1.5) return true;
+        }
+        return false;
+      });
+      if (!touches) out.push('The extension is not touching the house.');
+    }
+
+    // one of each, in the order found
+    var seen = {}, uniq = [];
+    out.forEach(function (t) { if (!seen[t]) { seen[t] = 1; uniq.push(t); } });
+    return uniq;
   }
 
   /* ---- undo ------------------------------------------------------------------
@@ -1034,7 +1196,9 @@
         shapeOf(h.which === 'ext' ? 'ext' : 'floor').outline[h.i] = g;
         S.pick = { kind: 'corner', which: h.which, i: h.i };
       } else if (h.kind === 'iend') {
-        f2.internals[h.i][h.end] = g;
+        var other = f2.internals[h.i][1 - h.end];
+        var want = keepInside(g);
+        if (!crossesOutline(want, other)) f2.internals[h.i][h.end] = want;
         S.pick = { kind: 'iwall', i: h.i };
       } else if (h.kind === 'opening') {
         // an opening slides along the wall it is in, and stays in it
@@ -1054,6 +1218,7 @@
 
     if (!placingStage()) { S.cursor = null; return; }
     S.cursor = snapFrom(null, toWorld(e));
+    if (S.stage === 'internal') S.cursor = keepInside(S.cursor);
     S.hoverHandle = !!handleAt(S.cursor);
     renderSoon();
   }
@@ -1072,8 +1237,11 @@
       var h = p.handle;
       if (h.kind === 'corner') {
         var shape = shapeOf(h.which === 'ext' ? 'ext' : 'floor');
-        if (selfIntersects(shape.outline)) {
-          say('That would fold the shape over itself.');
+        var why = selfIntersects(shape.outline) ? 'That would fold the shape over itself.'
+          : hasZeroWall(shape.outline) ? 'That would put two corners on top of each other.'
+          : null;
+        if (why) {
+          say(why);
           var back = UNDO.pop();
           if (back) {
             var o = JSON.parse(back);
@@ -1140,12 +1308,16 @@
         // a tap on one of its end handles, which is a target nothing else uses.
         if (S.pick) { S.pick = null; }
         snapshot();
-        S.drawing = [snapFrom(null, w)];
+        S.drawing = [keepInside(snapFrom(null, w))];
         changed();
         return;
       }
-      f.internals.push([S.drawing[0], snapFrom(S.drawing[0], w)]);
+      var end = keepInside(snapFrom(null, w));
+      if (dist(end, S.drawing[0]) < SNAP * 0.5) { S.drawing = null; changed(); return; }
+      if (crossesOutline(S.drawing[0], end)) { say('That wall would run outside the house.'); return; }
+      f.internals.push([S.drawing[0], end]);
       S.drawing = null;
+      say('');
       changed();
       return;
     }
@@ -1187,6 +1359,8 @@
   function say(msg) { var el = $('sk-say'); if (el) el.textContent = msg || ''; }
 
   function closeShape() {
+    var bad = badShape(S.drawing || []);
+    if (bad) { say(bad); return; }
     if (S.stage === 'extension') {
       S.extension.outline = S.drawing.slice();
       S.extension.closed = true;
@@ -1251,8 +1425,15 @@
     var inp = $('sk-len');
     var metres = parseFloat(inp && inp.value);
     if (!metres || metres <= 0) { say('Type how long that wall is, in metres.'); return; }
+    if (metres < 0.5 || metres > 60) { say('That is not the length of a wall on a house.'); return; }
     var units = dist(f.outline[S.calibIdx], f.outline[(S.calibIdx + 1) % f.outline.length]);
     if (!units) return;
+    // the wall could be a short one, so judge the answer by the house it implies
+    var area = shoelace(f.outline) * Math.pow(metres / units, 2);
+    if (area < 4 || area > 3000) {
+      say('That would make this floor ' + area.toFixed(0) + ' m². Check which wall is highlighted.');
+      return;
+    }
     snapshot();
     toMetres(metres / units);
     S.calibrating = false;
@@ -1278,6 +1459,7 @@
   function open(onApply, onTrace) {
     S.onApply = onApply || null;
     S.onTrace = onTrace || null;
+    if (!S.started) recall();
     var wrap = $('sk-overlay');
     wrap.classList.add('on');
     wrap.setAttribute('aria-hidden', 'false');
@@ -1290,6 +1472,8 @@
   }
   function reset() {
     UNDO.length = 0; REDO.length = 0; MANUAL = false; SNAP = LOOSE;
+    forget();
+    S.confirm = null;
     S.started = false; S.stage = 'outline'; S.scale = null;
     S.floors = [newFloor(0)]; S.active = 0;
     S.extension = { outline: [], closed: false, storeys: 1 };
@@ -1419,6 +1603,10 @@
       // already re-rendered out of the document.
       e.stopPropagation();
       var t = e.target, hit;
+      var wasConfirm = S.confirm;
+      if (wasConfirm && !(t.closest && t.closest('#sk-restart, #sk-dropfloor'))) {
+        S.confirm = null; render();
+      }
 
       hit = t.closest && t.closest('[data-wall]');
       if (hit && S.calibrating) { S.calibIdx = +hit.getAttribute('data-wall'); render(); return; }
@@ -1497,6 +1685,8 @@
           S.active = S.floors.length - 1;
           S.stage = 'outline'; S.drawing = null; FRAME = null; settled(); return;
         case 'sk-dropfloor':
+          if (!S.confirm) { S.confirm = 'floor'; render(); return; }
+          S.confirm = null;
           if (S.floors.length > 1) {
             snapshot();
             S.floors.splice(S.active, 1);
@@ -1517,7 +1707,11 @@
         case 'sk-fit':       fitView(); return;
         case 'sk-zoomin':    zoomAt(frameCentre(), 1.25); return;
         case 'sk-zoomout':   zoomAt(frameCentre(), 1 / 1.25); return;
-        case 'sk-restart':   reset(); return;
+        case 'sk-restart':
+          // one tap can throw away ten minutes of work, so it takes two
+          if (!S.confirm) { S.confirm = 'restart'; render(); return; }
+          if (S.confirm === 'restart') { S.confirm = null; reset(); }
+          return;
         case 'sk-close-btn': close(); return;
         case 'sk-apply':
           if (S.onApply) S.onApply(measure(), S);
@@ -1545,6 +1739,52 @@
       if (e.key === 'Backspace' && doc.activeElement !== $('sk-len')) { e.preventDefault(); undo(); }
     });
   }
+
+  /* ---- keeping the work -------------------------------------------------
+   * Ten minutes of drawing used to end with the tab. It is held in this
+   * browser only and never sent anywhere, same as everything else here.
+   */
+  var SKEY = 'datum.drawing.v1';
+
+  function persist() {
+    try {
+      root.localStorage.setItem(SKEY, JSON.stringify({
+        v: 1, floors: S.floors, extension: S.extension, scale: S.scale,
+        active: S.active, snap: SNAP, started: S.started, stage: S.stage
+      }));
+    } catch (e) {
+      // an uploaded plan can be megabytes; the drawing matters more than the backdrop
+      try {
+        var lean = JSON.parse(JSON.stringify(S.floors));
+        lean.forEach(function (f) { f.image = null; });
+        root.localStorage.setItem(SKEY, JSON.stringify({
+          v: 1, floors: lean, extension: S.extension, scale: S.scale,
+          active: S.active, snap: SNAP, started: S.started, stage: S.stage
+        }));
+      } catch (e2) { /* private mode, or full — carry on without saving */ }
+    }
+  }
+
+  function recall() {
+    var raw;
+    try { raw = root.localStorage.getItem(SKEY); } catch (e) { return false; }
+    if (!raw) return false;
+    try {
+      var o = JSON.parse(raw);
+      if (!o || o.v !== 1 || !o.floors || !o.floors.length) return false;
+      if (!o.floors[0].closed) return false;        // nothing worth restoring
+      S.floors = o.floors;
+      S.extension = o.extension || { outline: [], closed: false, storeys: 1 };
+      S.scale = o.scale;
+      S.active = Math.min(o.active || 0, o.floors.length - 1);
+      SNAP = o.snap || LOOSE;
+      S.started = true;
+      S.stage = o.stage || 'outline';
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function forget() { try { root.localStorage.removeItem(SKEY); } catch (e) {} }
 
   root.DATUM = root.DATUM || {};
   root.DATUM.SKETCH = { open: open, close: close, wire: wire, reset: reset, measure: measure,

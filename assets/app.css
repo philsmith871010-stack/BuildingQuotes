@@ -894,3 +894,19 @@ html { scroll-padding-top: 62px; }
   font-family: var(--mono); font-size: 11px; fill: var(--ink-3);
   letter-spacing: .1em; text-transform: uppercase; pointer-events: none;
 }
+
+/* Things worth a look. None of them stop anybody — a homeowner who cannot get
+   past a validation message just leaves — but a number that came out of a
+   mistake should not leave without being questioned. */
+.sk-checks {
+  border: 1px solid var(--warn, #B4432B); border-radius: 3px;
+  background: rgba(180,67,43,.06); padding: .6rem .7rem;
+}
+.sk-checks[hidden] { display: none; }
+.sk-checks-head {
+  font-family: var(--mono); font-size: .6rem; letter-spacing: .13em;
+  text-transform: uppercase; color: var(--warn, #B4432B); margin: 0 0 .35rem;
+}
+.sk-checks ul { margin: 0; padding-left: 1rem; }
+.sk-checks li { font-size: .78rem; color: var(--ink-2); line-height: 1.45; }
+.btn.sk-danger { border-color: var(--warn, #B4432B); color: var(--warn, #B4432B); font-weight: 600; }

@@ -202,6 +202,52 @@ sketch tool does not call into it. Nothing here is copyleft, and nothing in
 If this becomes IP that matters commercially, that separation is what keeps the
 answer to "what do you actually own?" a short one.
 
+## Protections
+
+This drawing becomes a price, so the failure that matters is not an ugly plan —
+it is a **plausible** one that is wrong. Nobody checks a number that looks
+reasonable.
+
+The rule applied throughout: **refuse only what makes the number wrong and
+cannot be interpreted; warn about everything else.** A homeowner who cannot get
+past a validation message just leaves, and a warning they can overrule is worth
+more than a block they resent.
+
+**Refused outright**
+
+| | Why |
+|---|---|
+| An outline that crosses itself | The shoelace formula cancels the crossed part against itself and hands back a confident wrong area |
+| An outline with almost no area | Three corners in a line is not a house |
+| Two corners on the same point | A wall of no length, and the openings on it have nowhere to go |
+| A wall length under 0.5 m or over 60 m | Not the length of a wall on a house |
+| A measurement implying a floor under 4 m² or over 3000 m² | Catches measuring a short wall as if it were the front — the input looks fine, the house it implies does not |
+
+**Constrained, silently**
+
+- **An inside wall cannot leave the house.** Its ends stop at the outside wall
+  the same way a corner stops on the grid — no message, no argument. Both ends
+  inside is not enough on an L-shaped house, so a wall whose *span* would cross
+  an outside wall is refused too. Ending exactly *on* an outside wall is the
+  commonest wall there is, and is allowed: touching is not crossing.
+- **An opening cannot be wider than the wall it sits in.** A 3 m bi-fold in a
+  2 m wall would over-deduct the plaster, so the figure that reaches the price
+  is the one that physically fits.
+
+**Warned, never blocked** — a short list under the figures, silent on a
+well-formed drawing: an inside wall outside the house on any floor, an upper
+floor bigger than the ground floor, a room pin outside the house, no external
+door, a room count that does not fit the floor area, an extension not touching
+the house.
+
+**Work you can lose**
+
+- **Start again** and **Remove this floor** take two taps; the button says so,
+  and tapping anything else cancels it.
+- The drawing is **kept across a refresh** in this browser only. If an uploaded
+  plan makes it too large to store, the drawing is kept and the backdrop
+  dropped — the geometry matters more than the picture.
+
 ## Known limits
 
 - Copying a floor copies its outline and internal walls but **not** its
@@ -213,5 +259,6 @@ answer to "what do you actually own?" a short one.
   would be a second drawing.
 - Ceiling height is assumed at 2.4 m rather than asked. It multiplies the
   plaster area and nothing else.
-- Nothing is saved between sessions yet — the drawing lives in memory until it
-  is applied.
+- Rooms are counted, not placed, so a pin in the wrong room changes nothing
+  except the warning that it is outside the house.
+- Nothing is shared between devices — the drawing lives in one browser.
