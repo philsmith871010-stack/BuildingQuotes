@@ -332,16 +332,16 @@
     return [(v.x0 + v.x1) / 2, (v.y0 + v.y1) / 2];
   }
 
+  /*
+   * The frame used to grow to keep the cursor in shot. That made the plan
+   * shrink whenever the pointer wandered near an edge — the view moving on its
+   * own, without a click, which is exactly what it should never do. Committed
+   * points already grow the frame by a couple of metres, and there is a pan for
+   * everything else.
+   */
   function frame() {
     if (!FRAME) refit();
-    var v = FRAME, p = S.cursor;
-    if (p && !MANUAL) {
-      if (p[0] - 1 < v.x0) v.x0 = p[0] - 1;
-      if (p[0] + 1 > v.x1) v.x1 = p[0] + 1;
-      if (p[1] - 1 < v.y0) v.y0 = p[1] - 1;
-      if (p[1] + 1 > v.y1) v.y1 = p[1] + 1;
-    }
-    return v;
+    return FRAME;
   }
   function changed() { refit(); render(); persist(); }
   function settled() { refitTight(); render(); persist(); }
@@ -1278,7 +1278,7 @@
      * a rule nobody knows and nothing on screen tells them.
      */
     if (press && !press.handle && !press.pan && !S.drawing) {
-      if (Math.abs(e.clientX - press.x) + Math.abs(e.clientY - press.y) > 6) {
+      if (Math.abs(e.clientX - press.x) + Math.abs(e.clientY - press.y) > 10) {
         press.pan = true;
         press.sx = press.x; press.sy = press.y;
       }
@@ -1810,10 +1810,19 @@
     var svg = $('sk-svg');
     if (!svg) return;
 
+    /*
+     * Zoom in proportion to how much was actually scrolled. A fixed step per
+     * event is fine for a mouse notch and violent on a trackpad, which fires
+     * dozens of small deltas for one gesture — the plan took off the moment the
+     * pointer crossed the canvas. Delta units differ by device, so they are
+     * normalised to pixels first and the per-event factor is capped.
+     */
     svg.addEventListener('wheel', function (e) {
       if (!S.started) return;
       e.preventDefault();
-      zoomAt(toWorld(e), e.deltaY < 0 ? 1.12 : 1 / 1.12);
+      var d = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
+      var f = Math.exp(-Math.max(-60, Math.min(60, d)) * 0.0016);
+      zoomAt(toWorld(e), f);
     }, { passive: false });
 
     svg.addEventListener('pointerdown', function (e) {
@@ -1984,8 +1993,8 @@
         case 'sk-undo':      undo(); return;
         case 'sk-redo':      redo(); return;
         case 'sk-fit':       fitView(); return;
-        case 'sk-zoomin':    zoomAt(frameCentre(), 1.25); return;
-        case 'sk-zoomout':   zoomAt(frameCentre(), 1 / 1.25); return;
+        case 'sk-zoomin':    zoomAt(frameCentre(), 1.3); return;
+        case 'sk-zoomout':   zoomAt(frameCentre(), 1 / 1.3); return;
         case 'sk-restart':
           // one tap can throw away ten minutes of work, so it takes two
           if (!S.confirm) { S.confirm = 'restart'; render(); return; }
@@ -2081,17 +2090,27 @@
    * have drawn their house, that is the plan the questions are about.
    */
   function planSvg(idx) {
-    var f = S.floors[Math.min(idx || 0, S.floors.length - 1)];
+    var at = Math.min(idx || 0, Math.max(0, S.floors.length - 1));
+    var f = S.floors[at];
     if (!f || !f.closed || !S.scale) return '';
+
+    // the extension sits on the ground floor, and upstairs too if it is two storey
+    var showExt = S.extension.closed && (at === 0 || S.extension.storeys > 1);
 
     var pts = f.outline.slice();
     f.internals.forEach(function (sg) { pts.push(sg[0], sg[1]); });
+    if (showExt) pts = pts.concat(S.extension.outline);
     var xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
     var pad = 1.6;
     var x0 = Math.min.apply(null, xs) - pad, x1 = Math.max.apply(null, xs) + pad;
     var y0 = Math.min.apply(null, ys) - pad * 1.4, y1 = Math.max.apply(null, ys) + pad;
 
     var out = ['<polygon points="' + poly(f.outline) + '" class="sk-floor"/>'];
+    if (showExt) {
+      out.push('<polygon points="' + poly(S.extension.outline) + '" class="sk-extension"/>');
+      out.push('<polyline points="' + poly(S.extension.outline.concat([S.extension.outline[0]])) +
+        '" class="sk-extline"/>');
+    }
     out.push('<polyline points="' + poly(f.outline.concat([f.outline[0]])) + '" class="sk-ext"/>');
     f.internals.forEach(function (sg) {
       out.push('<line x1="' + P(sg[0])[0] + '" y1="' + P(sg[0])[1] + '" x2="' + P(sg[1])[0] +
@@ -2111,6 +2130,13 @@
     });
     out.push('<text x="' + ((x0 + 0.4) * K) + '" y="' + ((y0 + 1.1) * K) + '" class="sk-area">' +
       fmt(m(shoelace(f.outline)) * m(1)) + ' m² · ' + esc(f.name.toLowerCase()) + '</text>');
+    if (showExt) {
+      var ec = centroid(S.extension.outline);
+      out.push('<text x="' + (ec[0] * K) + '" y="' + (ec[1] * K) + '" text-anchor="middle" class="sk-extlab">' +
+        fmt(m(shoelace(S.extension.outline)) * m(1)) + ' m²</text>');
+      out.push('<text x="' + (ec[0] * K) + '" y="' + ((ec[1] + 0.55) * K) +
+        '" text-anchor="middle" class="sk-roomlab">NEW</text>');
+    }
 
     return '<svg class="sk-plan" viewBox="' + [x0 * K, y0 * K, (x1 - x0) * K, (y1 - y0) * K].join(' ') +
       '" preserveAspectRatio="xMidYMid meet" aria-label="Your plan">' + out.join('') + '</svg>';

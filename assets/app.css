@@ -865,16 +865,6 @@ html { scroll-padding-top: 62px; }
 /* the button that opens the drawing tool */
 .sk-cta { display: flex; flex-wrap: wrap; gap: .6rem; }
 
-/* On the chooser, so nobody has to tick the right box to find the tool. It was
-   only on two of the five build types, which meant anyone starting with an
-   extension never saw it at all. */
-.start-draw {
-  display: flex; flex-wrap: wrap; align-items: center; gap: .9rem 1.2rem;
-  margin-top: 1.4rem; padding: 1rem 1.1rem;
-  background: var(--paper); border: 1px solid var(--rule); border-radius: 3px;
-}
-.start-draw > div { flex: 1 1 20rem; }
-.start-draw .q-help { margin-top: .25rem; }
 
 /* Corners snap to the grid, so the grid is drawn at the snap resolution — a
    snap point you cannot see is a corner that looks misplaced. */
@@ -932,3 +922,8 @@ html { scroll-padding-top: 62px; }
 /* a filled marker means the pointer has caught a corner or a wall, not just the grid */
 .sk-snap.locked circle { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
 .sk-snap.locked line { opacity: .8; }
+
+.sk-extlab {
+  font-family: var(--mono); font-size: 12px; fill: #1F7A6E; font-weight: 600;
+  letter-spacing: .06em; pointer-events: none;
+}

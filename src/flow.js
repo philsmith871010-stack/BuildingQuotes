@@ -382,7 +382,7 @@
 
   /** Whichever card offered the drawing, tell it what came back. */
   function sketchNote(m) {
-    var note = doc.querySelector('#flow-ask .trace-cta') || doc.querySelector('.start-draw');
+    var note = doc.querySelector('#flow-ask .trace-cta');
     if (!note) return;
     var baths = (m.counts.bathroom || 0) + (m.counts.wc || 0);
     note.innerHTML = '<div><p class="q-title">Measured from your drawing.</p>' +
@@ -394,9 +394,7 @@
       (m.extension ? ', plus a ' + (m.extension.area * m.extension.storeys).toFixed(1) +
         ' m² extension which has been added to your project' : '') +
       '. Every figure it can set has been set.</p></div>' +
-      '<div class="sk-cta"><button type="button" class="btn btn-ghost" id="' +
-      (doc.querySelector('#flow-ask .trace-cta') ? 'do-sketch' : 'do-sketch-start') +
-      '">Change the drawing</button></div>';
+      '<div class="sk-cta"><button type="button" class="btn btn-ghost" id="do-sketch">Change the drawing</button></div>';
   }
 
   /*
@@ -947,9 +945,7 @@
       return;
     }
 
-    // the chooser carries its own copy of the button, and two elements cannot
-    // share an id without breaking every lookup that uses one
-    if (t.id === 'do-sketch' || t.id === 'do-sketch-start') {
+    if (t.id === 'do-sketch') {
       var forType = route && route.typeId;
       root.DATUM.SKETCH.open(
         function (m) {
