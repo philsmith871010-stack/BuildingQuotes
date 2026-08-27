@@ -1101,9 +1101,9 @@ select.cell:hover { border-color: var(--rule); }
         { id: 'bifoldWidth', label: 'Bi-fold width', unit: 'm',
           ask: { step: 'build', q: 'Bi-fold doors', help: 'Total width across the opening. Leave at none for a window instead.', input: 'length', min: 0, max: 6, by: 0.3, value: 3, zero: 'None' } },
         { id: 'rooflights', label: 'Rooflights', unit: 'no.',
-          ask: { step: 'build', q: 'Rooflights', help: 'Flat roof lights over the new space.', input: 'count', max: 6, value: 0 } },
+          ask: { step: 'build', q: 'Rooflights in the new flat roof', help: 'Lantern or flat rooflights over the new space.', input: 'count', max: 6, value: 0 } },
         { id: 'wallRemoval', label: 'Wall removed', unit: 'm',
-          ask: { step: 'inside', q: 'Walls coming out', help: 'Existing wall removed so the new space opens into the house. Steel and making good included.', input: 'length', min: 0, max: 12, by: 0.5, value: 3, zero: 'None' } },
+          ask: { step: 'inside', q: 'Opening into the house', help: 'How wide the hole in the existing back wall is, so the new space opens into the house. Steel, padstones and making good included.', input: 'length', min: 0, max: 12, by: 0.5, value: 3, zero: 'None' } },
         { id: 'kitchens', label: 'Kitchens', unit: 'no.',
           ask: { step: 'inside', q: 'A new kitchen?', help: 'Fitting only. You buy the units and appliances you want.', input: 'yesno', value: 1 } },
         { id: 'bathrooms', label: 'Bathrooms', unit: 'no.',
@@ -1247,11 +1247,11 @@ select.cell:hover { border-color: var(--rule); }
       usesFoundations: false,
       measurements: [
         { id: 'floorArea', label: 'New floor area', unit: 'm²',
-          ask: { step: 'size', q: 'Usable floor area', help: 'Only the part with head height counts. A typical semi gives 25 to 30 m².', input: 'area', min: 8, max: 120, by: 1, value: 28 } },
+          ask: { step: 'size', q: 'Usable floor area', help: 'Only the part with head height counts. Draw the house and this follows from the footprint and the head height below.', input: 'area', min: 8, max: 120, by: 1, value: 28 } },
         { id: 'dormerWidth', label: 'Dormer width', unit: 'm',
           ask: { step: 'roof', q: 'Dormer width', help: 'A dormer buys you standing room across its width. None means rooflights only.', input: 'length', min: 0, max: 8, by: 0.3, value: 3.6, zero: 'None' } },
         { id: 'rooflights', label: 'Rooflights', unit: 'no.',
-          ask: { step: 'roof', q: 'Rooflights', help: 'In the pitch of the existing roof.', input: 'count', max: 8, value: 2 } },
+          ask: { step: 'roof', q: 'Rooflights in the roof slope', help: 'Velux-style lights set into the pitch of the existing roof.', input: 'count', max: 8, value: 2 } },
         { id: 'staircases', label: 'Staircases', unit: 'no.',
           ask: { step: 'inside', q: 'A new staircase?', help: 'Almost always yes — a loft needs a proper fixed stair to be habitable.', input: 'yesno', value: 1 } },
         { id: 'steels', label: 'Steel beams', unit: 'no.',
@@ -1262,7 +1262,7 @@ select.cell:hover { border-color: var(--rule); }
           ask: { step: 'inside', q: 'Fire doors', help: 'Building control requires a protected escape route. Usually every door off the stairwell.', input: 'count', max: 10, value: 4 } }
       ],
       steps: [
-        { id: 'size',   view: 'section', short: 'Space', title: 'How much of the loft can you use?', lede: 'Head height decides everything up here. Below 2.2 m the ridge has to come up or the ceilings below go down.', modifiers: ['headroom'] },
+        { id: 'size',   view: 'section', short: 'Space', title: 'How much can you stand up in?', lede: 'Head height decides everything up here. Below 2.2 m the ridge has to come up or the ceilings below go down — and the usable floor area follows from your answer.', modifiers: ['headroom'] },
         { id: 'roof',   view: 'section', short: 'Roof', title: 'Dormer, or rooflights?', lede: 'A dormer adds standing room and costs real money. Rooflights are cheaper and give you light rather than space.', modifiers: ['roofStructure'] },
         { id: 'inside', view: 'plan',    short: 'Inside', title: 'What is going in?', lede: 'Stairs, steel and the things building control will insist on.', modifiers: ['access', 'spec'] }
       ],
@@ -1321,7 +1321,7 @@ select.cell:hover { border-color: var(--rule); }
         { id: 'garageArea', label: 'Garage area', unit: 'm²',
           ask: { step: 'form', q: 'Garage', help: 'A single garage is about 18 m². Leave at none if there isn’t one.', input: 'area', min: 0, max: 120, by: 2, value: 18, zero: 'None' } },
         { id: 'plots', label: 'Plots', unit: 'no.',
-          ask: { step: 'size', q: 'How many plots?', help: 'Service connections are charged per plot.', input: 'count', min: 1, max: 12, value: 1 } },
+          ask: { step: 'inside', q: 'How many plots?', help: 'One for a single house. Service connections are charged per plot.', input: 'count', min: 1, max: 12, value: 1 } },
         { id: 'kitchens', label: 'Kitchens', unit: 'no.',
           ask: { step: 'inside', q: 'Kitchens', help: 'Labour only.', input: 'count', min: 0, max: 12, value: 1 } },
         { id: 'bathrooms', label: 'Bathrooms', unit: 'no.',
@@ -1330,7 +1330,7 @@ select.cell:hover { border-color: var(--rule); }
           ask: { step: 'inside', q: 'Drives, paths and garden', help: 'Everything outside the walls that still has to be built.', input: 'area', min: 0, max: 1500, by: 10, value: 120, zero: 'None' } }
       ],
       steps: [
-        { id: 'size',   view: 'plan',    short: 'Size', title: 'How big is the house?', lede: 'Footprint and storeys. Everything else follows from those two.' },
+        { id: 'size',   view: 'plan',    short: 'Size', title: 'How big is the house?', lede: 'Footprint and storeys. Draw the house and both are measured for you.' },
         { id: 'form',   view: 'section', short: 'Form', title: 'Roof and garage', lede: 'The roof is priced on its slope area, which is always more than the footprint.' },
         { id: 'ground', view: 'section', short: 'Ground', title: 'What are you building on?', lede: 'Substructure is the biggest single unknown on a new build, and trees on clay decide it.', ground: true },
         { id: 'inside', view: 'plan',    short: 'Fit-out', title: 'Inside and out', lede: 'Rooms that carry labour, and everything beyond the walls.', modifiers: ['method', 'efficiency', 'access', 'spec'] }

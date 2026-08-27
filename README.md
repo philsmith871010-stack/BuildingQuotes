@@ -152,6 +152,16 @@ One wall carries the dimension they typed in, and that single number scales
 every other measurement on the drawing. Change the floor area and the plan
 rescales, so the drawing can never contradict the figure being priced.
 
+**Nothing is asked twice, and nothing about size is asked at all.** Site access
+and specification sit on all five build types and the ground on two, so someone
+pricing an extension, a refurbishment and a loft was being asked how a lorry
+reaches the site three times. They are properties of the site, not of a build
+type, so they are now asked once and copied across. Every figure the drawing can
+supply is stated as measured rather than asked — with a "Change it" for anyone
+who disagrees with their own drawing — and a step left with nothing to ask
+disappears. Walked all 31 combinations of build types: no duplicate questions in
+any of them, and every one reaches an estimate.
+
 **Drawing the house is step one of the flow**, not a box on a later page. The
 chooser's primary action is "Next — draw your house", it has its own URL at
 `#/draw` and its own place on the step rail, and finishing it moves you on with

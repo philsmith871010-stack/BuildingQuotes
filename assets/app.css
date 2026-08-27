@@ -945,3 +945,10 @@ html { scroll-padding-top: 62px; }
   text-transform: uppercase; color: var(--ink-3); flex: 1 1 auto;
 }
 .sk-cta-slim { margin: -.4rem 0 1.1rem; }
+
+/* a wall that is coming out */
+.sk-int.out { stroke: var(--warn, #B4432B); stroke-dasharray: 9 6; opacity: .85; }
+.sk-outlab {
+  font-family: var(--mono); font-size: 10px; fill: var(--warn, #B4432B);
+  letter-spacing: .14em; font-weight: 600; pointer-events: none;
+}

@@ -60,7 +60,8 @@
     { id: 'outline',   n: 1, label: 'Outline',      hint: 'Click round the outside of the house.',
       done: 'Drag a corner to move it. Tap a wall to add one.' },
     { id: 'internal',  n: 2, label: 'Inside walls', hint: 'Click each end of a wall inside the house.',
-      done: 'Drag an end to move a wall.' },
+      done: 'Drag an end to move a wall.',
+      out:  'Tap any wall you are knocking out. Tap it again to put it back.' },
     { id: 'doors',     n: 3, label: 'Doors',        hint: 'Click a wall to put a door in it.' },
     { id: 'windows',   n: 4, label: 'Windows',      hint: 'Click a wall to put a window in it.' },
     { id: 'rooms',     n: 5, label: 'Rooms',        hint: 'Tap a room type, then tap the room. One label per room.',
@@ -194,8 +195,13 @@
     var counts = {}, rooms = [];
     ROOM_TYPES.forEach(function (r) { counts[r.id] = 0; });
 
+    var removed = 0;
     S.floors.forEach(function (f) {
-      f.internals.forEach(function (seg) { intLen += m(dist(seg[0], seg[1])); });
+      f.internals.forEach(function (seg) {
+        // a wall that is coming out is not there to be plastered afterwards
+        if (seg.out) removed += m(dist(seg[0], seg[1]));
+        else intLen += m(dist(seg[0], seg[1]));
+      });
       if (f.closed) extWall += m(ringLength(f.outline)) * CEILING;
       f.openings.forEach(function (o) {
         // a 3 m bi-fold in a 2 m wall would over-deduct the plaster, so the
@@ -231,7 +237,7 @@
       scaled: !!S.scale,
       floors: S.floors.filter(function (f) { return f.closed; }).length,
       footprint: footprint, totalArea: total, perimeter: perim,
-      internalWall: intLen, plaster: plaster,
+      internalWall: intLen, wallRemoval: removed, plaster: plaster,
       windows: win, windowWidth: winW, extDoors: extDoor, intDoors: intDoor,
       counts: counts, rooms: rooms, extension: ext
     };
@@ -446,8 +452,12 @@
     f.internals.forEach(function (seg, i) {
       var on = S.pick && S.pick.kind === 'iwall' && S.pick.i === i;
       out.push('<line x1="' + P(seg[0])[0] + '" y1="' + P(seg[0])[1] + '" x2="' + P(seg[1])[0] +
-        '" y2="' + P(seg[1])[1] + '" class="sk-int' + (on ? ' on' : '') + '"/>');
-      if (S.stage === 'internal') {
+        '" y2="' + P(seg[1])[1] + '" class="sk-int' + (on ? ' on' : '') + (seg.out ? ' out' : '') + '"/>');
+      if (seg.out) {
+        out.push('<text x="' + ((seg[0][0] + seg[1][0]) / 2 * K) + '" y="' +
+          ((seg[0][1] + seg[1][1]) / 2 * K - 8 * RU) + '" text-anchor="middle" class="sk-outlab">COMING OUT</text>');
+      }
+      if (S.stage === 'internal' && S.wallMode !== 'out') {
         [0, 1].forEach(function (e) {
           out.push('<circle cx="' + P(seg[e])[0] + '" cy="' + P(seg[e])[1] + '" r="' +
             (8 * RU).toFixed(1) + '" class="sk-node small"/>');
@@ -661,6 +671,7 @@
       var mid = S.drawing && S.drawing.length;
       hint.textContent =
         S.calibrating ? 'How long is the wall highlighted in orange?'
+        : (S.stage === 'internal' && S.wallMode === 'out') ? stage.out
         : mid && S.stage === 'internal' ? 'Now tap the other end of the wall.'
         : mid && S.drawing.length > 2 ? 'Keep going, or tap the first corner to finish.'
         : mid ? 'Keep tapping the corners.'
@@ -699,6 +710,7 @@
       row('Total floor area', q.scaled && q.totalArea ? fmt(q.totalArea) + ' m²' : na, true) +
       row('Outside walls', q.perimeter ? fmt(q.perimeter) + ' m' : na) +
       row('Inside walls', q.internalWall ? fmt(q.internalWall) + ' m' : na) +
+      (q.wallRemoval ? row('Walls coming out', fmt(q.wallRemoval) + ' m', true) : '') +
       row('Wall area to plaster', q.plaster ? fmt(q.plaster, 0) + ' m²' : na) +
       row('Windows', q.windows) +
       row('Doors', q.extDoors + ' out · ' + q.intDoors + ' in') +
@@ -755,6 +767,11 @@
         '<button type="button" class="btn btn-ghost btn-sm" id="sk-del">Remove it</button></div>';
     };
 
+    if (stage === 'internal') {
+      var mode = S.wallMode || 'draw';
+      return '<div class="sk-tool"><label>Tapping a wall will</label>' +
+        seg([['draw', 'Draw a new one'], ['out', 'Knock it out']], mode, 'data-wallmode') + '</div>';
+    }
     if (stage === 'doors') {
       return '<div class="sk-tool"><label>Put in</label>' +
         seg([['door', 'Front or back door'], ['bifold', 'Bi-fold or patio'], ['intDoor', 'Inside doorway']],
@@ -1429,6 +1446,18 @@
       return;
     }
 
+    if (S.stage === 'internal' && S.wallMode === 'out') {
+      // knocking a wall through is something you do TO a wall, so you point at
+      // the wall — not something you total up in metres in your head
+      var pick = nearestInternal(w);
+      if (pick < 0) { say('Tap one of the walls inside the house.'); return; }
+      snapshot();
+      f.internals[pick].out = !f.internals[pick].out;
+      say('');
+      changed();
+      return;
+    }
+
     if (S.stage === 'internal') {
       if (!S.drawing || !S.drawing.length) {
         // Anywhere is a valid start, including on top of another wall — walls
@@ -1478,6 +1507,15 @@
     S.selected = o.id;
     say('');
     changed();
+  }
+
+  function nearestInternal(p) {
+    var f = floor(), best = -1, bd = Math.max(0.6, grabRadius() * 1.5);
+    f.internals.forEach(function (sg, i) {
+      var pr = projectOnSeg(p, sg[0], sg[1]);
+      if (pr.d < bd) { bd = pr.d; best = i; }
+    });
+    return best;
   }
 
   /** Nearest wall of one closed shape, for splitting. */
@@ -1755,7 +1793,7 @@
     S.floors = [newFloor(0)]; S.active = 0;
     S.extension = { outline: [], closed: false, storeys: 1 };
     S.drawing = null; S.cursor = null; S.selected = null; S.pick = null;
-    S.calibrating = false; S.kind = null;
+    S.calibrating = false; S.kind = null; S.wallMode = 'draw';
     FRAME = null; say('');
     settled();
   }
@@ -1784,6 +1822,7 @@
     S.stage = id;
     S.drawing = null; S.cursor = null; S.selected = null; S.pick = null;
     S.kind = id === 'doors' ? (S.kind || 'door') : null;
+    if (id === 'internal') S.wallMode = S.wallMode || 'draw';
     say('');
     refitTight();
     if (id === 'extension' && !S.extension.closed) inflate(1.35);
@@ -1903,6 +1942,9 @@
         S.drawing = null; S.selected = null; FRAME = null; settled();
         return;
       }
+      hit = t.closest && t.closest('[data-wallmode]');
+      if (hit) { S.wallMode = hit.getAttribute('data-wallmode'); S.drawing = null; S.pick = null; render(); return; }
+
       hit = t.closest && t.closest('[data-kind]');
       if (hit) { S.kind = hit.getAttribute('data-kind'); S.selected = null; render(); return; }
       hit = t.closest && t.closest('[data-room]');
@@ -2114,7 +2156,11 @@
     out.push('<polyline points="' + poly(f.outline.concat([f.outline[0]])) + '" class="sk-ext"/>');
     f.internals.forEach(function (sg) {
       out.push('<line x1="' + P(sg[0])[0] + '" y1="' + P(sg[0])[1] + '" x2="' + P(sg[1])[0] +
-        '" y2="' + P(sg[1])[1] + '" class="sk-int"/>');
+        '" y2="' + P(sg[1])[1] + '" class="sk-int' + (sg.out ? ' out' : '') + '"/>');
+      if (sg.out) {
+        out.push('<text x="' + ((sg[0][0] + sg[1][0]) / 2 * K) + '" y="' +
+          ((sg[0][1] + sg[1][1]) / 2 * K - 6) + '" text-anchor="middle" class="sk-outlab">OUT</text>');
+      }
     });
     f.openings.forEach(function (o) { out.push(openingSvg(f, o)); });
 

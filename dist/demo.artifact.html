@@ -1522,6 +1522,13 @@ html { scroll-padding-top: 62px; }
 }
 .sk-cta-slim { margin: -.4rem 0 1.1rem; }
 
+/* a wall that is coming out */
+.sk-int.out { stroke: var(--warn, #B4432B); stroke-dasharray: 9 6; opacity: .85; }
+.sk-outlab {
+  font-family: var(--mono); font-size: 10px; fill: var(--warn, #B4432B);
+  letter-spacing: .14em; font-weight: 600; pointer-events: none;
+}
+
 
 /* ===========================================================================
    Datum — rate book admin
@@ -2724,9 +2731,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         { id: 'bifoldWidth', label: 'Bi-fold width', unit: 'm',
           ask: { step: 'build', q: 'Bi-fold doors', help: 'Total width across the opening. Leave at none for a window instead.', input: 'length', min: 0, max: 6, by: 0.3, value: 3, zero: 'None' } },
         { id: 'rooflights', label: 'Rooflights', unit: 'no.',
-          ask: { step: 'build', q: 'Rooflights', help: 'Flat roof lights over the new space.', input: 'count', max: 6, value: 0 } },
+          ask: { step: 'build', q: 'Rooflights in the new flat roof', help: 'Lantern or flat rooflights over the new space.', input: 'count', max: 6, value: 0 } },
         { id: 'wallRemoval', label: 'Wall removed', unit: 'm',
-          ask: { step: 'inside', q: 'Walls coming out', help: 'Existing wall removed so the new space opens into the house. Steel and making good included.', input: 'length', min: 0, max: 12, by: 0.5, value: 3, zero: 'None' } },
+          ask: { step: 'inside', q: 'Opening into the house', help: 'How wide the hole in the existing back wall is, so the new space opens into the house. Steel, padstones and making good included.', input: 'length', min: 0, max: 12, by: 0.5, value: 3, zero: 'None' } },
         { id: 'kitchens', label: 'Kitchens', unit: 'no.',
           ask: { step: 'inside', q: 'A new kitchen?', help: 'Fitting only. You buy the units and appliances you want.', input: 'yesno', value: 1 } },
         { id: 'bathrooms', label: 'Bathrooms', unit: 'no.',
@@ -2870,11 +2877,11 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       usesFoundations: false,
       measurements: [
         { id: 'floorArea', label: 'New floor area', unit: 'm²',
-          ask: { step: 'size', q: 'Usable floor area', help: 'Only the part with head height counts. A typical semi gives 25 to 30 m².', input: 'area', min: 8, max: 120, by: 1, value: 28 } },
+          ask: { step: 'size', q: 'Usable floor area', help: 'Only the part with head height counts. Draw the house and this follows from the footprint and the head height below.', input: 'area', min: 8, max: 120, by: 1, value: 28 } },
         { id: 'dormerWidth', label: 'Dormer width', unit: 'm',
           ask: { step: 'roof', q: 'Dormer width', help: 'A dormer buys you standing room across its width. None means rooflights only.', input: 'length', min: 0, max: 8, by: 0.3, value: 3.6, zero: 'None' } },
         { id: 'rooflights', label: 'Rooflights', unit: 'no.',
-          ask: { step: 'roof', q: 'Rooflights', help: 'In the pitch of the existing roof.', input: 'count', max: 8, value: 2 } },
+          ask: { step: 'roof', q: 'Rooflights in the roof slope', help: 'Velux-style lights set into the pitch of the existing roof.', input: 'count', max: 8, value: 2 } },
         { id: 'staircases', label: 'Staircases', unit: 'no.',
           ask: { step: 'inside', q: 'A new staircase?', help: 'Almost always yes — a loft needs a proper fixed stair to be habitable.', input: 'yesno', value: 1 } },
         { id: 'steels', label: 'Steel beams', unit: 'no.',
@@ -2885,7 +2892,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
           ask: { step: 'inside', q: 'Fire doors', help: 'Building control requires a protected escape route. Usually every door off the stairwell.', input: 'count', max: 10, value: 4 } }
       ],
       steps: [
-        { id: 'size',   view: 'section', short: 'Space', title: 'How much of the loft can you use?', lede: 'Head height decides everything up here. Below 2.2 m the ridge has to come up or the ceilings below go down.', modifiers: ['headroom'] },
+        { id: 'size',   view: 'section', short: 'Space', title: 'How much can you stand up in?', lede: 'Head height decides everything up here. Below 2.2 m the ridge has to come up or the ceilings below go down — and the usable floor area follows from your answer.', modifiers: ['headroom'] },
         { id: 'roof',   view: 'section', short: 'Roof', title: 'Dormer, or rooflights?', lede: 'A dormer adds standing room and costs real money. Rooflights are cheaper and give you light rather than space.', modifiers: ['roofStructure'] },
         { id: 'inside', view: 'plan',    short: 'Inside', title: 'What is going in?', lede: 'Stairs, steel and the things building control will insist on.', modifiers: ['access', 'spec'] }
       ],
@@ -2944,7 +2951,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         { id: 'garageArea', label: 'Garage area', unit: 'm²',
           ask: { step: 'form', q: 'Garage', help: 'A single garage is about 18 m². Leave at none if there isn’t one.', input: 'area', min: 0, max: 120, by: 2, value: 18, zero: 'None' } },
         { id: 'plots', label: 'Plots', unit: 'no.',
-          ask: { step: 'size', q: 'How many plots?', help: 'Service connections are charged per plot.', input: 'count', min: 1, max: 12, value: 1 } },
+          ask: { step: 'inside', q: 'How many plots?', help: 'One for a single house. Service connections are charged per plot.', input: 'count', min: 1, max: 12, value: 1 } },
         { id: 'kitchens', label: 'Kitchens', unit: 'no.',
           ask: { step: 'inside', q: 'Kitchens', help: 'Labour only.', input: 'count', min: 0, max: 12, value: 1 } },
         { id: 'bathrooms', label: 'Bathrooms', unit: 'no.',
@@ -2953,7 +2960,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
           ask: { step: 'inside', q: 'Drives, paths and garden', help: 'Everything outside the walls that still has to be built.', input: 'area', min: 0, max: 1500, by: 10, value: 120, zero: 'None' } }
       ],
       steps: [
-        { id: 'size',   view: 'plan',    short: 'Size', title: 'How big is the house?', lede: 'Footprint and storeys. Everything else follows from those two.' },
+        { id: 'size',   view: 'plan',    short: 'Size', title: 'How big is the house?', lede: 'Footprint and storeys. Draw the house and both are measured for you.' },
         { id: 'form',   view: 'section', short: 'Form', title: 'Roof and garage', lede: 'The roof is priced on its slope area, which is always more than the footprint.' },
         { id: 'ground', view: 'section', short: 'Ground', title: 'What are you building on?', lede: 'Substructure is the biggest single unknown on a new build, and trees on clay decide it.', ground: true },
         { id: 'inside', view: 'plan',    short: 'Fit-out', title: 'Inside and out', lede: 'Rooms that carry labour, and everything beyond the walls.', modifiers: ['method', 'efficiency', 'access', 'spec'] }
@@ -5340,7 +5347,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     { id: 'outline',   n: 1, label: 'Outline',      hint: 'Click round the outside of the house.',
       done: 'Drag a corner to move it. Tap a wall to add one.' },
     { id: 'internal',  n: 2, label: 'Inside walls', hint: 'Click each end of a wall inside the house.',
-      done: 'Drag an end to move a wall.' },
+      done: 'Drag an end to move a wall.',
+      out:  'Tap any wall you are knocking out. Tap it again to put it back.' },
     { id: 'doors',     n: 3, label: 'Doors',        hint: 'Click a wall to put a door in it.' },
     { id: 'windows',   n: 4, label: 'Windows',      hint: 'Click a wall to put a window in it.' },
     { id: 'rooms',     n: 5, label: 'Rooms',        hint: 'Tap a room type, then tap the room. One label per room.',
@@ -5474,8 +5482,13 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var counts = {}, rooms = [];
     ROOM_TYPES.forEach(function (r) { counts[r.id] = 0; });
 
+    var removed = 0;
     S.floors.forEach(function (f) {
-      f.internals.forEach(function (seg) { intLen += m(dist(seg[0], seg[1])); });
+      f.internals.forEach(function (seg) {
+        // a wall that is coming out is not there to be plastered afterwards
+        if (seg.out) removed += m(dist(seg[0], seg[1]));
+        else intLen += m(dist(seg[0], seg[1]));
+      });
       if (f.closed) extWall += m(ringLength(f.outline)) * CEILING;
       f.openings.forEach(function (o) {
         // a 3 m bi-fold in a 2 m wall would over-deduct the plaster, so the
@@ -5511,7 +5524,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       scaled: !!S.scale,
       floors: S.floors.filter(function (f) { return f.closed; }).length,
       footprint: footprint, totalArea: total, perimeter: perim,
-      internalWall: intLen, plaster: plaster,
+      internalWall: intLen, wallRemoval: removed, plaster: plaster,
       windows: win, windowWidth: winW, extDoors: extDoor, intDoors: intDoor,
       counts: counts, rooms: rooms, extension: ext
     };
@@ -5726,8 +5739,12 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     f.internals.forEach(function (seg, i) {
       var on = S.pick && S.pick.kind === 'iwall' && S.pick.i === i;
       out.push('<line x1="' + P(seg[0])[0] + '" y1="' + P(seg[0])[1] + '" x2="' + P(seg[1])[0] +
-        '" y2="' + P(seg[1])[1] + '" class="sk-int' + (on ? ' on' : '') + '"/>');
-      if (S.stage === 'internal') {
+        '" y2="' + P(seg[1])[1] + '" class="sk-int' + (on ? ' on' : '') + (seg.out ? ' out' : '') + '"/>');
+      if (seg.out) {
+        out.push('<text x="' + ((seg[0][0] + seg[1][0]) / 2 * K) + '" y="' +
+          ((seg[0][1] + seg[1][1]) / 2 * K - 8 * RU) + '" text-anchor="middle" class="sk-outlab">COMING OUT</text>');
+      }
+      if (S.stage === 'internal' && S.wallMode !== 'out') {
         [0, 1].forEach(function (e) {
           out.push('<circle cx="' + P(seg[e])[0] + '" cy="' + P(seg[e])[1] + '" r="' +
             (8 * RU).toFixed(1) + '" class="sk-node small"/>');
@@ -5941,6 +5958,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       var mid = S.drawing && S.drawing.length;
       hint.textContent =
         S.calibrating ? 'How long is the wall highlighted in orange?'
+        : (S.stage === 'internal' && S.wallMode === 'out') ? stage.out
         : mid && S.stage === 'internal' ? 'Now tap the other end of the wall.'
         : mid && S.drawing.length > 2 ? 'Keep going, or tap the first corner to finish.'
         : mid ? 'Keep tapping the corners.'
@@ -5979,6 +5997,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       row('Total floor area', q.scaled && q.totalArea ? fmt(q.totalArea) + ' m²' : na, true) +
       row('Outside walls', q.perimeter ? fmt(q.perimeter) + ' m' : na) +
       row('Inside walls', q.internalWall ? fmt(q.internalWall) + ' m' : na) +
+      (q.wallRemoval ? row('Walls coming out', fmt(q.wallRemoval) + ' m', true) : '') +
       row('Wall area to plaster', q.plaster ? fmt(q.plaster, 0) + ' m²' : na) +
       row('Windows', q.windows) +
       row('Doors', q.extDoors + ' out · ' + q.intDoors + ' in') +
@@ -6035,6 +6054,11 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         '<button type="button" class="btn btn-ghost btn-sm" id="sk-del">Remove it</button></div>';
     };
 
+    if (stage === 'internal') {
+      var mode = S.wallMode || 'draw';
+      return '<div class="sk-tool"><label>Tapping a wall will</label>' +
+        seg([['draw', 'Draw a new one'], ['out', 'Knock it out']], mode, 'data-wallmode') + '</div>';
+    }
     if (stage === 'doors') {
       return '<div class="sk-tool"><label>Put in</label>' +
         seg([['door', 'Front or back door'], ['bifold', 'Bi-fold or patio'], ['intDoor', 'Inside doorway']],
@@ -6709,6 +6733,18 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       return;
     }
 
+    if (S.stage === 'internal' && S.wallMode === 'out') {
+      // knocking a wall through is something you do TO a wall, so you point at
+      // the wall — not something you total up in metres in your head
+      var pick = nearestInternal(w);
+      if (pick < 0) { say('Tap one of the walls inside the house.'); return; }
+      snapshot();
+      f.internals[pick].out = !f.internals[pick].out;
+      say('');
+      changed();
+      return;
+    }
+
     if (S.stage === 'internal') {
       if (!S.drawing || !S.drawing.length) {
         // Anywhere is a valid start, including on top of another wall — walls
@@ -6758,6 +6794,15 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     S.selected = o.id;
     say('');
     changed();
+  }
+
+  function nearestInternal(p) {
+    var f = floor(), best = -1, bd = Math.max(0.6, grabRadius() * 1.5);
+    f.internals.forEach(function (sg, i) {
+      var pr = projectOnSeg(p, sg[0], sg[1]);
+      if (pr.d < bd) { bd = pr.d; best = i; }
+    });
+    return best;
   }
 
   /** Nearest wall of one closed shape, for splitting. */
@@ -7035,7 +7080,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     S.floors = [newFloor(0)]; S.active = 0;
     S.extension = { outline: [], closed: false, storeys: 1 };
     S.drawing = null; S.cursor = null; S.selected = null; S.pick = null;
-    S.calibrating = false; S.kind = null;
+    S.calibrating = false; S.kind = null; S.wallMode = 'draw';
     FRAME = null; say('');
     settled();
   }
@@ -7064,6 +7109,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     S.stage = id;
     S.drawing = null; S.cursor = null; S.selected = null; S.pick = null;
     S.kind = id === 'doors' ? (S.kind || 'door') : null;
+    if (id === 'internal') S.wallMode = S.wallMode || 'draw';
     say('');
     refitTight();
     if (id === 'extension' && !S.extension.closed) inflate(1.35);
@@ -7183,6 +7229,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         S.drawing = null; S.selected = null; FRAME = null; settled();
         return;
       }
+      hit = t.closest && t.closest('[data-wallmode]');
+      if (hit) { S.wallMode = hit.getAttribute('data-wallmode'); S.drawing = null; S.pick = null; render(); return; }
+
       hit = t.closest && t.closest('[data-kind]');
       if (hit) { S.kind = hit.getAttribute('data-kind'); S.selected = null; render(); return; }
       hit = t.closest && t.closest('[data-room]');
@@ -7394,7 +7443,11 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     out.push('<polyline points="' + poly(f.outline.concat([f.outline[0]])) + '" class="sk-ext"/>');
     f.internals.forEach(function (sg) {
       out.push('<line x1="' + P(sg[0])[0] + '" y1="' + P(sg[0])[1] + '" x2="' + P(sg[1])[0] +
-        '" y2="' + P(sg[1])[1] + '" class="sk-int"/>');
+        '" y2="' + P(sg[1])[1] + '" class="sk-int' + (sg.out ? ' out' : '') + '"/>');
+      if (sg.out) {
+        out.push('<text x="' + ((sg[0][0] + sg[1][0]) / 2 * K) + '" y="' +
+          ((sg[0][1] + sg[1][1]) / 2 * K - 6) + '" text-anchor="middle" class="sk-outlab">OUT</text>');
+      }
     });
     f.openings.forEach(function (o) { out.push(openingSvg(f, o)); });
 
@@ -7781,6 +7834,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     return jobs[typeId];
   }
 
+  /* Share of the footprint you can stand up in, by the head height answer. */
+  var LOFT_USABLE = { ok: 0.65, tight: 0.55, short: 0.45 };
+
   /** Measurements the client never types — we work them out. */
   function derive(typeId, j) {
     var m = j.measurements;
@@ -7792,7 +7848,14 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       m.floorArea = (m.footprintArea || 0) * (m.storeys || 1);
       m.perimeter = 4 * Math.sqrt(Math.max(m.footprintArea || 0, 1));
     }
-    if (typeId === 'loft') m.perimeter = 4 * Math.sqrt(Math.max(m.floorArea || 0, 1));
+    if (typeId === 'loft') {
+      // how much of the footprint you can stand up in
+      if (j.drawnFootprint && j.fromDraw && j.fromDraw.floorArea) {
+        var frac = LOFT_USABLE[j.modifiers.headroom] || LOFT_USABLE.ok;
+        m.floorArea = Math.round(j.drawnFootprint * frac);
+      }
+      m.perimeter = 4 * Math.sqrt(Math.max(m.floorArea || 0, 1));
+    }
 
     // A room-by-room type prices off the room list, not off a single intensity
     // spread over the whole house. The client answers one question per room;
@@ -7804,11 +7867,84 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     return j;
   }
 
+
+  /* =====================================================================
+     Asked once, not once per build type
+     =====================================================================
+     Site access and specification sit on all five build types, and the ground
+     sits on two. Someone pricing an extension, a refurbishment and a loft was
+     being asked how a lorry reaches the site three times and what standard of
+     finish they want three times — which reads like the site is not listening.
+
+     They are properties of the site and the client, not of a build type, so
+     they are asked on the first selected type that carries them and copied to
+     the rest.
+     ===================================================================== */
+  var SHARED_MODS = ['access', 'spec'];
+
+  /** The first selected type that carries this modifier. */
+  function ownerOf(modId) {
+    var sel = selected(), owner = null;
+    sel.forEach(function (t) {
+      if (owner) return;
+      if ((t.modifiers || []).some(function (m) { return m.id === modId; })) owner = t.id;
+    });
+    return owner;
+  }
+
+  /** The first selected type that asks about the ground. */
+  function groundOwner() {
+    var sel = selected(), owner = null;
+    sel.forEach(function (t) {
+      if (owner) return;
+      if ((t.steps || []).some(function (st) { return st.ground; })) owner = t.id;
+    });
+    return owner;
+  }
+
+  /** One answer, every job. */
+  function spreadModifier(id, value) {
+    selected().forEach(function (t) {
+      if (!(t.modifiers || []).some(function (m) { return m.id === id; })) return;
+      job(t.id).modifiers[id] = value;
+      job(t.id).touched['mod-' + id] = true;
+    });
+  }
+  function spreadGround(g) {
+    selected().forEach(function (t) { job(t.id).ground = JSON.parse(JSON.stringify(g)); });
+  }
+
+  /** Modifiers this type should actually put on screen. */
+  function modsFor(type, step) {
+    return (step.modifiers || []).filter(function (id) {
+      if (SHARED_MODS.indexOf(id) < 0) return true;
+      return ownerOf(id) === type.id;
+    });
+  }
+
+  /** Does this step still ask the client anything? */
+  function stepAsks(type, step, j) {
+    var onStep = asks(type).filter(function (m) {
+      return m.ask.step === step.id && !(j.fromDraw && j.fromDraw[m.id]);
+    });
+    if (onStep.length) return true;
+    if (modsFor(type, step).length) return true;
+    if (step.ground && groundOwner() === type.id) return true;
+    return !!step.rooms;
+  }
+
+  /** The steps of this type that are worth showing. Never empty. */
+  function liveSteps(type) {
+    var j = job(type.id);
+    var out = (type.steps || []).filter(function (st) { return stepAsks(type, st, j); });
+    return out.length ? out : (type.steps || []).slice(-1);
+  }
+
   /** Where the flow goes once the house is done. */
   function onwards() {
     var sel = selected();
     if (!sel.length) { ROUTER.go('/start'); return; }
-    ROUTER.go('/' + sel[0].id + '/' + sel[0].steps[0].id);
+    ROUTER.go('/' + sel[0].id + '/' + liveSteps(sel[0])[0].id);
   }
 
   /** The floors the client actually drew, in this page's vocabulary. */
@@ -7870,7 +8006,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
      */
     if (j.fromDraw && j.fromDraw[m.id]) {
       return '<div class="flow-field is-measured">' + head +
-        '<div class="measured"><b>' + esc(fmt(m, v)) + '</b>' +
+        '<div class="measured"><b><output id="out-' + m.id + '" aria-live="polite">' +
+        esc(fmt(m, v)) + '</output></b>' +
         '<span>from your drawing</span>' +
         '<button type="button" class="btn btn-ghost btn-sm" data-unmeasure="' + m.id + '">Change it</button>' +
         '</div></div>';
@@ -7976,7 +8113,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       // Everything downstream is measured off the drawing, so it is the step
       // that comes next — not a box on a later page that most people miss.
       var needsHouse = sel.some(function (t) { return SKETCH_TYPES.indexOf(t.id) >= 0; });
-      go.href = needsHouse ? '#/draw' : (sel.length ? '#/' + sel[0].id + '/' + sel[0].steps[0].id : '#/start');
+      go.href = needsHouse ? '#/draw'
+        : (sel.length ? '#/' + sel[0].id + '/' + liveSteps(sel[0])[0].id : '#/start');
       go.textContent = needsHouse ? 'Next — draw your house →'
         : sel.length > 1 ? 'Price all ' + sel.length + ' together →'
         : 'Start →';
@@ -8053,6 +8191,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       set('floorArea', m.totalArea);
       set('windows', m.windows);
       set('extDoors', m.extDoors);
+      // walls marked on the drawing, rather than a length guessed in metres.
+      // Set even when it is nought: marking none means none, not the default.
+      set('wallRemoval', m.wallRemoval);
       // the pins ARE the room list — a kitchen or a bathroom starts at a strip
       // out because that is what people are doing when they name one
       if (m.rooms && m.rooms.length) {
@@ -8066,13 +8207,14 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       set('floorArea', m.totalArea);
       set('perimeter', m.perimeter);
       set('roofArea', m.footprint * 1.22);
+      set('storeys', m.floors);            // you drew them, so we know
     } else if (typeId === 'loft') {
-      // Usable loft area is not the footprint. Below 2.2 m of head height the
-      // space does not count, and on a typical semi that leaves about 60% of
-      // the floor below. That is a guess from the drawing, not a measurement,
-      // so it stays a question the client can answer.
-      set('floorArea', m.footprint * 0.6);
-      delete j.fromDraw.floorArea;
+      // Usable loft area is not the footprint — only the part with head height
+      // counts. Nobody knows that in square metres, but everybody knows
+      // roughly how much of their loft they can stand up in, which is already
+      // being asked as head height. So it is worked out from the two.
+      j.drawnFootprint = m.footprint;
+      set('floorArea', m.footprint * LOFT_USABLE.ok);
     }
     if (m.counts.kitchen) set('kitchens', m.counts.kitchen);
     if (baths) set('bathrooms', baths);
@@ -8243,24 +8385,28 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   function renderStep(r) {
     var type = r.type, step = r.step;
     var j = job(type.id);
-    var steps = type.steps;
+    // only the steps that still ask something — a page with nothing on it is
+    // a click the client pays for and gets nothing back
+    var steps = liveSteps(type);
     var i = steps.indexOf(step);
+    if (i < 0) { ROUTER.go('/' + type.id + '/' + steps[0].id); return; }
     var sel = selected();
     var ti = sel.map(function (t) { return t.id; }).indexOf(type.id);
 
+    var lastOf = function (t) { var ls = liveSteps(t); return ls[ls.length - 1].id; };
     var prev = i > 0 ? '#/' + type.id + '/' + steps[i - 1].id
-      : (ti > 0 ? '#/' + sel[ti - 1].id + '/' + sel[ti - 1].steps[sel[ti - 1].steps.length - 1].id : '#/start');
+      : (ti > 0 ? '#/' + sel[ti - 1].id + '/' + lastOf(sel[ti - 1]) : '#/start');
 
     var nextType = ti >= 0 && ti < sel.length - 1 ? sel[ti + 1] : null;
     var next = i < steps.length - 1 ? '#/' + type.id + '/' + steps[i + 1].id
-      : (nextType ? '#/' + nextType.id + '/' + nextType.steps[0].id : '#/estimate');
+      : (nextType ? '#/' + nextType.id + '/' + liveSteps(nextType)[0].id : '#/estimate');
     var nextLabel = i < steps.length - 1 ? 'Next'
       : (nextType ? 'On to ' + nextType.name.toLowerCase() : 'See the estimate');
 
     var fields = asks(type).filter(function (m) { return m.ask.step === step.id; })
       .map(function (m) { return inputHtml(m, j); }).join('');
 
-    var mods = (step.modifiers || []).map(function (id) {
+    var mods = modsFor(type, step).map(function (id) {
       var found = null;
       (type.modifiers || []).forEach(function (m) { if (m.id === id) found = m; });
       return found ? modifierHtml(found, j) : '';
@@ -8299,7 +8445,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
             '<div class="sk-cta"><button type="button" class="btn" id="do-sketch">Draw my house</button></div></div>')
         : '') +
       (step.rooms && j.rooms ? roomsHtml(type.id, j) : '') +
-      '<div class="flow-fields">' + fields + (step.ground ? groundHtml(j) : '') + mods + '</div>' +
+      '<div class="flow-fields">' + fields +
+        ((step.ground && groundOwner() === type.id) ? groundHtml(j) : '') + mods + '</div>' +
       '<div class="flow-nav">' +
         '<a class="btn btn-ghost" href="' + prev + '">← Back</a>' +
         '<a class="btn" href="' + next + '">' + esc(nextLabel) + ' →</a>' +
@@ -8361,7 +8508,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       : '');
     if (drawing) n = 1;
     html += sel.map(function (t, i) {
-      return '<a href="#/' + t.id + '/' + t.steps[0].id + '" class="' +
+      return '<a href="#/' + t.id + '/' + liveSteps(t)[0].id + '" class="' +
         (t.id === hereId ? 'here' : (r.name !== 'draw' && i < hereIdx) ? 'done' : '') + '"><i>' +
         ((r.name !== 'draw' && i < hereIdx) ? '✓' : n + i + 1) + '</i><span>' + esc(t.name) + '</span></a>';
     }).join('') +
@@ -8522,7 +8669,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var back = $('result-back');
     if (back && sel.length) {
       var last = sel[sel.length - 1];
-      back.href = '#/' + last.id + '/' + last.steps[last.steps.length - 1].id;
+      var lastLive = liveSteps(last);
+      back.href = '#/' + last.id + '/' + lastLive[lastLive.length - 1].id;
     }
     groundFlag(result, 'result-flag');
   }
@@ -8603,11 +8751,18 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         j2.measurements[group.getAttribute('data-meas')] = parseFloat(v) || 0;
         j2.touched[group.getAttribute('data-meas')] = true;
       } else if (group.hasAttribute('data-mod')) {
-        j2.modifiers[group.getAttribute('data-mod')] = v;
-        j2.touched['mod-' + group.getAttribute('data-mod')] = true;
+        var mid = group.getAttribute('data-mod');
+        j2.modifiers[mid] = v;
+        j2.touched['mod-' + mid] = true;
+        if (SHARED_MODS.indexOf(mid) >= 0) spreadModifier(mid, v);
+        // a measured figure can depend on a modifier — usable loft area follows
+        // the head height — so the figures on screen have to follow it too
+        derive(route.typeId, j2);
+        refreshOutputs();
       } else if (group.hasAttribute('data-soil')) {
         j2.ground.soil = v;
         j2.touched.soil = true;
+        spreadGround(j2.ground);
       }
       update();
       return;

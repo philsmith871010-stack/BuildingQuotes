@@ -236,6 +236,16 @@ a 10.5 m² rear extension, already measured and passing every check. It is there
 so anybody can see what "done" looks like before they start, and so the rest of
 the flow can be shown without drawing a house first.
 
+## Knocking walls out
+
+Asking a client how many metres of wall are coming out asks them to total up
+something they can point at. So in stage 2 the tools offer a choice — draw a new
+wall, or knock one out — and knocking one out is a tap on the wall itself. It
+draws dashed and red, labelled COMING OUT, its length is taken out of the
+plastering, and the total lands on the renovation's "walls coming out" as a
+measured figure. Tapping it again puts it back. Marking none means none rather
+than the default.
+
 ## Protections
 
 This drawing becomes a price, so the failure that matters is not an ugly plan —

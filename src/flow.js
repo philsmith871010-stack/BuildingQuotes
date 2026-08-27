@@ -79,6 +79,9 @@
     return jobs[typeId];
   }
 
+  /* Share of the footprint you can stand up in, by the head height answer. */
+  var LOFT_USABLE = { ok: 0.65, tight: 0.55, short: 0.45 };
+
   /** Measurements the client never types — we work them out. */
   function derive(typeId, j) {
     var m = j.measurements;
@@ -90,7 +93,14 @@
       m.floorArea = (m.footprintArea || 0) * (m.storeys || 1);
       m.perimeter = 4 * Math.sqrt(Math.max(m.footprintArea || 0, 1));
     }
-    if (typeId === 'loft') m.perimeter = 4 * Math.sqrt(Math.max(m.floorArea || 0, 1));
+    if (typeId === 'loft') {
+      // how much of the footprint you can stand up in
+      if (j.drawnFootprint && j.fromDraw && j.fromDraw.floorArea) {
+        var frac = LOFT_USABLE[j.modifiers.headroom] || LOFT_USABLE.ok;
+        m.floorArea = Math.round(j.drawnFootprint * frac);
+      }
+      m.perimeter = 4 * Math.sqrt(Math.max(m.floorArea || 0, 1));
+    }
 
     // A room-by-room type prices off the room list, not off a single intensity
     // spread over the whole house. The client answers one question per room;
@@ -102,11 +112,84 @@
     return j;
   }
 
+
+  /* =====================================================================
+     Asked once, not once per build type
+     =====================================================================
+     Site access and specification sit on all five build types, and the ground
+     sits on two. Someone pricing an extension, a refurbishment and a loft was
+     being asked how a lorry reaches the site three times and what standard of
+     finish they want three times — which reads like the site is not listening.
+
+     They are properties of the site and the client, not of a build type, so
+     they are asked on the first selected type that carries them and copied to
+     the rest.
+     ===================================================================== */
+  var SHARED_MODS = ['access', 'spec'];
+
+  /** The first selected type that carries this modifier. */
+  function ownerOf(modId) {
+    var sel = selected(), owner = null;
+    sel.forEach(function (t) {
+      if (owner) return;
+      if ((t.modifiers || []).some(function (m) { return m.id === modId; })) owner = t.id;
+    });
+    return owner;
+  }
+
+  /** The first selected type that asks about the ground. */
+  function groundOwner() {
+    var sel = selected(), owner = null;
+    sel.forEach(function (t) {
+      if (owner) return;
+      if ((t.steps || []).some(function (st) { return st.ground; })) owner = t.id;
+    });
+    return owner;
+  }
+
+  /** One answer, every job. */
+  function spreadModifier(id, value) {
+    selected().forEach(function (t) {
+      if (!(t.modifiers || []).some(function (m) { return m.id === id; })) return;
+      job(t.id).modifiers[id] = value;
+      job(t.id).touched['mod-' + id] = true;
+    });
+  }
+  function spreadGround(g) {
+    selected().forEach(function (t) { job(t.id).ground = JSON.parse(JSON.stringify(g)); });
+  }
+
+  /** Modifiers this type should actually put on screen. */
+  function modsFor(type, step) {
+    return (step.modifiers || []).filter(function (id) {
+      if (SHARED_MODS.indexOf(id) < 0) return true;
+      return ownerOf(id) === type.id;
+    });
+  }
+
+  /** Does this step still ask the client anything? */
+  function stepAsks(type, step, j) {
+    var onStep = asks(type).filter(function (m) {
+      return m.ask.step === step.id && !(j.fromDraw && j.fromDraw[m.id]);
+    });
+    if (onStep.length) return true;
+    if (modsFor(type, step).length) return true;
+    if (step.ground && groundOwner() === type.id) return true;
+    return !!step.rooms;
+  }
+
+  /** The steps of this type that are worth showing. Never empty. */
+  function liveSteps(type) {
+    var j = job(type.id);
+    var out = (type.steps || []).filter(function (st) { return stepAsks(type, st, j); });
+    return out.length ? out : (type.steps || []).slice(-1);
+  }
+
   /** Where the flow goes once the house is done. */
   function onwards() {
     var sel = selected();
     if (!sel.length) { ROUTER.go('/start'); return; }
-    ROUTER.go('/' + sel[0].id + '/' + sel[0].steps[0].id);
+    ROUTER.go('/' + sel[0].id + '/' + liveSteps(sel[0])[0].id);
   }
 
   /** The floors the client actually drew, in this page's vocabulary. */
@@ -168,7 +251,8 @@
      */
     if (j.fromDraw && j.fromDraw[m.id]) {
       return '<div class="flow-field is-measured">' + head +
-        '<div class="measured"><b>' + esc(fmt(m, v)) + '</b>' +
+        '<div class="measured"><b><output id="out-' + m.id + '" aria-live="polite">' +
+        esc(fmt(m, v)) + '</output></b>' +
         '<span>from your drawing</span>' +
         '<button type="button" class="btn btn-ghost btn-sm" data-unmeasure="' + m.id + '">Change it</button>' +
         '</div></div>';
@@ -274,7 +358,8 @@
       // Everything downstream is measured off the drawing, so it is the step
       // that comes next — not a box on a later page that most people miss.
       var needsHouse = sel.some(function (t) { return SKETCH_TYPES.indexOf(t.id) >= 0; });
-      go.href = needsHouse ? '#/draw' : (sel.length ? '#/' + sel[0].id + '/' + sel[0].steps[0].id : '#/start');
+      go.href = needsHouse ? '#/draw'
+        : (sel.length ? '#/' + sel[0].id + '/' + liveSteps(sel[0])[0].id : '#/start');
       go.textContent = needsHouse ? 'Next — draw your house →'
         : sel.length > 1 ? 'Price all ' + sel.length + ' together →'
         : 'Start →';
@@ -351,6 +436,9 @@
       set('floorArea', m.totalArea);
       set('windows', m.windows);
       set('extDoors', m.extDoors);
+      // walls marked on the drawing, rather than a length guessed in metres.
+      // Set even when it is nought: marking none means none, not the default.
+      set('wallRemoval', m.wallRemoval);
       // the pins ARE the room list — a kitchen or a bathroom starts at a strip
       // out because that is what people are doing when they name one
       if (m.rooms && m.rooms.length) {
@@ -364,13 +452,14 @@
       set('floorArea', m.totalArea);
       set('perimeter', m.perimeter);
       set('roofArea', m.footprint * 1.22);
+      set('storeys', m.floors);            // you drew them, so we know
     } else if (typeId === 'loft') {
-      // Usable loft area is not the footprint. Below 2.2 m of head height the
-      // space does not count, and on a typical semi that leaves about 60% of
-      // the floor below. That is a guess from the drawing, not a measurement,
-      // so it stays a question the client can answer.
-      set('floorArea', m.footprint * 0.6);
-      delete j.fromDraw.floorArea;
+      // Usable loft area is not the footprint — only the part with head height
+      // counts. Nobody knows that in square metres, but everybody knows
+      // roughly how much of their loft they can stand up in, which is already
+      // being asked as head height. So it is worked out from the two.
+      j.drawnFootprint = m.footprint;
+      set('floorArea', m.footprint * LOFT_USABLE.ok);
     }
     if (m.counts.kitchen) set('kitchens', m.counts.kitchen);
     if (baths) set('bathrooms', baths);
@@ -541,24 +630,28 @@
   function renderStep(r) {
     var type = r.type, step = r.step;
     var j = job(type.id);
-    var steps = type.steps;
+    // only the steps that still ask something — a page with nothing on it is
+    // a click the client pays for and gets nothing back
+    var steps = liveSteps(type);
     var i = steps.indexOf(step);
+    if (i < 0) { ROUTER.go('/' + type.id + '/' + steps[0].id); return; }
     var sel = selected();
     var ti = sel.map(function (t) { return t.id; }).indexOf(type.id);
 
+    var lastOf = function (t) { var ls = liveSteps(t); return ls[ls.length - 1].id; };
     var prev = i > 0 ? '#/' + type.id + '/' + steps[i - 1].id
-      : (ti > 0 ? '#/' + sel[ti - 1].id + '/' + sel[ti - 1].steps[sel[ti - 1].steps.length - 1].id : '#/start');
+      : (ti > 0 ? '#/' + sel[ti - 1].id + '/' + lastOf(sel[ti - 1]) : '#/start');
 
     var nextType = ti >= 0 && ti < sel.length - 1 ? sel[ti + 1] : null;
     var next = i < steps.length - 1 ? '#/' + type.id + '/' + steps[i + 1].id
-      : (nextType ? '#/' + nextType.id + '/' + nextType.steps[0].id : '#/estimate');
+      : (nextType ? '#/' + nextType.id + '/' + liveSteps(nextType)[0].id : '#/estimate');
     var nextLabel = i < steps.length - 1 ? 'Next'
       : (nextType ? 'On to ' + nextType.name.toLowerCase() : 'See the estimate');
 
     var fields = asks(type).filter(function (m) { return m.ask.step === step.id; })
       .map(function (m) { return inputHtml(m, j); }).join('');
 
-    var mods = (step.modifiers || []).map(function (id) {
+    var mods = modsFor(type, step).map(function (id) {
       var found = null;
       (type.modifiers || []).forEach(function (m) { if (m.id === id) found = m; });
       return found ? modifierHtml(found, j) : '';
@@ -597,7 +690,8 @@
             '<div class="sk-cta"><button type="button" class="btn" id="do-sketch">Draw my house</button></div></div>')
         : '') +
       (step.rooms && j.rooms ? roomsHtml(type.id, j) : '') +
-      '<div class="flow-fields">' + fields + (step.ground ? groundHtml(j) : '') + mods + '</div>' +
+      '<div class="flow-fields">' + fields +
+        ((step.ground && groundOwner() === type.id) ? groundHtml(j) : '') + mods + '</div>' +
       '<div class="flow-nav">' +
         '<a class="btn btn-ghost" href="' + prev + '">← Back</a>' +
         '<a class="btn" href="' + next + '">' + esc(nextLabel) + ' →</a>' +
@@ -659,7 +753,7 @@
       : '');
     if (drawing) n = 1;
     html += sel.map(function (t, i) {
-      return '<a href="#/' + t.id + '/' + t.steps[0].id + '" class="' +
+      return '<a href="#/' + t.id + '/' + liveSteps(t)[0].id + '" class="' +
         (t.id === hereId ? 'here' : (r.name !== 'draw' && i < hereIdx) ? 'done' : '') + '"><i>' +
         ((r.name !== 'draw' && i < hereIdx) ? '✓' : n + i + 1) + '</i><span>' + esc(t.name) + '</span></a>';
     }).join('') +
@@ -820,7 +914,8 @@
     var back = $('result-back');
     if (back && sel.length) {
       var last = sel[sel.length - 1];
-      back.href = '#/' + last.id + '/' + last.steps[last.steps.length - 1].id;
+      var lastLive = liveSteps(last);
+      back.href = '#/' + last.id + '/' + lastLive[lastLive.length - 1].id;
     }
     groundFlag(result, 'result-flag');
   }
@@ -901,11 +996,18 @@
         j2.measurements[group.getAttribute('data-meas')] = parseFloat(v) || 0;
         j2.touched[group.getAttribute('data-meas')] = true;
       } else if (group.hasAttribute('data-mod')) {
-        j2.modifiers[group.getAttribute('data-mod')] = v;
-        j2.touched['mod-' + group.getAttribute('data-mod')] = true;
+        var mid = group.getAttribute('data-mod');
+        j2.modifiers[mid] = v;
+        j2.touched['mod-' + mid] = true;
+        if (SHARED_MODS.indexOf(mid) >= 0) spreadModifier(mid, v);
+        // a measured figure can depend on a modifier — usable loft area follows
+        // the head height — so the figures on screen have to follow it too
+        derive(route.typeId, j2);
+        refreshOutputs();
       } else if (group.hasAttribute('data-soil')) {
         j2.ground.soil = v;
         j2.touched.soil = true;
+        spreadGround(j2.ground);
       }
       update();
       return;
