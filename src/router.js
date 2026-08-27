@@ -7,6 +7,7 @@
  *
  *   #/                    the landing page
  *   #/start               choosing what you are building
+ *   #/draw                drawing the house — the step everything else is measured from
  *   #/<type>/<step>       one question page
  *   #/<type>/estimate     the result
  */
@@ -31,6 +32,7 @@
     var parts = h.split('/').filter(Boolean);
     if (!parts.length) return { name: 'landing', path: '/' };
     if (parts[0] === 'start') return { name: 'start', path: '/start' };
+    if (parts[0] === 'draw') return { name: 'draw', path: '/draw' };
     if (parts[0] === 'estimate') return { name: 'estimate', path: '/estimate' };
 
     var type = typeOf(parts[0]);
@@ -50,6 +52,9 @@
   function viewFor(name) {
     return name === 'landing' ? 'view-landing'
          : name === 'start' ? 'view-start'
+         // the drawing tool covers the page itself, so it keeps the chooser
+         // behind it rather than flashing an empty view underneath
+         : name === 'draw' ? 'view-start'
          : name === 'estimate' ? 'view-estimate' : 'view-flow';
   }
 

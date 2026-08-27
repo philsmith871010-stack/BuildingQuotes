@@ -102,6 +102,37 @@
     return j;
   }
 
+  /** Where the flow goes once the house is done. */
+  function onwards() {
+    var sel = selected();
+    if (!sel.length) { ROUTER.go('/start'); return; }
+    ROUTER.go('/' + sel[0].id + '/' + sel[0].steps[0].id);
+  }
+
+  /** The floors the client actually drew, in this page's vocabulary. */
+  var FLOOR_KEYS = ['ground', 'first', 'second', 'loft'];
+  function drawnFloors() {
+    var n = D.SKETCH ? D.SKETCH.floors().length : 1;
+    return FLOOR_KEYS.slice(0, Math.max(1, Math.min(n, 4)));
+  }
+
+  /** Which drawn floor the floor tabs are pointing at. */
+  function floorIndex() {
+    var n = D.SKETCH ? D.SKETCH.floors().length : 1;
+    var want = FLOOR_KEYS.indexOf(project.floor);
+    return Math.min(Math.max(want, 0), Math.max(0, n - 1));
+  }
+
+  function paintCaption(own) {
+    var cap = $('draw-note');
+    if (cap && own) cap.textContent = 'Your drawing';
+  }
+
+  /** Has a house been drawn — for the rail, and for what the CTAs should say. */
+  function hasDrawing() {
+    return !!(D.SKETCH && D.SKETCH.measure().scaled);
+  }
+
   /** Every selected build type, priced as one job. */
   function priceNow() {
     var sel = selected();
@@ -226,9 +257,12 @@
     var go = $('start-go'), note = $('start-note');
     if (go) {
       go.hidden = !sel.length;
-      if (sel.length) go.href = '#/' + sel[0].id + '/' + sel[0].steps[0].id;
-      go.textContent = sel.length > 1
-        ? 'Price all ' + sel.length + ' together →'
+      // Everything downstream is measured off the drawing, so it is the step
+      // that comes next — not a box on a later page that most people miss.
+      var needsHouse = sel.some(function (t) { return SKETCH_TYPES.indexOf(t.id) >= 0; });
+      go.href = needsHouse ? '#/draw' : (sel.length ? '#/' + sel[0].id + '/' + sel[0].steps[0].id : '#/start');
+      go.textContent = needsHouse ? 'Next — draw your house →'
+        : sel.length > 1 ? 'Price all ' + sel.length + ' together →'
         : 'Start →';
     }
     if (note) {
@@ -521,10 +555,14 @@
       '<h1>' + esc(step.title) + '</h1>' +
       '<p class="lede">' + esc(step.lede) + '</p>' +
       (sketchable
-        ? '<div class="trace-cta"><div>' +
-          '<p class="q-title">' + esc(SKETCH_CTA[type.id].q) + '</p>' +
-          '<p class="q-help">' + esc(SKETCH_CTA[type.id].help) + ' Nothing is sent anywhere.</p></div>' +
-          '<div class="sk-cta"><button type="button" class="btn" id="do-sketch">Draw my house</button></div></div>'
+        ? (hasDrawing()
+          ? '<div class="trace-cta is-done"><div><p class="q-title">Measured from your drawing.</p>' +
+            '<p class="q-help">The figures below came off the house you drew. Change the drawing and they follow.</p></div>' +
+            '<div class="sk-cta"><button type="button" class="btn btn-ghost" id="do-sketch">Change the drawing</button></div></div>'
+          : '<div class="trace-cta"><div>' +
+            '<p class="q-title">' + esc(SKETCH_CTA[type.id].q) + '</p>' +
+            '<p class="q-help">' + esc(SKETCH_CTA[type.id].help) + ' Nothing is sent anywhere.</p></div>' +
+            '<div class="sk-cta"><button type="button" class="btn" id="do-sketch">Draw my house</button></div></div>')
         : '') +
       (step.rooms && j.rooms ? roomsHtml(type.id, j) : '') +
       '<div class="flow-fields">' + fields + (step.ground ? groundHtml(j) : '') + mods + '</div>' +
@@ -549,7 +587,10 @@
       var housey = HOUSE_TYPES.indexOf(type.id) >= 0 && step.view === 'plan';
       tabs.hidden = !housey;
       if (housey) {
-        var fl = floorsAvailable();
+        // once a house is drawn, the tabs are its floors — offering "First" on
+        // a bungalow somebody just drew as one storey is a question about a
+        // floor that does not exist
+        var fl = hasDrawing() ? drawnFloors() : floorsAvailable();
         // show the floor the question is actually about
         var want = type.id === 'loft' ? 'loft' : type.id === 'extension' ? 'ground' : project.floor;
         if (fl.indexOf(want) < 0) want = 'ground';
@@ -562,8 +603,9 @@
     }
 
     $('draw-title').textContent = type.name + ' · ' + (step.view === 'plan' ? 'plan' : 'section');
-    $('draw-note').textContent = type.id === 'renovation' && step.view === 'plan'
-      ? 'Your uploaded plan, traced'
+    $('draw-note').textContent =
+      (step.view === 'plan' && hasDrawing()) ? 'Your drawing'
+      : (type.id === 'renovation' && step.view === 'plan') ? 'Your uploaded plan, traced'
       : (step.view === 'plan' ? 'Plan — looking down' : 'Section — cut through');
 
     if (!reduced && gsap) {
@@ -575,15 +617,22 @@
   function paintRail(r) {
     var sel = selected();
     if (!sel.length) return;
+    var drawing = sel.some(function (t) { return SKETCH_TYPES.indexOf(t.id) >= 0; });
     var hereId = r.name === 'estimate' ? null : r.typeId;
     var hereIdx = hereId ? sel.map(function (t) { return t.id; }).indexOf(hereId) : sel.length;
-    var html = sel.map(function (t, i) {
+    var n = 0;
+    var html = (drawing
+      ? '<a href="#/draw" class="' + (r.name === 'draw' ? 'here' : (hasDrawing() ? 'done' : '')) +
+        '"><i>' + (hasDrawing() && r.name !== 'draw' ? '✓' : ++n) + '</i><span>Your house</span></a>'
+      : '');
+    if (drawing) n = 1;
+    html += sel.map(function (t, i) {
       return '<a href="#/' + t.id + '/' + t.steps[0].id + '" class="' +
-        (t.id === hereId ? 'here' : i < hereIdx ? 'done' : '') + '"><i>' +
-        (i < hereIdx ? '✓' : i + 1) + '</i><span>' + esc(t.name) + '</span></a>';
+        (t.id === hereId ? 'here' : (r.name !== 'draw' && i < hereIdx) ? 'done' : '') + '"><i>' +
+        ((r.name !== 'draw' && i < hereIdx) ? '✓' : n + i + 1) + '</i><span>' + esc(t.name) + '</span></a>';
     }).join('') +
       '<a href="#/estimate" class="' + (r.name === 'estimate' ? 'here' : '') + '"><i>' +
-      (sel.length + 1) + '</i><span>Estimate</span></a>';
+      (n + sel.length + 1) + '</i><span>Estimate</span></a>';
     ['steps-rail', 'steps-rail-2'].forEach(function (id) {
       var el = $(id); if (el) el.innerHTML = html;
     });
@@ -595,6 +644,14 @@
     var view = r.name === 'estimate' ? 'section' : r.step.view;
     var host = $('iso-wrap');
     if (!host) return;
+
+    // Once they have drawn their house, that is the plan the questions are
+    // about — not a sample of somebody else's.
+    if (view === 'plan' && hasDrawing()) {
+      var own = D.SKETCH.planSvg(floorIndex());
+      if (own) { host.innerHTML = own; paintCaption(true); return; }
+    }
+    paintCaption(false);
     var j = job(r.typeId);
     host.innerHTML = DRAW.render(r.typeId, view, mergeJob(j), result.ground);
     if (focusDim) {
@@ -1018,6 +1075,24 @@
     route = r;
     if (r.name === 'landing') return;
     if (r.name === 'start') { paintChooser(); return; }
+
+    /*
+     * Drawing the house is a step in the flow, not a tool hidden behind a
+     * button on a later page. It has its own URL, its own place on the rail,
+     * and finishing it moves you on.
+     */
+    if (r.name === 'draw') {
+      paintChooser();
+      if (!selected().length) { ROUTER.go('/start'); return; }
+      paintRail(r);
+      if (!D.SKETCH) { ROUTER.go('/start'); return; }
+      D.SKETCH.open(
+        function (m) { applySketchEverywhere(m); onwards(); },
+        function (area, rooms) { applyTrace(area, rooms); onwards(); },
+        function () { ROUTER.go('/start'); }          // closed without finishing
+      );
+      return;
+    }
 
     // arriving straight at a build type adds it to the project
     if (r.typeId && project.types.indexOf(r.typeId) < 0) {

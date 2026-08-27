@@ -152,8 +152,13 @@ One wall carries the dimension they typed in, and that single number scales
 every other measurement on the drawing. Change the floor area and the plan
 rescales, so the drawing can never contradict the figure being priced.
 
-**The drawing tool is built**, and it is the part of this worth owning. One
-button, "Draw my house", and one idea: **you draw the shape, then measure it
+**Drawing the house is step one of the flow**, not a box on a later page. The
+chooser's primary action is "Next — draw your house", it has its own URL at
+`#/draw` and its own place on the step rail, and finishing it moves you on with
+every figure it can set already set. There is a quiet way past for anyone who
+would rather type the measurements.
+
+**The drawing tool is the part of this worth owning.** One idea: **you draw the shape, then measure it
 once.** Nothing on screen is in metres while you draw. You trace round the
 outside on a plain grid — blank, or over your own uploaded floor plan — close
 it, and type the length of one wall you happen to know. That single number

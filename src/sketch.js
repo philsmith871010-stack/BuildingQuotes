@@ -63,7 +63,8 @@
       done: 'Drag an end to move a wall.' },
     { id: 'doors',     n: 3, label: 'Doors',        hint: 'Click a wall to put a door in it.' },
     { id: 'windows',   n: 4, label: 'Windows',      hint: 'Click a wall to put a window in it.' },
-    { id: 'rooms',     n: 5, label: 'Rooms',        hint: 'Tap a room type, then tap where it is.' },
+    { id: 'rooms',     n: 5, label: 'Rooms',        hint: 'Tap a room type, then tap the room. One label per room.',
+      done: 'Tap a labelled room again to change what it is.' },
     { id: 'extension', n: 6, label: 'Extension',    hint: 'Draw the new bit, if you are adding one.',
       done: 'Drag a corner to move it. Tap a wall to add one.' }
   ];
@@ -978,6 +979,29 @@
     return null;
   }
 
+  /**
+   * Two points are in the same enclosed space if you can walk between them
+   * without going through a wall.
+   *
+   * That is the whole test, and it needs no planar subdivision — the thing this
+   * tool exists by not doing. It is not perfect: in an L-shaped room the line
+   * between two corners can leave and come back. But it is right for every
+   * room a house actually has, and it stops the failure that costs money —
+   * two bathroom pins in one bathroom is £6,000 of labour for one bathroom.
+   */
+  function sameSpaceAs(f, p) {
+    var walls = wallsOf(f);
+    for (var i = 0; i < f.markers.length; i++) {
+      var q = [f.markers[i].x, f.markers[i].y];
+      var blocked = false;
+      for (var w = 0; w < walls.length && !blocked; w++) {
+        if (straddles(p, q, walls[w].a, walls[w].b)) blocked = true;
+      }
+      if (!blocked) return i;
+    }
+    return -1;
+  }
+
   /*
    * Soft checks. None of these stop anybody; they sit under the figures so a
    * number that came out of a mistake does not leave without being questioned.
@@ -1090,14 +1114,15 @@
 
   /* ---- input ------------------------------------------------------------------ */
 
-  function toWorld(evt) {
+  function toWorldXY(x, y) {
     var svg = $('sk-svg'), ctm = svg && svg.getScreenCTM();
     if (!ctm) return [0, 0];
     var pt = svg.createSVGPoint();
-    pt.x = evt.clientX; pt.y = evt.clientY;
+    pt.x = x; pt.y = y;
     var p = pt.matrixTransform(ctm.inverse());
     return [p.x / K, p.y / K];
   }
+  function toWorld(evt) { return toWorldXY(evt.clientX, evt.clientY); }
 
   /** Screen pixels per grid unit, so handles and hit targets stay finger-sized. */
   function pxPerUnit() {
@@ -1187,6 +1212,26 @@
   function onMove(e) {
     if (!S.started || S.calibrating) return;
 
+    /*
+     * Putting a point down is a TAP, so a drag can never be mistaken for one —
+     * which means a drag on empty canvas is free to pan, on a mouse and on one
+     * finger alike. Requiring two fingers or a modifier key to move the plan is
+     * a rule nobody knows and nothing on screen tells them.
+     */
+    if (press && !press.handle && !press.pan && !S.drawing) {
+      if (Math.abs(e.clientX - press.x) + Math.abs(e.clientY - press.y) > 6) {
+        press.pan = true;
+        press.sx = press.x; press.sy = press.y;
+      }
+    }
+    if (press && press.pan) {
+      var svg2 = $('sk-svg'), vv = frame();
+      var sc = (vv.x1 - vv.x0) / Math.max(svg2.clientWidth, 1);
+      panBy((e.clientX - press.sx) * sc, (e.clientY - press.sy) * sc);
+      press.sx = e.clientX; press.sy = e.clientY;
+      return;
+    }
+
     if (press && press.handle) {
       if (Math.abs(e.clientX - press.x) + Math.abs(e.clientY - press.y) > 3) press.moved = true;
       if (!press.moved) return;
@@ -1233,6 +1278,27 @@
     if (!p) return;
 
     if (p.handle && p.moved) {
+      // dragging one pin into a room that already has one would put two labels
+      // in a single space, so the one that was dragged goes back
+      if (p.handle.kind === 'pin') {
+        var fp = floor(), mk = fp.markers[p.handle.i];
+        var clash = -1;
+        fp.markers.forEach(function (other, i) {
+          if (i === p.handle.i || clash >= 0) return;
+          var blocked = false;
+          wallsOf(fp).forEach(function (wl) {
+            if (straddles([mk.x, mk.y], [other.x, other.y], wl.a, wl.b)) blocked = true;
+          });
+          if (!blocked) clash = i;
+        });
+        if (clash >= 0) {
+          say('That room already has a label.');
+          var undoTo = UNDO.pop();
+          if (undoTo) restore(undoTo);
+          settled();
+          return;
+        }
+      }
       // a drag that crosses the shape would silently corrupt the area
       var h = p.handle;
       if (h.kind === 'corner') {
@@ -1323,9 +1389,18 @@
     }
 
     if (S.stage === 'rooms') {
-      snapshot();
       var g = snapFrom(null, w);
-      f.markers.push({ x: g[0], y: g[1], type: S.roomType });
+      snapshot();
+      // one label per enclosed space: tapping a room that already has one
+      // moves and relabels it rather than adding a second
+      var already = sameSpaceAs(f, g);
+      if (already >= 0) {
+        f.markers[already].x = g[0];
+        f.markers[already].y = g[1];
+        f.markers[already].type = S.roomType;
+      } else {
+        f.markers.push({ x: g[0], y: g[1], type: S.roomType });
+      }
       changed();
       return;
     }
@@ -1456,19 +1531,26 @@
 
   /* ---- wiring ------------------------------------------------------------------ */
 
-  function open(onApply, onTrace) {
+  function open(onApply, onTrace, onClose) {
     S.onApply = onApply || null;
     S.onTrace = onTrace || null;
-    if (!S.started) recall();
+    S.onClose = onClose || null;
+    var resumed = !S.started && recall();
     var wrap = $('sk-overlay');
     wrap.classList.add('on');
     wrap.setAttribute('aria-hidden', 'false');
     settled();
+    // arriving to find a house already drawn is a surprise unless it is named
+    if (resumed) say('Picked up where you left off — "Start again" clears it.');
   }
-  function close() {
+  /* `going` means we are moving on deliberately — applied, or handed over to
+     the automatic tracer — rather than backing out of the step. */
+  function close(going) {
     var wrap = $('sk-overlay');
     wrap.classList.remove('on');
     wrap.setAttribute('aria-hidden', 'true');
+    S.confirm = null;
+    if (!going && S.onClose) S.onClose();
   }
   function reset() {
     UNDO.length = 0; REDO.length = 0; MANUAL = false; SNAP = LOOSE;
@@ -1526,7 +1608,7 @@
     if (ids.length < 2) return null;
     var a = touches[ids[0]], b = touches[ids[1]];
     return { d: Math.hypot(b.sx - a.sx, b.sy - a.sy),
-             c: [(a.wx + b.wx) / 2, (a.wy + b.wy) / 2] };
+             mx: (a.sx + b.sx) / 2, my: (a.sy + b.sy) / 2 };
   }
 
   function wire() {
@@ -1549,13 +1631,14 @@
           return;
         }
       }
-      if (e.button === 1 || (e.button === 0 && e.shiftKey)) {   // middle or shift: pan
+      if (e.button === 1) {                                     // middle drag: pan
         press = { pan: true, sx: e.clientX, sy: e.clientY };
         try { svg.setPointerCapture(e.pointerId); } catch (err) {}
         e.preventDefault();
         return;
       }
       onDown(e);
+      if (press) { try { svg.setPointerCapture(e.pointerId); } catch (err) {} }
     });
 
     svg.addEventListener('pointermove', function (e) {
@@ -1563,15 +1646,11 @@
       if (pinch) {
         var now = pointerSpan();
         if (now && now.d > 4 && pinch.d > 4) {
-          zoomAt(pinch.c, now.d / pinch.d);
-          pinch = { d: now.d, c: pinch.c };
+          // zoom about whatever is under the middle of the two fingers, which
+          // also pans when the fingers move together
+          zoomAt(toWorldXY(now.mx, now.my), now.d / pinch.d);
+          pinch = now;
         }
-        return;
-      }
-      if (press && press.pan) {
-        var v = frame(), sc = (v.x1 - v.x0) / Math.max(svg.clientWidth, 1);
-        panBy((e.clientX - press.sx) * sc, (e.clientY - press.sy) * sc);
-        press.sx = e.clientX; press.sy = e.clientY;
         return;
       }
       onMove(e);
@@ -1662,7 +1741,7 @@
           // still here for anyone with a clean estate agent plan — it finds the
           // rooms itself. Kept subordinate because drawing works on any plan.
           if (!root.DATUM.TRACE) return;
-          close();
+          close(true);
           root.DATUM.TRACE.open(S.onTrace || function () {});
           return;
         case 'sk-calib-go':  applyCalibration(); return;
@@ -1713,9 +1792,15 @@
           if (S.confirm === 'restart') { S.confirm = null; reset(); }
           return;
         case 'sk-close-btn': close(); return;
+        case 'sk-skip':
+          // there has to be a way past, or somebody whose drawing will not
+          // behave is stuck on the one screen they cannot get through
+          close(true);
+          if (S.onApply) S.onApply(measure(), S);
+          return;
         case 'sk-apply':
           if (S.onApply) S.onApply(measure(), S);
-          close(); return;
+          close(true); return;
       }
       if (t === $('sk-overlay')) close();
     });
@@ -1723,7 +1808,9 @@
     doc.addEventListener('keydown', function (e) {
       if (!$('sk-overlay').classList.contains('on')) return;
       if (e.key === 'Escape') {
-        if (S.drawing) { S.drawing = null; S.cursor = null; render(); } else close();
+        if (S.drawing) { S.drawing = null; S.cursor = null; render(); }
+        else if (S.pick || S.selected) { S.pick = null; S.selected = null; render(); }
+        else close();
         return;
       }
       if (e.key === 'Enter' && !S.calibrating) {
@@ -1786,7 +1873,51 @@
 
   function forget() { try { root.localStorage.removeItem(SKEY); } catch (e) {} }
 
+  /**
+   * The drawn plan, as a finished picture for the rest of the site.
+   *
+   * The estimator used to sit a canned sample plan next to the client's own
+   * figures — 79.8 m² of somebody else's house beside their 58 m². Once they
+   * have drawn their house, that is the plan the questions are about.
+   */
+  function planSvg(idx) {
+    var f = S.floors[Math.min(idx || 0, S.floors.length - 1)];
+    if (!f || !f.closed || !S.scale) return '';
+
+    var pts = f.outline.slice();
+    f.internals.forEach(function (sg) { pts.push(sg[0], sg[1]); });
+    var xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
+    var pad = 1.6;
+    var x0 = Math.min.apply(null, xs) - pad, x1 = Math.max.apply(null, xs) + pad;
+    var y0 = Math.min.apply(null, ys) - pad * 1.4, y1 = Math.max.apply(null, ys) + pad;
+
+    var out = ['<polygon points="' + poly(f.outline) + '" class="sk-floor"/>'];
+    out.push('<polyline points="' + poly(f.outline.concat([f.outline[0]])) + '" class="sk-ext"/>');
+    f.internals.forEach(function (sg) {
+      out.push('<line x1="' + P(sg[0])[0] + '" y1="' + P(sg[0])[1] + '" x2="' + P(sg[1])[0] +
+        '" y2="' + P(sg[1])[1] + '" class="sk-int"/>');
+    });
+    f.openings.forEach(function (o) { out.push(openingSvg(f, o)); });
+
+    var c0 = centroid(f.outline);
+    for (var i = 0; i < f.outline.length; i++) {
+      var a = f.outline[i], b = f.outline[(i + 1) % f.outline.length];
+      out.push(lengthTag(a, b, '', outward(a, b, c0)));
+    }
+    f.markers.forEach(function (mk) {
+      var t = ROOM_TYPES.filter(function (r) { return r.id === mk.type; })[0] || ROOM_TYPES[6];
+      out.push('<text x="' + (mk.x * K) + '" y="' + (mk.y * K) + '" text-anchor="middle" class="sk-roomlab">' +
+        esc(t.label.toUpperCase()) + '</text>');
+    });
+    out.push('<text x="' + ((x0 + 0.4) * K) + '" y="' + ((y0 + 1.1) * K) + '" class="sk-area">' +
+      fmt(m(shoelace(f.outline)) * m(1)) + ' m² · ' + esc(f.name.toLowerCase()) + '</text>');
+
+    return '<svg class="sk-plan" viewBox="' + [x0 * K, y0 * K, (x1 - x0) * K, (y1 - y0) * K].join(' ') +
+      '" preserveAspectRatio="xMidYMid meet" aria-label="Your plan">' + out.join('') + '</svg>';
+  }
+
   root.DATUM = root.DATUM || {};
   root.DATUM.SKETCH = { open: open, close: close, wire: wire, reset: reset, measure: measure,
-    snap: function () { return SNAP; }, _S: S };
+    snap: function () { return SNAP; }, planSvg: planSvg,
+    floors: function () { return S.floors.map(function (f) { return f.name; }); }, _S: S };
 })(window, document);

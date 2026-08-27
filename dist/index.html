@@ -828,12 +828,18 @@ html { scroll-padding-top: 62px; }
 .flow-nav .skip { font-size: .82rem; color: var(--ink-3); text-decoration: none; border-bottom: 1px solid var(--rule); }
 .flow-nav .skip:hover { color: var(--ink); border-color: var(--ink-3); }
 
+/* Four children — head, floor tabs, the drawing, the footer — but the floor
+   tabs are hidden on some steps, so a fixed three-row grid template handed the
+   flexible row to whichever child happened to be third. A column flex box says
+   which child takes the slack regardless of how many there are. */
 .flow-draw {
   position: relative; background: var(--surface);
   border-left: 1px solid var(--rule-soft);
-  display: grid; grid-template-rows: auto 1fr auto;
+  display: flex; flex-direction: column;
   overflow: hidden; min-height: 46svh;
 }
+.flow-draw > .flow-draw-head, .flow-draw > .floor-tabs, .flow-draw > .flow-draw-foot { flex: 0 0 auto; }
+.flow-draw > .flow-draw-view { flex: 1 1 auto; }
 @media (min-width: 1000px) {
   /* the drawing stays put while the questions scroll past it */
   .flow-draw { position: sticky; top: 57px; height: calc(100svh - 57px); }
@@ -858,6 +864,7 @@ html { scroll-padding-top: 62px; }
   padding: .55rem .85rem; border-bottom: 1px solid var(--rule-soft); background: var(--well);
 }
 .flow-draw-view { position: relative; overflow: hidden; display: grid; min-height: 0; }
+.flow-draw-view > .iso-wrap { min-width: 0; }
 /* the wrap has to fill its row, or the SVG sizes itself from its width alone
    and a tall drawing overflows the panel instead of fitting inside it */
 .flow-draw-view .iso-wrap { width: 100%; height: 100%; min-height: 0; padding: .5rem; }
@@ -1061,7 +1068,7 @@ html { scroll-padding-top: 62px; }
 
 /* --- Floor tabs -------------------------------------------------------------- */
 .floor-tabs {
-  display: flex; gap: .25rem; padding: .45rem .85rem;
+  display: flex; align-items: flex-start; gap: .25rem; padding: .45rem .85rem;
   border-bottom: 1px solid var(--rule-soft); background: var(--surface);
 }
 .floor-tabs[hidden] { display: none; }
@@ -1496,6 +1503,17 @@ html { scroll-padding-top: 62px; }
 .sk-checks ul { margin: 0; padding-left: 1rem; }
 .sk-checks li { font-size: .78rem; color: var(--ink-2); line-height: 1.45; }
 .btn.sk-danger { border-color: var(--warn, #B4432B); color: var(--warn, #B4432B); font-weight: 600; }
+
+.sk-alts { display: grid; gap: .3rem; justify-items: center; margin-top: .2rem; }
+.sk-alt-quiet { color: var(--ink-3); font-size: .74rem; }
+
+/* the client's own plan, shown beside the questions it answers */
+.sk-plan { width: 100%; height: 100%; display: block; }
+.sk-roomlab {
+  font-family: var(--mono); font-size: 12px; fill: var(--ink-3);
+  letter-spacing: .12em; pointer-events: none;
+}
+.trace-cta.is-done { border-color: var(--accent); background: rgba(21,76,124,.05); }
 
 </style>
 
@@ -2069,7 +2087,10 @@ html { scroll-padding-top: 62px; }
       </div>
       <input type="file" id="sk-file" accept="image/*" hidden>
       <p class="sk-priv">Nothing is uploaded anywhere. Your plan and your drawing stay in this browser.</p>
-      <button type="button" class="sk-alt" id="sk-autotrace">Got a clean estate agent plan? We can find the rooms for you.</button>
+      <div class="sk-alts">
+        <button type="button" class="sk-alt" id="sk-autotrace">Got a clean estate agent plan? We can find the rooms for you.</button>
+        <button type="button" class="sk-alt sk-alt-quiet" id="sk-skip">Skip &mdash; I would rather type the measurements</button>
+      </div>
     </div>
 
     <div class="sk-body" id="sk-work" hidden>
@@ -4968,7 +4989,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       done: 'Drag an end to move a wall.' },
     { id: 'doors',     n: 3, label: 'Doors',        hint: 'Click a wall to put a door in it.' },
     { id: 'windows',   n: 4, label: 'Windows',      hint: 'Click a wall to put a window in it.' },
-    { id: 'rooms',     n: 5, label: 'Rooms',        hint: 'Tap a room type, then tap where it is.' },
+    { id: 'rooms',     n: 5, label: 'Rooms',        hint: 'Tap a room type, then tap the room. One label per room.',
+      done: 'Tap a labelled room again to change what it is.' },
     { id: 'extension', n: 6, label: 'Extension',    hint: 'Draw the new bit, if you are adding one.',
       done: 'Drag a corner to move it. Tap a wall to add one.' }
   ];
@@ -5883,6 +5905,29 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     return null;
   }
 
+  /**
+   * Two points are in the same enclosed space if you can walk between them
+   * without going through a wall.
+   *
+   * That is the whole test, and it needs no planar subdivision — the thing this
+   * tool exists by not doing. It is not perfect: in an L-shaped room the line
+   * between two corners can leave and come back. But it is right for every
+   * room a house actually has, and it stops the failure that costs money —
+   * two bathroom pins in one bathroom is £6,000 of labour for one bathroom.
+   */
+  function sameSpaceAs(f, p) {
+    var walls = wallsOf(f);
+    for (var i = 0; i < f.markers.length; i++) {
+      var q = [f.markers[i].x, f.markers[i].y];
+      var blocked = false;
+      for (var w = 0; w < walls.length && !blocked; w++) {
+        if (straddles(p, q, walls[w].a, walls[w].b)) blocked = true;
+      }
+      if (!blocked) return i;
+    }
+    return -1;
+  }
+
   /*
    * Soft checks. None of these stop anybody; they sit under the figures so a
    * number that came out of a mistake does not leave without being questioned.
@@ -5995,14 +6040,15 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
   /* ---- input ------------------------------------------------------------------ */
 
-  function toWorld(evt) {
+  function toWorldXY(x, y) {
     var svg = $('sk-svg'), ctm = svg && svg.getScreenCTM();
     if (!ctm) return [0, 0];
     var pt = svg.createSVGPoint();
-    pt.x = evt.clientX; pt.y = evt.clientY;
+    pt.x = x; pt.y = y;
     var p = pt.matrixTransform(ctm.inverse());
     return [p.x / K, p.y / K];
   }
+  function toWorld(evt) { return toWorldXY(evt.clientX, evt.clientY); }
 
   /** Screen pixels per grid unit, so handles and hit targets stay finger-sized. */
   function pxPerUnit() {
@@ -6092,6 +6138,26 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   function onMove(e) {
     if (!S.started || S.calibrating) return;
 
+    /*
+     * Putting a point down is a TAP, so a drag can never be mistaken for one —
+     * which means a drag on empty canvas is free to pan, on a mouse and on one
+     * finger alike. Requiring two fingers or a modifier key to move the plan is
+     * a rule nobody knows and nothing on screen tells them.
+     */
+    if (press && !press.handle && !press.pan && !S.drawing) {
+      if (Math.abs(e.clientX - press.x) + Math.abs(e.clientY - press.y) > 6) {
+        press.pan = true;
+        press.sx = press.x; press.sy = press.y;
+      }
+    }
+    if (press && press.pan) {
+      var svg2 = $('sk-svg'), vv = frame();
+      var sc = (vv.x1 - vv.x0) / Math.max(svg2.clientWidth, 1);
+      panBy((e.clientX - press.sx) * sc, (e.clientY - press.sy) * sc);
+      press.sx = e.clientX; press.sy = e.clientY;
+      return;
+    }
+
     if (press && press.handle) {
       if (Math.abs(e.clientX - press.x) + Math.abs(e.clientY - press.y) > 3) press.moved = true;
       if (!press.moved) return;
@@ -6138,6 +6204,27 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (!p) return;
 
     if (p.handle && p.moved) {
+      // dragging one pin into a room that already has one would put two labels
+      // in a single space, so the one that was dragged goes back
+      if (p.handle.kind === 'pin') {
+        var fp = floor(), mk = fp.markers[p.handle.i];
+        var clash = -1;
+        fp.markers.forEach(function (other, i) {
+          if (i === p.handle.i || clash >= 0) return;
+          var blocked = false;
+          wallsOf(fp).forEach(function (wl) {
+            if (straddles([mk.x, mk.y], [other.x, other.y], wl.a, wl.b)) blocked = true;
+          });
+          if (!blocked) clash = i;
+        });
+        if (clash >= 0) {
+          say('That room already has a label.');
+          var undoTo = UNDO.pop();
+          if (undoTo) restore(undoTo);
+          settled();
+          return;
+        }
+      }
       // a drag that crosses the shape would silently corrupt the area
       var h = p.handle;
       if (h.kind === 'corner') {
@@ -6228,9 +6315,18 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     }
 
     if (S.stage === 'rooms') {
-      snapshot();
       var g = snapFrom(null, w);
-      f.markers.push({ x: g[0], y: g[1], type: S.roomType });
+      snapshot();
+      // one label per enclosed space: tapping a room that already has one
+      // moves and relabels it rather than adding a second
+      var already = sameSpaceAs(f, g);
+      if (already >= 0) {
+        f.markers[already].x = g[0];
+        f.markers[already].y = g[1];
+        f.markers[already].type = S.roomType;
+      } else {
+        f.markers.push({ x: g[0], y: g[1], type: S.roomType });
+      }
       changed();
       return;
     }
@@ -6361,19 +6457,26 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
   /* ---- wiring ------------------------------------------------------------------ */
 
-  function open(onApply, onTrace) {
+  function open(onApply, onTrace, onClose) {
     S.onApply = onApply || null;
     S.onTrace = onTrace || null;
-    if (!S.started) recall();
+    S.onClose = onClose || null;
+    var resumed = !S.started && recall();
     var wrap = $('sk-overlay');
     wrap.classList.add('on');
     wrap.setAttribute('aria-hidden', 'false');
     settled();
+    // arriving to find a house already drawn is a surprise unless it is named
+    if (resumed) say('Picked up where you left off — "Start again" clears it.');
   }
-  function close() {
+  /* `going` means we are moving on deliberately — applied, or handed over to
+     the automatic tracer — rather than backing out of the step. */
+  function close(going) {
     var wrap = $('sk-overlay');
     wrap.classList.remove('on');
     wrap.setAttribute('aria-hidden', 'true');
+    S.confirm = null;
+    if (!going && S.onClose) S.onClose();
   }
   function reset() {
     UNDO.length = 0; REDO.length = 0; MANUAL = false; SNAP = LOOSE;
@@ -6431,7 +6534,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (ids.length < 2) return null;
     var a = touches[ids[0]], b = touches[ids[1]];
     return { d: Math.hypot(b.sx - a.sx, b.sy - a.sy),
-             c: [(a.wx + b.wx) / 2, (a.wy + b.wy) / 2] };
+             mx: (a.sx + b.sx) / 2, my: (a.sy + b.sy) / 2 };
   }
 
   function wire() {
@@ -6454,13 +6557,14 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
           return;
         }
       }
-      if (e.button === 1 || (e.button === 0 && e.shiftKey)) {   // middle or shift: pan
+      if (e.button === 1) {                                     // middle drag: pan
         press = { pan: true, sx: e.clientX, sy: e.clientY };
         try { svg.setPointerCapture(e.pointerId); } catch (err) {}
         e.preventDefault();
         return;
       }
       onDown(e);
+      if (press) { try { svg.setPointerCapture(e.pointerId); } catch (err) {} }
     });
 
     svg.addEventListener('pointermove', function (e) {
@@ -6468,15 +6572,11 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       if (pinch) {
         var now = pointerSpan();
         if (now && now.d > 4 && pinch.d > 4) {
-          zoomAt(pinch.c, now.d / pinch.d);
-          pinch = { d: now.d, c: pinch.c };
+          // zoom about whatever is under the middle of the two fingers, which
+          // also pans when the fingers move together
+          zoomAt(toWorldXY(now.mx, now.my), now.d / pinch.d);
+          pinch = now;
         }
-        return;
-      }
-      if (press && press.pan) {
-        var v = frame(), sc = (v.x1 - v.x0) / Math.max(svg.clientWidth, 1);
-        panBy((e.clientX - press.sx) * sc, (e.clientY - press.sy) * sc);
-        press.sx = e.clientX; press.sy = e.clientY;
         return;
       }
       onMove(e);
@@ -6567,7 +6667,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
           // still here for anyone with a clean estate agent plan — it finds the
           // rooms itself. Kept subordinate because drawing works on any plan.
           if (!root.DATUM.TRACE) return;
-          close();
+          close(true);
           root.DATUM.TRACE.open(S.onTrace || function () {});
           return;
         case 'sk-calib-go':  applyCalibration(); return;
@@ -6618,9 +6718,15 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
           if (S.confirm === 'restart') { S.confirm = null; reset(); }
           return;
         case 'sk-close-btn': close(); return;
+        case 'sk-skip':
+          // there has to be a way past, or somebody whose drawing will not
+          // behave is stuck on the one screen they cannot get through
+          close(true);
+          if (S.onApply) S.onApply(measure(), S);
+          return;
         case 'sk-apply':
           if (S.onApply) S.onApply(measure(), S);
-          close(); return;
+          close(true); return;
       }
       if (t === $('sk-overlay')) close();
     });
@@ -6628,7 +6734,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     doc.addEventListener('keydown', function (e) {
       if (!$('sk-overlay').classList.contains('on')) return;
       if (e.key === 'Escape') {
-        if (S.drawing) { S.drawing = null; S.cursor = null; render(); } else close();
+        if (S.drawing) { S.drawing = null; S.cursor = null; render(); }
+        else if (S.pick || S.selected) { S.pick = null; S.selected = null; render(); }
+        else close();
         return;
       }
       if (e.key === 'Enter' && !S.calibrating) {
@@ -6691,9 +6799,53 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
   function forget() { try { root.localStorage.removeItem(SKEY); } catch (e) {} }
 
+  /**
+   * The drawn plan, as a finished picture for the rest of the site.
+   *
+   * The estimator used to sit a canned sample plan next to the client's own
+   * figures — 79.8 m² of somebody else's house beside their 58 m². Once they
+   * have drawn their house, that is the plan the questions are about.
+   */
+  function planSvg(idx) {
+    var f = S.floors[Math.min(idx || 0, S.floors.length - 1)];
+    if (!f || !f.closed || !S.scale) return '';
+
+    var pts = f.outline.slice();
+    f.internals.forEach(function (sg) { pts.push(sg[0], sg[1]); });
+    var xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
+    var pad = 1.6;
+    var x0 = Math.min.apply(null, xs) - pad, x1 = Math.max.apply(null, xs) + pad;
+    var y0 = Math.min.apply(null, ys) - pad * 1.4, y1 = Math.max.apply(null, ys) + pad;
+
+    var out = ['<polygon points="' + poly(f.outline) + '" class="sk-floor"/>'];
+    out.push('<polyline points="' + poly(f.outline.concat([f.outline[0]])) + '" class="sk-ext"/>');
+    f.internals.forEach(function (sg) {
+      out.push('<line x1="' + P(sg[0])[0] + '" y1="' + P(sg[0])[1] + '" x2="' + P(sg[1])[0] +
+        '" y2="' + P(sg[1])[1] + '" class="sk-int"/>');
+    });
+    f.openings.forEach(function (o) { out.push(openingSvg(f, o)); });
+
+    var c0 = centroid(f.outline);
+    for (var i = 0; i < f.outline.length; i++) {
+      var a = f.outline[i], b = f.outline[(i + 1) % f.outline.length];
+      out.push(lengthTag(a, b, '', outward(a, b, c0)));
+    }
+    f.markers.forEach(function (mk) {
+      var t = ROOM_TYPES.filter(function (r) { return r.id === mk.type; })[0] || ROOM_TYPES[6];
+      out.push('<text x="' + (mk.x * K) + '" y="' + (mk.y * K) + '" text-anchor="middle" class="sk-roomlab">' +
+        esc(t.label.toUpperCase()) + '</text>');
+    });
+    out.push('<text x="' + ((x0 + 0.4) * K) + '" y="' + ((y0 + 1.1) * K) + '" class="sk-area">' +
+      fmt(m(shoelace(f.outline)) * m(1)) + ' m² · ' + esc(f.name.toLowerCase()) + '</text>');
+
+    return '<svg class="sk-plan" viewBox="' + [x0 * K, y0 * K, (x1 - x0) * K, (y1 - y0) * K].join(' ') +
+      '" preserveAspectRatio="xMidYMid meet" aria-label="Your plan">' + out.join('') + '</svg>';
+  }
+
   root.DATUM = root.DATUM || {};
   root.DATUM.SKETCH = { open: open, close: close, wire: wire, reset: reset, measure: measure,
-    snap: function () { return SNAP; }, _S: S };
+    snap: function () { return SNAP; }, planSvg: planSvg,
+    floors: function () { return S.floors.map(function (f) { return f.name; }); }, _S: S };
 })(window, document);
 
 ;
@@ -6706,6 +6858,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
  *
  *   #/                    the landing page
  *   #/start               choosing what you are building
+ *   #/draw                drawing the house — the step everything else is measured from
  *   #/<type>/<step>       one question page
  *   #/<type>/estimate     the result
  */
@@ -6730,6 +6883,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var parts = h.split('/').filter(Boolean);
     if (!parts.length) return { name: 'landing', path: '/' };
     if (parts[0] === 'start') return { name: 'start', path: '/start' };
+    if (parts[0] === 'draw') return { name: 'draw', path: '/draw' };
     if (parts[0] === 'estimate') return { name: 'estimate', path: '/estimate' };
 
     var type = typeOf(parts[0]);
@@ -6749,6 +6903,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   function viewFor(name) {
     return name === 'landing' ? 'view-landing'
          : name === 'start' ? 'view-start'
+         // the drawing tool covers the page itself, so it keeps the chooser
+         // behind it rather than flashing an empty view underneath
+         : name === 'draw' ? 'view-start'
          : name === 'estimate' ? 'view-estimate' : 'view-flow';
   }
 
@@ -7067,6 +7224,37 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     return j;
   }
 
+  /** Where the flow goes once the house is done. */
+  function onwards() {
+    var sel = selected();
+    if (!sel.length) { ROUTER.go('/start'); return; }
+    ROUTER.go('/' + sel[0].id + '/' + sel[0].steps[0].id);
+  }
+
+  /** The floors the client actually drew, in this page's vocabulary. */
+  var FLOOR_KEYS = ['ground', 'first', 'second', 'loft'];
+  function drawnFloors() {
+    var n = D.SKETCH ? D.SKETCH.floors().length : 1;
+    return FLOOR_KEYS.slice(0, Math.max(1, Math.min(n, 4)));
+  }
+
+  /** Which drawn floor the floor tabs are pointing at. */
+  function floorIndex() {
+    var n = D.SKETCH ? D.SKETCH.floors().length : 1;
+    var want = FLOOR_KEYS.indexOf(project.floor);
+    return Math.min(Math.max(want, 0), Math.max(0, n - 1));
+  }
+
+  function paintCaption(own) {
+    var cap = $('draw-note');
+    if (cap && own) cap.textContent = 'Your drawing';
+  }
+
+  /** Has a house been drawn — for the rail, and for what the CTAs should say. */
+  function hasDrawing() {
+    return !!(D.SKETCH && D.SKETCH.measure().scaled);
+  }
+
   /** Every selected build type, priced as one job. */
   function priceNow() {
     var sel = selected();
@@ -7191,9 +7379,12 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var go = $('start-go'), note = $('start-note');
     if (go) {
       go.hidden = !sel.length;
-      if (sel.length) go.href = '#/' + sel[0].id + '/' + sel[0].steps[0].id;
-      go.textContent = sel.length > 1
-        ? 'Price all ' + sel.length + ' together →'
+      // Everything downstream is measured off the drawing, so it is the step
+      // that comes next — not a box on a later page that most people miss.
+      var needsHouse = sel.some(function (t) { return SKETCH_TYPES.indexOf(t.id) >= 0; });
+      go.href = needsHouse ? '#/draw' : (sel.length ? '#/' + sel[0].id + '/' + sel[0].steps[0].id : '#/start');
+      go.textContent = needsHouse ? 'Next — draw your house →'
+        : sel.length > 1 ? 'Price all ' + sel.length + ' together →'
         : 'Start →';
     }
     if (note) {
@@ -7486,10 +7677,14 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       '<h1>' + esc(step.title) + '</h1>' +
       '<p class="lede">' + esc(step.lede) + '</p>' +
       (sketchable
-        ? '<div class="trace-cta"><div>' +
-          '<p class="q-title">' + esc(SKETCH_CTA[type.id].q) + '</p>' +
-          '<p class="q-help">' + esc(SKETCH_CTA[type.id].help) + ' Nothing is sent anywhere.</p></div>' +
-          '<div class="sk-cta"><button type="button" class="btn" id="do-sketch">Draw my house</button></div></div>'
+        ? (hasDrawing()
+          ? '<div class="trace-cta is-done"><div><p class="q-title">Measured from your drawing.</p>' +
+            '<p class="q-help">The figures below came off the house you drew. Change the drawing and they follow.</p></div>' +
+            '<div class="sk-cta"><button type="button" class="btn btn-ghost" id="do-sketch">Change the drawing</button></div></div>'
+          : '<div class="trace-cta"><div>' +
+            '<p class="q-title">' + esc(SKETCH_CTA[type.id].q) + '</p>' +
+            '<p class="q-help">' + esc(SKETCH_CTA[type.id].help) + ' Nothing is sent anywhere.</p></div>' +
+            '<div class="sk-cta"><button type="button" class="btn" id="do-sketch">Draw my house</button></div></div>')
         : '') +
       (step.rooms && j.rooms ? roomsHtml(type.id, j) : '') +
       '<div class="flow-fields">' + fields + (step.ground ? groundHtml(j) : '') + mods + '</div>' +
@@ -7514,7 +7709,10 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       var housey = HOUSE_TYPES.indexOf(type.id) >= 0 && step.view === 'plan';
       tabs.hidden = !housey;
       if (housey) {
-        var fl = floorsAvailable();
+        // once a house is drawn, the tabs are its floors — offering "First" on
+        // a bungalow somebody just drew as one storey is a question about a
+        // floor that does not exist
+        var fl = hasDrawing() ? drawnFloors() : floorsAvailable();
         // show the floor the question is actually about
         var want = type.id === 'loft' ? 'loft' : type.id === 'extension' ? 'ground' : project.floor;
         if (fl.indexOf(want) < 0) want = 'ground';
@@ -7527,8 +7725,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     }
 
     $('draw-title').textContent = type.name + ' · ' + (step.view === 'plan' ? 'plan' : 'section');
-    $('draw-note').textContent = type.id === 'renovation' && step.view === 'plan'
-      ? 'Your uploaded plan, traced'
+    $('draw-note').textContent =
+      (step.view === 'plan' && hasDrawing()) ? 'Your drawing'
+      : (type.id === 'renovation' && step.view === 'plan') ? 'Your uploaded plan, traced'
       : (step.view === 'plan' ? 'Plan — looking down' : 'Section — cut through');
 
     if (!reduced && gsap) {
@@ -7540,15 +7739,22 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   function paintRail(r) {
     var sel = selected();
     if (!sel.length) return;
+    var drawing = sel.some(function (t) { return SKETCH_TYPES.indexOf(t.id) >= 0; });
     var hereId = r.name === 'estimate' ? null : r.typeId;
     var hereIdx = hereId ? sel.map(function (t) { return t.id; }).indexOf(hereId) : sel.length;
-    var html = sel.map(function (t, i) {
+    var n = 0;
+    var html = (drawing
+      ? '<a href="#/draw" class="' + (r.name === 'draw' ? 'here' : (hasDrawing() ? 'done' : '')) +
+        '"><i>' + (hasDrawing() && r.name !== 'draw' ? '✓' : ++n) + '</i><span>Your house</span></a>'
+      : '');
+    if (drawing) n = 1;
+    html += sel.map(function (t, i) {
       return '<a href="#/' + t.id + '/' + t.steps[0].id + '" class="' +
-        (t.id === hereId ? 'here' : i < hereIdx ? 'done' : '') + '"><i>' +
-        (i < hereIdx ? '✓' : i + 1) + '</i><span>' + esc(t.name) + '</span></a>';
+        (t.id === hereId ? 'here' : (r.name !== 'draw' && i < hereIdx) ? 'done' : '') + '"><i>' +
+        ((r.name !== 'draw' && i < hereIdx) ? '✓' : n + i + 1) + '</i><span>' + esc(t.name) + '</span></a>';
     }).join('') +
       '<a href="#/estimate" class="' + (r.name === 'estimate' ? 'here' : '') + '"><i>' +
-      (sel.length + 1) + '</i><span>Estimate</span></a>';
+      (n + sel.length + 1) + '</i><span>Estimate</span></a>';
     ['steps-rail', 'steps-rail-2'].forEach(function (id) {
       var el = $(id); if (el) el.innerHTML = html;
     });
@@ -7560,6 +7766,14 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var view = r.name === 'estimate' ? 'section' : r.step.view;
     var host = $('iso-wrap');
     if (!host) return;
+
+    // Once they have drawn their house, that is the plan the questions are
+    // about — not a sample of somebody else's.
+    if (view === 'plan' && hasDrawing()) {
+      var own = D.SKETCH.planSvg(floorIndex());
+      if (own) { host.innerHTML = own; paintCaption(true); return; }
+    }
+    paintCaption(false);
     var j = job(r.typeId);
     host.innerHTML = DRAW.render(r.typeId, view, mergeJob(j), result.ground);
     if (focusDim) {
@@ -7983,6 +8197,24 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     route = r;
     if (r.name === 'landing') return;
     if (r.name === 'start') { paintChooser(); return; }
+
+    /*
+     * Drawing the house is a step in the flow, not a tool hidden behind a
+     * button on a later page. It has its own URL, its own place on the rail,
+     * and finishing it moves you on.
+     */
+    if (r.name === 'draw') {
+      paintChooser();
+      if (!selected().length) { ROUTER.go('/start'); return; }
+      paintRail(r);
+      if (!D.SKETCH) { ROUTER.go('/start'); return; }
+      D.SKETCH.open(
+        function (m) { applySketchEverywhere(m); onwards(); },
+        function (area, rooms) { applyTrace(area, rooms); onwards(); },
+        function () { ROUTER.go('/start'); }          // closed without finishing
+      );
+      return;
+    }
 
     // arriving straight at a build type adds it to the project
     if (r.typeId && project.types.indexOf(r.typeId) < 0) {
