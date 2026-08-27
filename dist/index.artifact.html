@@ -1504,6 +1504,24 @@ html { scroll-padding-top: 62px; }
   letter-spacing: .06em; pointer-events: none;
 }
 
+/* A figure that came off the drawing is stated, not asked. Making somebody
+   re-enter the width of an extension they have just drawn to the quarter
+   metre is asking them to do our job twice. */
+.flow-field.is-measured .measured {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: .5rem .8rem;
+  padding: .5rem .7rem; border: 1px solid var(--rule); border-radius: 2px;
+  background: var(--paper);
+}
+.flow-field.is-measured .measured b {
+  font-family: var(--mono); font-size: 1.05rem; font-variant-numeric: tabular-nums;
+  color: var(--accent-ink);
+}
+.flow-field.is-measured .measured > span {
+  font-family: var(--mono); font-size: .62rem; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--ink-3); flex: 1 1 auto;
+}
+.sk-cta-slim { margin: -.4rem 0 1.1rem; }
+
 </style>
 
 <!-- ==================================================================== -->
@@ -7488,6 +7506,20 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var head = '<p class="q-title">' + esc(a.q) + '</p>' +
       (a.help ? '<p class="q-help">' + esc(a.help) + '</p>' : '');
 
+    /*
+     * Something they drew is not a question. Asking a client the width of an
+     * extension they have just drawn to the quarter metre is asking them to do
+     * our job twice — so it is stated as a measurement, with a way to overrule
+     * it for anyone who disagrees with their own drawing.
+     */
+    if (j.fromDraw && j.fromDraw[m.id]) {
+      return '<div class="flow-field is-measured">' + head +
+        '<div class="measured"><b>' + esc(fmt(m, v)) + '</b>' +
+        '<span>from your drawing</span>' +
+        '<button type="button" class="btn btn-ghost btn-sm" data-unmeasure="' + m.id + '">Change it</button>' +
+        '</div></div>';
+    }
+
     if (a.input === 'yesno') {
       return '<div class="flow-field">' + head +
         '<div class="seg" role="group" data-meas="' + m.id + '" aria-label="' + esc(a.q) + '">' +
@@ -7652,10 +7684,12 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var j = job(typeId);
     // whole units — a stepper offering 186.77 m² of plaster reads like false
     // precision on a figure that is a sketch of a house
+    j.fromDraw = j.fromDraw || {};
     var set = function (k, v) {
       if (v === null || v === undefined || !isFinite(v)) return;
       j.measurements[k] = Math.round(v);
       j.touched[k] = true;
+      j.fromDraw[k] = true;      // measured, so do not ask for it again
     };
     var baths = (m.counts.bathroom || 0) + (m.counts.wc || 0);
 
@@ -7679,8 +7713,10 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     } else if (typeId === 'loft') {
       // Usable loft area is not the footprint. Below 2.2 m of head height the
       // space does not count, and on a typical semi that leaves about 60% of
-      // the floor below. It is a starting point, and the client moves it.
+      // the floor below. That is a guess from the drawing, not a measurement,
+      // so it stays a question the client can answer.
       set('floorArea', m.footprint * 0.6);
+      delete j.fromDraw.floorArea;
     }
     if (m.counts.kitchen) set('kitchens', m.counts.kitchen);
     if (baths) set('bathrooms', baths);
@@ -7695,6 +7731,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       jx.touched.width = true;
       jx.touched.depth = true;
       jx.touched.sketched = true;
+      jx.fromDraw = jx.fromDraw || {};
+      jx.fromDraw.width = true;
+      jx.fromDraw.depth = true;
       refreshOutputs();
       if (project.types.indexOf('extension') < 0) {
         project.types.push('extension');
@@ -7876,15 +7915,28 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     // decision somewhere it has less context.
     var sketchable = SKETCH_TYPES.indexOf(type.id) >= 0 && step.id === 'size' && root.DATUM.SKETCH;
 
+    // a step whose every figure came off the drawing is not asking anything
+    var onStep = asks(type).filter(function (m) { return m.ask.step === step.id; });
+    var stillAsked = onStep.filter(function (m) { return !(j.fromDraw && j.fromDraw[m.id]); });
+    var allMeasured = onStep.length && !stillAsked.length &&
+      !(step.modifiers || []).length && !step.ground;
+    var lede = allMeasured
+      ? 'Measured from your drawing — nothing to answer here unless you disagree with it.'
+      : step.lede;
+
     var html =
       '<p class="flow-step-of">' + esc(type.name) + ' · step ' + (i + 1) + ' of ' + (steps.length + 1) + '</p>' +
       '<h1>' + esc(step.title) + '</h1>' +
-      '<p class="lede">' + esc(step.lede) + '</p>' +
+      '<p class="lede">' + esc(lede) + '</p>' +
       (sketchable
         ? (hasDrawing()
-          ? '<div class="trace-cta is-done"><div><p class="q-title">Measured from your drawing.</p>' +
-            '<p class="q-help">The figures below came off the house you drew. Change the drawing and they follow.</p></div>' +
-            '<div class="sk-cta"><button type="button" class="btn btn-ghost" id="do-sketch">Change the drawing</button></div></div>'
+          // the lede already says it when nothing is left to answer, so the
+          // box is just the way back to the drawing
+          ? (allMeasured
+            ? '<div class="sk-cta sk-cta-slim"><button type="button" class="btn btn-ghost" id="do-sketch">Change the drawing</button></div>'
+            : '<div class="trace-cta is-done"><div><p class="q-title">Measured from your drawing.</p>' +
+              '<p class="q-help">The figures below came off the house you drew. Change the drawing and they follow.</p></div>' +
+              '<div class="sk-cta"><button type="button" class="btn btn-ghost" id="do-sketch">Change the drawing</button></div></div>')
           : '<div class="trace-cta"><div>' +
             '<p class="q-title">' + esc(SKETCH_CTA[type.id].q) + '</p>' +
             '<p class="q-help">' + esc(SKETCH_CTA[type.id].help) + ' Nothing is sent anywhere.</p></div>' +
@@ -8201,6 +8253,15 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         j2.ground.soil = v;
         j2.touched.soil = true;
       }
+      update();
+      return;
+    }
+
+    var un = t.closest ? t.closest('[data-unmeasure]') : null;
+    if (un && route.typeId) {
+      var ju = job(route.typeId);
+      if (ju.fromDraw) delete ju.fromDraw[un.getAttribute('data-unmeasure')];
+      renderStep(route);
       update();
       return;
     }

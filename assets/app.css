@@ -927,3 +927,21 @@ html { scroll-padding-top: 62px; }
   font-family: var(--mono); font-size: 12px; fill: #1F7A6E; font-weight: 600;
   letter-spacing: .06em; pointer-events: none;
 }
+
+/* A figure that came off the drawing is stated, not asked. Making somebody
+   re-enter the width of an extension they have just drawn to the quarter
+   metre is asking them to do our job twice. */
+.flow-field.is-measured .measured {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: .5rem .8rem;
+  padding: .5rem .7rem; border: 1px solid var(--rule); border-radius: 2px;
+  background: var(--paper);
+}
+.flow-field.is-measured .measured b {
+  font-family: var(--mono); font-size: 1.05rem; font-variant-numeric: tabular-nums;
+  color: var(--accent-ink);
+}
+.flow-field.is-measured .measured > span {
+  font-family: var(--mono); font-size: .62rem; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--ink-3); flex: 1 1 auto;
+}
+.sk-cta-slim { margin: -.4rem 0 1.1rem; }
