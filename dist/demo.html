@@ -1515,6 +1515,10 @@ html { scroll-padding-top: 62px; }
 }
 .trace-cta.is-done { border-color: var(--accent); background: rgba(21,76,124,.05); }
 
+/* a filled marker means the pointer has caught a corner or a wall, not just the grid */
+.sk-snap.locked circle { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+.sk-snap.locked line { opacity: .8; }
+
 
 /* ===========================================================================
    Datum — rate book admin
@@ -2402,6 +2406,7 @@ select.cell:hover { border-color: var(--rule); }
       <p class="sk-priv">Nothing is uploaded anywhere. Your plan and your drawing stay in this browser.</p>
       <div class="sk-alts">
         <button type="button" class="sk-alt" id="sk-autotrace">Got a clean estate agent plan? We can find the rooms for you.</button>
+        <button type="button" class="sk-alt" id="sk-example">Show me a finished example &mdash; a three-bed semi with an extension</button>
         <button type="button" class="sk-alt sk-alt-quiet" id="sk-skip">Skip &mdash; I would rather type the measurements</button>
       </div>
     </div>
@@ -5347,7 +5352,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     { id: 'windows',   n: 4, label: 'Windows',      hint: 'Click a wall to put a window in it.' },
     { id: 'rooms',     n: 5, label: 'Rooms',        hint: 'Tap a room type, then tap the room. One label per room.',
       done: 'Tap a labelled room again to change what it is.' },
-    { id: 'extension', n: 6, label: 'Extension',    hint: 'Draw the new bit, if you are adding one.',
+    { id: 'extension', n: 6, label: 'Extension',    hint: 'Draw the new bit against the house — start and finish on a house wall.',
       done: 'Drag a corner to move it. Tap a wall to add one.' }
   ];
 
@@ -5758,8 +5763,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
        snapping legible: the point you are about to place is shown sitting on
        the intersection it will land on, not wherever the finger happens to be. */
     if (S.cursor && placingStage() && !press && !S.hoverHandle) {
-      out.push('<g class="sk-snap"><circle cx="' + (S.cursor[0] * K) + '" cy="' + (S.cursor[1] * K) +
-        '" r="' + (7 * RU).toFixed(1) + '"/>' +
+      out.push('<g class="sk-snap' + (S.snapKind && S.snapKind !== 'grid' ? ' locked' : '') +
+        '"><circle cx="' + (S.cursor[0] * K) + '" cy="' + (S.cursor[1] * K) +
+        '" r="' + ((S.snapKind === 'corner' ? 9 : 7) * RU).toFixed(1) + '"/>' +
         '<line x1="' + ((S.cursor[0] - 0.34) * K) + '" y1="' + (S.cursor[1] * K) +
         '" x2="' + ((S.cursor[0] + 0.34) * K) + '" y2="' + (S.cursor[1] * K) + '"/>' +
         '<line x1="' + (S.cursor[0] * K) + '" y1="' + ((S.cursor[1] - 0.34) * K) +
@@ -5915,6 +5921,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     }
     if (S.stage === 'extension' && S.drawing && S.drawing.length > 2) {
       return { id: 'sk-close-ext', label: 'Finish the extension' };
+    }
+    if (S.stage === 'extension' && S.drawing && S.drawing.length === 2) {
+      return { id: 'sk-hint-ext', label: 'Finish on a house wall' };
     }
     var i = STAGES.map(function (s) { return s.id; }).indexOf(S.stage);
     if (i >= 0 && i < STAGES.length - 1) {
@@ -6419,6 +6428,61 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     return Math.max(0.28, Math.min(1.3, 15 / pxPerUnit()));
   }
 
+  /*
+   * Object snapping.
+   *
+   * The grid alone is not enough. At a quarter metre a square can be ten pixels
+   * on screen, so landing exactly on a corner needs pixel accuracy — which is
+   * why an inside wall would not start or finish on the corner of an outside
+   * wall. Corners and walls now catch the pointer from a finger's width away,
+   * the way they do in every drawing package, and they are still grid-true
+   * because every corner was itself placed on the grid.
+   *
+   * Order of preference: an existing corner, then a wall, then the grid.
+   */
+  function snapCandidates() {
+    var f = floor(), pts = [], lines = [], i;
+    if (f.closed) {
+      for (i = 0; i < f.outline.length; i++) {
+        pts.push(f.outline[i]);
+        lines.push([f.outline[i], f.outline[(i + 1) % f.outline.length]]);
+      }
+    }
+    f.internals.forEach(function (sg) { pts.push(sg[0], sg[1]); lines.push(sg); });
+    if (S.stage === 'extension') {
+      for (i = 0; i < S.extension.outline.length; i++) pts.push(S.extension.outline[i]);
+    }
+    if (S.drawing) S.drawing.forEach(function (p) { pts.push(p); });
+    return { pts: pts, lines: lines };
+  }
+
+  function snapTarget(w) {
+    var r = Math.max(SNAP * 0.75, grabRadius());
+    var c = snapCandidates(), best = null, i;
+
+    for (i = 0; i < c.pts.length; i++) {
+      var d = dist(w, c.pts[i]);
+      if (d < r && (!best || d < best.d)) best = { p: c.pts[i].slice(), d: d, kind: 'corner' };
+    }
+    if (best) return best;
+
+    // on a wall: take the grid point and slide it onto the wall, so an
+    // orthogonal wall still lands on an intersection and a diagonal one at
+    // least touches
+    var g = snapFrom(null, w);
+    for (i = 0; i < c.lines.length; i++) {
+      var pr = projectOnSeg(w, c.lines[i][0], c.lines[i][1]);
+      if (pr.d >= r) continue;
+      var gp = projectOnSeg(g, c.lines[i][0], c.lines[i][1]);
+      var q = mm([c.lines[i][0][0] + (c.lines[i][1][0] - c.lines[i][0][0]) * gp.t,
+                  c.lines[i][0][1] + (c.lines[i][1][1] - c.lines[i][0][1]) * gp.t]);
+      if (!best || pr.d < best.d) best = { p: q, d: pr.d, kind: 'wall' };
+    }
+    if (best) return best;
+
+    return { p: g, kind: 'grid' };
+  }
+
   function drawingStage() { return S.stage === 'outline' || S.stage === 'extension' || S.stage === 'internal'; }
   /** Stages where the next tap puts something down at a grid point. */
   function placingStage() { return drawingStage() || S.stage === 'rooms'; }
@@ -6544,7 +6608,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     }
 
     if (!placingStage()) { S.cursor = null; return; }
-    S.cursor = snapFrom(null, toWorld(e));
+    var tg = snapTarget(toWorld(e));
+    S.snapKind = tg.kind;
+    S.cursor = tg.p;
     if (S.stage === 'internal') S.cursor = keepInside(S.cursor);
     S.hoverHandle = !!handleAt(S.cursor);
     renderSoon();
@@ -6640,10 +6706,11 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         return;
       }
 
-      var from = S.drawing && S.drawing.length ? S.drawing[S.drawing.length - 1] : null;
-      var p = snapFrom(from, w);
+      var p = snapTarget(w).p;
       if (!S.drawing) { snapshot(); S.drawing = []; }
       if (S.drawing.length > 2 && dist(p, S.drawing[0]) < CLOSE_UNITS) { closeShape(); return; }
+      // an extension that started on the house can finish on it too
+      if (S.stage === 'extension' && S.drawing.length >= 2 && closeAgainstHouse(p)) return;
       S.drawing.push(p);
       changed();
       return;
@@ -6656,11 +6723,11 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         // a tap on one of its end handles, which is a target nothing else uses.
         if (S.pick) { S.pick = null; }
         snapshot();
-        S.drawing = [keepInside(snapFrom(null, w))];
+        S.drawing = [keepInside(snapTarget(w).p)];
         changed();
         return;
       }
-      var end = keepInside(snapFrom(null, w));
+      var end = keepInside(snapTarget(w).p);
       if (dist(end, S.drawing[0]) < SNAP * 0.5) { S.drawing = null; changed(); return; }
       if (crossesOutline(S.drawing[0], end)) { say('That wall would run outside the house.'); return; }
       f.internals.push([S.drawing[0], end]);
@@ -6714,6 +6781,73 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   }
 
   function say(msg) { var el = $('sk-say'); if (el) el.textContent = msg || ''; }
+
+  /* ---- an extension closes against the house ------------------------------
+   * An extension is three walls off the back, not a free-floating box: the
+   * house closes the fourth side. Making somebody return to their own first
+   * corner asks them to draw a wall that is already there.
+   *
+   * So if it starts on a house wall and finishes on one, the shape is closed
+   * along the house itself — walking the outline between the two attachment
+   * points and picking up any corners in between, so an extension that wraps
+   * round a corner comes out right rather than cutting it off.
+   */
+  function onHouse(p) {
+    var g = ground();
+    if (!g.closed) return null;
+    var best = null;
+    for (var i = 0; i < g.outline.length; i++) {
+      var pr = projectOnSeg(p, g.outline[i], g.outline[(i + 1) % g.outline.length]);
+      if (pr.d < SNAP * 0.8 && (!best || pr.d < best.d)) best = { i: i, t: pr.t, d: pr.d };
+    }
+    return best;
+  }
+
+  function ringPos(ring, i, t) {
+    var s = 0;
+    for (var k = 0; k < i; k++) s += dist(ring[k], ring[(k + 1) % ring.length]);
+    return s + t * dist(ring[i], ring[(i + 1) % ring.length]);
+  }
+
+  /** Corners met walking forward around the ring from one position to another. */
+  function cornersBetween(ring, from, to) {
+    var total = ringLength(ring), cum = [], s = 0, k;
+    for (k = 0; k < ring.length; k++) { cum.push(s); s += dist(ring[k], ring[(k + 1) % ring.length]); }
+    var span = (to - from + total) % total, out = [];
+    for (k = 0; k < ring.length; k++) {
+      var rel = (cum[k] - from + total) % total;
+      if (rel > 1e-6 && rel < span - 1e-6) out.push({ rel: rel, p: ring[k] });
+    }
+    out.sort(function (a, b) { return a.rel - b.rel; });
+    return out.map(function (o) { return o.p.slice(); });
+  }
+
+  function closeAgainstHouse(endPoint) {
+    var g = ground();
+    if (!g.closed || !S.drawing || S.drawing.length < 2) return false;
+    var a = onHouse(S.drawing[0]), bEnd = onHouse(endPoint);
+    if (!a || !bEnd) return false;
+
+    var ring = g.outline, total = ringLength(ring);
+    var pA = ringPos(ring, a.i, a.t), pB = ringPos(ring, bEnd.i, bEnd.t);
+    var fwd = (pA - pB + total) % total;
+    // the short way round is the bit of house the extension is actually against
+    var mids = fwd <= total - fwd
+      ? cornersBetween(ring, pB, pA)
+      : cornersBetween(ring, pA, pB).reverse();
+
+    var ring2 = S.drawing.concat([endPoint], mids);
+    var bad = badShape(ring2);
+    if (bad) { say(bad); return false; }
+    snapshot();
+    S.extension.outline = ring2;
+    S.extension.closed = true;
+    S.drawing = null;
+    S.cursor = null;
+    say('');
+    settled();
+    return true;
+  }
 
   function closeShape() {
     var bad = badShape(S.drawing || []);
@@ -6808,6 +6942,72 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     f.internals = src.internals.map(function (s) { return [s[0].slice(), s[1].slice()]; });
     // openings and rooms are NOT copied — upstairs is a different room layout,
     // and a wrong bathroom count is worse than no bathroom count
+    settled();
+  }
+
+
+  /* ---- an example house ---------------------------------------------------
+   * A finished drawing, instantly: two storeys, eight rooms, doors, windows
+   * and a rear extension, already measured. It is here so anybody can see what
+   * "done" looks like before they start, and so the whole flow downstream can
+   * be shown without drawing a house first.
+   *
+   * Everything is in metres, because that is what a measured drawing is in.
+   */
+  function exampleHouse() {
+    var shell = [[0, 0], [8.5, 0], [8.5, 7], [0, 7]];
+
+    var g = newFloor(0);
+    g.outline = shell.map(function (p) { return p.slice(); });
+    g.closed = true;
+    g.internals = [[[3.5, 0], [3.5, 7]], [[3.5, 3.5], [8.5, 3.5]], [[0, 5], [3.5, 5]]];
+    g.openings = [
+      { id: 'x1', on: 'ext', idx: 0, t: 0.16, width: 0.9, kind: 'door' },
+      { id: 'x2', on: 'ext', idx: 0, t: 0.62, width: 1.8, kind: 'window' },
+      { id: 'x3', on: 'ext', idx: 2, t: 0.30, width: 1.8, kind: 'window' },
+      { id: 'x4', on: 'ext', idx: 3, t: 0.55, width: 1.2, kind: 'window' },
+      { id: 'x5', on: 'int', idx: 0, t: 0.30, width: 0.85, kind: 'intDoor' },
+      { id: 'x6', on: 'int', idx: 1, t: 0.35, width: 0.85, kind: 'intDoor' }
+    ];
+    g.markers = [
+      { x: 1.75, y: 2.5, type: 'hall' },
+      { x: 1.75, y: 6, type: 'wc' },
+      { x: 6, y: 1.75, type: 'living' },
+      { x: 6, y: 5.25, type: 'kitchen' }
+    ];
+
+    var u = newFloor(1);
+    u.outline = shell.map(function (p) { return p.slice(); });
+    u.closed = true;
+    u.internals = [[[3.5, 0], [3.5, 7]], [[3.5, 3.5], [8.5, 3.5]], [[0, 3.5], [3.5, 3.5]]];
+    u.openings = [
+      { id: 'y1', on: 'ext', idx: 0, t: 0.22, width: 1.2, kind: 'window' },
+      { id: 'y2', on: 'ext', idx: 0, t: 0.70, width: 1.2, kind: 'window' },
+      { id: 'y3', on: 'ext', idx: 2, t: 0.28, width: 1.2, kind: 'window' },
+      { id: 'y4', on: 'ext', idx: 2, t: 0.72, width: 1.2, kind: 'window' }
+    ];
+    u.markers = [
+      { x: 1.75, y: 1.75, type: 'bedroom' },
+      { x: 1.75, y: 5.25, type: 'bedroom' },
+      { x: 6, y: 1.75, type: 'bedroom' },
+      { x: 6, y: 5.25, type: 'bathroom' }
+    ];
+
+    UNDO.length = 0; REDO.length = 0;
+    S.floors = [g, u];
+    S.active = 0;
+    S.extension = {
+      outline: [[5.5, 7], [5.5, 10.5], [8.5, 10.5], [8.5, 7]],
+      closed: true, storeys: 1
+    };
+    S.scale = 1;
+    SNAP = METRIC_SNAP;
+    S.started = true;
+    S.stage = 'outline';
+    S.drawing = null; S.cursor = null; S.pick = null; S.selected = null;
+    S.calibrating = false; S.confirm = null;
+    MANUAL = false; FRAME = null;
+    say('An example house — draw over it, or start again.');
     settled();
   }
 
@@ -7000,6 +7200,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       hit = t.closest && t.closest('[data-act]');
       if (hit) {
         var act = hit.getAttribute('data-act');
+        if (act === 'sk-hint-ext') return;
         if (act === 'sk-close-shape' || act === 'sk-close-ext') { closeShape(); return; }
         if (act === 'sk-copy') { copyFloorBelow(); return; }
         if (act.indexOf('sk-go-') === 0) { goStage(act.slice(6)); return; }
@@ -7018,6 +7219,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
       switch ((btn && btn.id) || t.id) {
         case 'sk-blank':     S.started = true; settled(); return;
+        case 'sk-example':   exampleHouse(); return;
         case 'sk-upload':    if ($('sk-file')) $('sk-file').click(); return;
         case 'sk-autotrace':
           // still here for anyone with a clean estate agent plan — it finds the
@@ -7058,7 +7260,10 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         case 'sk-dropext':
           snapshot();
           S.extension = { outline: [], closed: false, storeys: S.extension.storeys };
-          settled(); return;
+          // leave room to draw the next one, the same as entering the stage
+          // does — and after the state change, or settled() undoes it
+          MANUAL = false; FRAME = null; refitTight(); inflate(1.35);
+          render(); persist(); return;
         case 'sk-del':
           snapshot();
           floor().openings = floor().openings.filter(function (o) { return o.id !== S.selected; });
@@ -7200,7 +7405,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
   root.DATUM = root.DATUM || {};
   root.DATUM.SKETCH = { open: open, close: close, wire: wire, reset: reset, measure: measure,
-    snap: function () { return SNAP; }, planSvg: planSvg,
+    snap: function () { return SNAP; }, planSvg: planSvg, example: exampleHouse,
     floors: function () { return S.floors.map(function (f) { return f.name; }); }, _S: S };
 })(window, document);
 

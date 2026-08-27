@@ -928,3 +928,7 @@ html { scroll-padding-top: 62px; }
   letter-spacing: .12em; pointer-events: none;
 }
 .trace-cta.is-done { border-color: var(--accent); background: rgba(21,76,124,.05); }
+
+/* a filled marker means the pointer has caught a corner or a wall, not just the grid */
+.sk-snap.locked circle { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+.sk-snap.locked line { opacity: .8; }

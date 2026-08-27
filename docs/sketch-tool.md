@@ -202,6 +202,40 @@ sketch tool does not call into it. Nothing here is copyleft, and nothing in
 If this becomes IP that matters commercially, that separation is what keeps the
 answer to "what do you actually own?" a short one.
 
+## Snapping to what is already there
+
+The grid alone is not enough. At a quarter metre a square can be ten pixels on
+screen, so landing exactly on a corner needs pixel accuracy — which is why an
+inside wall would not start or finish on the corner of an outside wall.
+
+Corners and walls now catch the pointer from a finger's width away, in that
+order of preference, falling back to the grid. It stays grid-true because every
+corner was itself placed on the grid; a wall snap slides the grid point along
+the wall, so an orthogonal wall still lands on an intersection and a diagonal
+one at least touches. The marker fills in when it has caught something, so you
+can see the difference before you commit.
+
+## An extension closes against the house
+
+An extension is three walls off the back, not a free-floating box: the house
+closes the fourth side. Asking somebody to return to their own first corner asks
+them to draw a wall that is already there.
+
+So if it starts on a house wall and finishes on one, the shape closes along the
+house itself — walking the outline between the two attachment points and picking
+up any corners in between, taking the shorter way round. An extension that wraps
+a corner comes out right rather than cutting it off: drawn against the back and
+side of a 8.5 × 7 house it returns 21.3 m², which is exactly 5.5 × 2.5 plus
+2.5 × 3.
+
+## An example house
+
+`SKETCH.example()`, and a link on the first screen. A finished drawing
+instantly: two storeys, 119 m², eight rooms, doors, windows, internal walls and
+a 10.5 m² rear extension, already measured and passing every check. It is there
+so anybody can see what "done" looks like before they start, and so the rest of
+the flow can be shown without drawing a house first.
+
 ## Protections
 
 This drawing becomes a price, so the failure that matters is not an ugly plan —
