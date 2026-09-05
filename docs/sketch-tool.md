@@ -143,6 +143,16 @@ The view zooms on a wheel or a pinch, pans on two fingers or a shift-drag, and
 
 ## The stages
 
+The order below is the full walk, which is what a renovation gets. The tool is
+told which build types the project has and shows only the stages that feed
+them, in the order that project needs: an **extension** project draws the
+extension straight after the house (shape → extension → garden), an
+**outdoor** job draws the garden straight after the house, a **loft** goes
+shape → rooms, a **new build** shape → inside walls → doors → rooms → garden.
+On those projects the thing being priced is not marked optional. Extension
+and garden are still offered, optional and last, to every other project.
+
+
 Five of them, in the order a novice can manage them, shown as a numbered rail
 with a line through it rather than a row of tabs — tabs invite random access,
 and this is a sequence. The side panel says "Step 3 of 6" and names the stage,

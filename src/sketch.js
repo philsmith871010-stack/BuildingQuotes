@@ -88,6 +88,45 @@
       fence: 'Drag a corner of the fence line, or tap the line to add a corner.' }
   ];
 
+  /* The stages a given project actually needs, in the order it needs them.
+     An extension project draws the extension straight after the house; an
+     outdoor job draws the garden straight after the house; a renovation walks
+     the inside. Stages the project has no use for are left out, and the two
+     drawn things that are the point of a project are not "optional" there. */
+  var ACTIVE = STAGES.slice();
+  function stagesFor(types) {
+    var t = types || [];
+    var has = function (id) { return t.indexOf(id) >= 0; };
+    var ids = ['outline'], required = {};
+    if (!t.length) ids = STAGES.map(function (st) { return st.id; });
+    else {
+      if (has('extension')) { ids.push('extension'); required.extension = true; }
+      if (has('external')) { ids.push('garden'); required.garden = true; }
+      if (has('renovation') || has('newbuild')) ids.push('internal', 'openings');
+      if (has('renovation') || has('newbuild') || has('loft')) ids.push('rooms');
+      if (!has('extension')) ids.push('extension');
+      if (!has('external')) ids.push('garden');
+    }
+    return ids.map(function (id, i) {
+      var st = STAGES.filter(function (x) { return x.id === id; })[0];
+      var out = {};
+      Object.keys(st).forEach(function (k) { out[k] = st[k]; });
+      out.n = i + 1;
+      out.required = !!required[id];
+      if (out.required) out.hint = out.hint.replace(/^Optional\. /, '');
+      return out;
+    });
+  }
+  function setTypes(types) {
+    S.types = (types || []).slice();
+    ACTIVE = stagesFor(S.types);
+    if (!ACTIVE.some(function (st) { return st.id === S.stage; })) S.stage = 'outline';
+  }
+  function stageAfter(id) {
+    var i = ACTIVE.map(function (st) { return st.id; }).indexOf(id);
+    return i >= 0 && i < ACTIVE.length - 1 ? ACTIVE[i + 1] : null;
+  }
+
   /* The garden: the plot boundary (the fence line), the surfaces in it, and
      the trees. Surfaces are closed shapes like the extension is; trees are
      points like room pins. The whole thing is optional and sits after the
@@ -696,7 +735,7 @@
        and the whole point is that you always know where you are in it. */
     var tabs = $('sk-stages');
     if (tabs) {
-      tabs.innerHTML = STAGES.map(function (st) {
+      tabs.innerHTML = ACTIVE.map(function (st) {
         var locked = st.id !== 'outline' && !ready();
         var state = st.id === S.stage ? ' here' : stageDone(st.id) ? ' done' : '';
         return '<button type="button" class="sk-step' + state + '" data-stage="' + st.id +
@@ -743,7 +782,8 @@
       if (!f.closed && !f.outline.length && S.active > 0 && S.floors[S.active - 1].closed) {
         return { id: 'sk-copy', label: 'Copy the ' + S.floors[S.active - 1].name.toLowerCase() };
       }
-      if (f.closed && ready()) return { id: 'sk-go-internal', label: 'Next — inside walls' };
+      var after = stageAfter('outline');
+      if (f.closed && ready() && after) return { id: 'sk-go-' + after.id, label: 'Next — ' + after.label.toLowerCase() };
       return null;
     }
     // upstairs rooms matter most — the bedrooms and the bathroom are up there —
@@ -761,21 +801,20 @@
     if (S.stage === 'garden' && S.drawing && S.drawing.length > 2) {
       return { id: 'sk-close-garden', label: 'Finish the ' + (S.garden.plot.closed ? gardenKind(S.gardenMode).label.toLowerCase() : 'plot') };
     }
-    var i = STAGES.map(function (s) { return s.id; }).indexOf(S.stage);
-    if (i >= 0 && i < STAGES.length - 1) {
-      return { id: 'sk-go-' + STAGES[i + 1].id, label: 'Next — ' + STAGES[i + 1].label.toLowerCase() };
-    }
+    var nx = stageAfter(S.stage);
+    if (nx) return { id: 'sk-go-' + nx.id, label: 'Next — ' + nx.label.toLowerCase() };
     if (ready()) return { id: 'sk-finish', label: 'Done — use these figures' };
     return null;
   }
 
   function paintPanel() {
-    var stage = STAGES.filter(function (s) { return s.id === S.stage; })[0];
+    var stage = ACTIVE.filter(function (s) { return s.id === S.stage; })[0] ||
+                STAGES.filter(function (s) { return s.id === S.stage; })[0];
     var hint = $('sk-hint');
     var f = floor();
 
     var of = $('sk-of'), name = $('sk-stagename');
-    if (of) of.textContent = 'Step ' + stage.n + ' of ' + STAGES.length;
+    if (of) of.textContent = 'Step ' + stage.n + ' of ' + ACTIVE.length;
     if (name) name.textContent = S.calibrating ? 'How wide is it?' : S.askUp ? 'Upstairs?' : stage.label;
 
     var up = $('sk-upstairs');
@@ -2400,10 +2439,11 @@
 
   /* ---- wiring ------------------------------------------------------------------ */
 
-  function open(onApply, onTrace, onClose) {
+  function open(onApply, onTrace, onClose, types) {
     S.onApply = onApply || null;
     S.onTrace = onTrace || null;
     S.onClose = onClose || null;
+    setTypes(types);
     var resumed = !S.started && recall();
     var wrap = $('sk-overlay');
     wrap.classList.add('on');
@@ -2456,6 +2496,7 @@
 
   function goStage(id) {
     if (id !== 'outline' && !ready()) return;
+    if (!ACTIVE.some(function (st) { return st.id === id; })) return;
     if (S.stage === 'internal' && S.drawing) S.drawing = null;
     S.stage = id;
     if (id === 'extension' || id === 'garden') S.active = 0;     // both sit round the ground floor
@@ -2796,7 +2837,7 @@
       S.active = Math.min(o.active || 0, o.floors.length - 1);
       SNAP = o.snap || LOOSE;
       S.started = true;
-      S.stage = STAGES.some(function (st) { return st.id === o.stage; }) ? o.stage : 'outline';
+      S.stage = ACTIVE.some(function (st) { return st.id === o.stage; }) ? o.stage : 'outline';
       S.askedUp = true;             // a saved house has whatever floors it has
       return true;
     } catch (e) { return false; }

@@ -1118,7 +1118,9 @@
           if (forType) { applySketch(forType, m); sketchNote(m); }
           else applySketchEverywhere(m);
         },
-        function (area, rooms) { applyTrace(area, rooms); }
+        function (area, rooms) { applyTrace(area, rooms); },
+        null,
+        project.types
       );
       return;
     }
@@ -1251,7 +1253,8 @@
       D.SKETCH.open(
         function (m) { applySketchEverywhere(m); onwards(); },
         function (area, rooms) { applyTrace(area, rooms); onwards(); },
-        function () { ROUTER.go('/start'); }          // closed without finishing
+        function () { ROUTER.go('/start'); },         // closed without finishing
+        project.types
       );
       return;
     }
