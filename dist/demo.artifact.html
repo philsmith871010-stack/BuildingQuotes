@@ -6682,7 +6682,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   function onDown(e) {
     if (!S.started || S.calibrating) return;
     var w = toWorld(e);
-    press = { x: e.clientX, y: e.clientY, world: w, handle: null, moved: false };
+    // Pointer capture retargets pointerup to the svg, so what was under the
+    // finger has to be remembered from pointerdown or the × looks like canvas.
+    press = { x: e.clientX, y: e.clientY, world: w, handle: null, moved: false, target: e.target };
     if (S.drawing && S.drawing.length) return;      // mid-run: taps only
     var h = handleAt(w);
     if (!h) return;
@@ -6713,6 +6715,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       if (Math.abs(e.clientX - press.x) + Math.abs(e.clientY - press.y) > 10) {
         press.pan = true;
         press.sx = press.x; press.sy = press.y;
+        try { $('sk-svg').setPointerCapture(e.pointerId); } catch (err) {}
       }
     }
     if (press && press.pan) {
@@ -6825,7 +6828,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     }
 
     if (Math.abs(e.clientX - p.x) + Math.abs(e.clientY - p.y) > 8) return;   // a drag on nothing
-    if (e.target && e.target.closest && e.target.closest('[data-killpick]')) return;
+    var tgt = p.target || e.target;
+    if (tgt && tgt.closest && tgt.closest('[data-killpick]')) return;       // the overlay handler removes it
     onTap(p.world, e);
   }
 
@@ -7413,7 +7417,10 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         return;
       }
       onDown(e);
-      if (press) { try { svg.setPointerCapture(e.pointerId); } catch (err) {} }
+      // No capture here. Capturing on every press retargets pointerup AND the
+      // click to the svg, so a tap on the ×, on a wall during calibration, or
+      // on anything else inside the drawing stops reaching its handler. A drag
+      // takes capture at the moment it becomes a drag.
     });
 
     svg.addEventListener('pointermove', function (e) {
