@@ -5389,26 +5389,26 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   ];
 
   /*
-   * Five stages, in the order a novice can manage them: the shape (which they
-   * can pick rather than draw), the rooms (which they understand), the doors
-   * and windows (which they can see), the inside walls (hardest, and optional),
-   * and the extension (optional). Every hint is one plain sentence.
+   * Five stages, in the order a builder walks a house: the shape (which they
+   * can pick rather than draw), the inside walls (optional, but they are what
+   * make the rooms), the doors and windows (which they can see), a pin per
+   * room, and the extension (optional). Every hint is one plain sentence.
    */
   var STAGES = [
     { id: 'outline',   n: 1, label: 'Shape',
       hint: 'Pick the shape closest to your house, or tap round the corners yourself.',
       done: 'Drag any corner to make it right. Tap a wall to add a corner.' },
-    { id: 'rooms',     n: 2, label: 'Rooms',
-      hint: 'Pick a room type, then tap where that room is.',
-      done: 'Tap a room again to change what it is. Tap a pin to remove it.' },
-    { id: 'openings',  n: 3, label: 'Doors & windows',
-      hint: 'Pick a window or a door, then tap the outside wall it is in.',
-      done: 'Drag one to move it along the wall. Tap it to change its width.' },
-    { id: 'internal',  n: 4, label: 'Inside walls',
+    { id: 'internal',  n: 2, label: 'Inside walls',
       hint: 'Optional. Tap one end of a wall, then the other end.',
       done: 'Drag an end to move a wall.',
       door: 'Tap an inside wall to put a doorway in it.',
       out:  'Tap any wall you are knocking out. Tap it again to put it back.' },
+    { id: 'openings',  n: 3, label: 'Doors & windows',
+      hint: 'Pick a window or a door, then tap the outside wall it is in.',
+      done: 'Drag one to move it along the wall. Tap it to change its width.' },
+    { id: 'rooms',     n: 4, label: 'Rooms',
+      hint: 'Pick a room type, then tap where that room is.',
+      done: 'Tap a room again to change what it is. Tap a pin to remove it.' },
     { id: 'extension', n: 5, label: 'Extension',
       hint: 'Optional. Add a rear extension and drag it to size, or draw your own against the house.',
       done: 'Drag any corner to make it right. Tap a wall to add a corner.' }
@@ -6002,7 +6002,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       if (!f.closed && !f.outline.length && S.active > 0 && S.floors[S.active - 1].closed) {
         return { id: 'sk-copy', label: 'Copy the ' + S.floors[S.active - 1].name.toLowerCase() };
       }
-      if (f.closed && ready()) return { id: 'sk-go-rooms', label: 'Next — rooms' };
+      if (f.closed && ready()) return { id: 'sk-go-internal', label: 'Next — inside walls' };
       return null;
     }
     // upstairs rooms matter most — the bedrooms and the bathroom are up there —

@@ -145,10 +145,11 @@ sentence.
    wide is it across the front?* — in metres or feet, with a rough guide for
    people who have never measured a house. Then one more: *does it have an
    upstairs?* Yes copies the floor below.
-2. **Rooms** — pick a type, tap the room. Finishing the ground floor leads to
-   the upstairs, because the bedrooms and the bathroom are up there.
+2. **Inside walls** — optional. Add a wall, add a doorway, or knock one out.
+   They come before the rooms because they are what makes a room a room.
 3. **Doors & windows** — pick one, tap the outside wall it is in.
-4. **Inside walls** — optional. Add a wall, add a doorway, or knock one out.
+4. **Rooms** — pick a type, tap the room. Finishing the ground floor leads to
+   the upstairs, because the bedrooms and the bathroom are up there.
 5. **Extension** — optional. One button adds a rear extension on the back wall
    to drag to size, or draw your own against the house.
 
