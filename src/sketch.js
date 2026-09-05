@@ -641,12 +641,27 @@
       var c0 = centroid(f.outline);
       for (var i = 0; i < f.outline.length; i++) {
         var a = f.outline[i], b = f.outline[(i + 1) % f.outline.length];
-        var cls = S.calibrating && i === S.calibIdx ? 'calib' : '';
-        if (S.calibrating) {
+        var cls = S.calibrating && !S.preset && i === S.calibIdx ? 'calib' : '';
+        if (cls) {
           out.push('<line x1="' + P(a)[0] + '" y1="' + P(a)[1] + '" x2="' + P(b)[0] + '" y2="' + P(b)[1] +
-            '" class="sk-pick' + (i === S.calibIdx ? ' on' : '') + '" data-wall="' + i + '"/>');
+            '" class="sk-pick on"/>');
         }
         out.push(lengthTag(a, b, cls, outward(a, b, c0)));
+      }
+      // a preset is measured across the whole front, whatever has been done
+      // to its corners, so the band spans the width rather than one wall
+      if (S.calibrating && S.preset) {
+        var fx = frontExtent(f.outline), gap = 0.9;
+        var d1, d2;
+        if (fx.axis === 'x') {
+          var yy = fx.side > 0 ? fx.max2 + gap : fx.min2 - gap;
+          d1 = [fx.min, yy]; d2 = [fx.max, yy];
+        } else {
+          var xx = fx.side > 0 ? fx.max2 + gap : fx.min2 - gap;
+          d1 = [xx, fx.min]; d2 = [xx, fx.max];
+        }
+        out.push('<line x1="' + P(d1)[0] + '" y1="' + P(d1)[1] + '" x2="' + P(d2)[0] + '" y2="' + P(d2)[1] + '" class="sk-pick on"/>');
+        out.push(lengthTag(d1, d2, 'calib', fx.axis === 'x' ? [0, fx.side] : [fx.side, 0]));
       }
     }
     f.internals.forEach(function (seg) {
@@ -773,9 +788,11 @@
                    (S.stage === 'internal' && f.internals.length);
       var mid = S.drawing && S.drawing.length;
       hint.textContent =
-        S.calibrating ? (S.preset
-          ? 'Roughly how wide is your house across the front — the orange wall?'
-          : 'How long is the wall highlighted in orange?')
+        S.calibrating ? (S.pickWall
+          ? 'Tap the wall you know the length of.'
+          : S.preset
+          ? 'Drag any corner until the shape looks right. Then, roughly how wide is it across the front — the orange line?'
+          : 'How long is the wall highlighted in orange? Drag any corner first if the shape is not right.')
         : S.askUp ? 'Does the house have an upstairs?'
         : (S.stage === 'internal' && S.wallMode === 'out') ? stage.out
         : (S.stage === 'internal' && S.wallMode === 'door') ? stage.door
@@ -798,6 +815,11 @@
       var lenInput = $('sk-len'), lab = $('sk-len-label'), un = $('sk-unit');
       if (S.calibrating && lenInput && !lenInput.value) lenInput.value = S.units === 'ft' ? '26' : '8';
       if (lab) lab.textContent = S.preset ? 'Width across the front' : 'Length of the orange wall';
+      var pwb = $('sk-pickwall');
+      if (pwb) {
+        pwb.textContent = S.pickWall ? 'Tap a wall on the drawing…' : 'Measure a different wall';
+        pwb.setAttribute('aria-pressed', String(!!S.pickWall));
+      }
       if (un) un.textContent = S.units === 'ft' ? 'ft' : 'm';
       var ub = $('sk-units');
       if (ub) Array.prototype.forEach.call(ub.querySelectorAll('button'), function (b) {
@@ -1220,6 +1242,7 @@
     var p = splitPoint(shape.outline[i], shape.outline[(i + 1) % shape.outline.length], t);
     snapshot();
     shape.outline.splice(i + 1, 0, p);
+    if (which === 'floor' && S.active === 0) reindexWalls('split', i, shape.outline.length);
     if (pts) reassignOpenings(f, pts);
     S.pick = { kind: 'corner', which: which, i: i + 1 };
     settled();
@@ -1230,6 +1253,7 @@
     if (shape.outline.length <= 3) { say('A shape needs at least three corners.'); return; }
     var pts = which === 'floor' ? openingPoints(f) : null;
     snapshot();
+    if (which === 'floor' && S.active === 0) reindexWalls('remove', i, shape.outline.length);
     shape.outline.splice(i, 1);
     if (pts) reassignOpenings(f, pts);
     S.pick = null;
@@ -1648,7 +1672,7 @@
   var press = null;   // { x, y, world, handle, moved }
 
   function onDown(e) {
-    if (!S.started || S.calibrating) return;
+    if (!S.started) return;
     var w = toWorld(e);
     // Pointer capture retargets pointerup to the svg, so what was under the
     // finger has to be remembered from pointerdown or the × looks like canvas.
@@ -1671,7 +1695,7 @@
   }
 
   function onMove(e) {
-    if (!S.started || S.calibrating) return;
+    if (!S.started) return;
 
     /*
      * Putting a point down is a TAP, so a drag can never be mistaken for one —
@@ -1745,7 +1769,7 @@
   function onLeave() { S.cursor = null; render(); }
 
   function onUp(e) {
-    if (!S.started || S.calibrating) { press = null; return; }
+    if (!S.started) { press = null; return; }
     var p = press;
     press = null;
     $('sk-svg').classList.remove('grabbing');
@@ -1831,6 +1855,15 @@
       var shape = shapeOf(which);
 
       if (shape.closed) {
+        // while measuring, "a different wall" means the next tap picks one
+        if (S.calibrating && S.pickWall && which === 'floor') {
+          var pw = wallOfShape(shape, w);
+          if (!pw) { say('Tap one of the outside walls.'); return; }
+          S.calibIdx = pw.i; S.preset = false; S.pickWall = false;
+          say('');
+          render();
+          return;
+        }
         // tapping a wall puts a corner in it; tapping nothing clears the selection
         var hit = wallOfShape(shape, w);
         if (hit) { splitWall(which, hit.i, hit.t); return; }
@@ -2083,6 +2116,7 @@
       S.preset = false;
     }
     S.calibrating = true;
+    S.pickWall = false;
     render();
     var inp = $('sk-len');
     if (inp) { inp.value = inp.value || (S.units === 'ft' ? '26' : '8'); try { inp.focus(); inp.select(); } catch (e) {} }
@@ -2127,7 +2161,13 @@
     if (S.units === 'ft' && metres) metres = metres * 0.3048;   // older houses are still in feet in people's heads
     if (!metres || metres <= 0) { say('Type roughly how long that wall is.'); return; }
     if (metres < 0.5 || metres > 60) { say('That is not the length of a wall on a house.'); return; }
-    var units = dist(f.outline[S.calibIdx], f.outline[(S.calibIdx + 1) % f.outline.length]);
+    var units;
+    if (S.preset) {
+      var fx = frontExtent(f.outline);
+      units = fx.max - fx.min;
+    } else {
+      units = dist(f.outline[S.calibIdx], f.outline[(S.calibIdx + 1) % f.outline.length]);
+    }
     if (!units) return;
     // the wall could be a short one, so judge the answer by the house it implies
     var area = shoelace(f.outline) * Math.pow(metres / units, 2);
@@ -2189,6 +2229,35 @@
     return best;
   }
 
+  /** The house's overall size across the front: the extent along the front
+      wall's direction, and which side the front is on. */
+  function frontExtent(ring) {
+    var i = S.frontIdx !== undefined ? S.frontIdx : frontWallIndex(ring);
+    var a = ring[i], b = ring[(i + 1) % ring.length];
+    var c = centroid(ring), mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    var xs = ring.map(function (p) { return p[0]; }), ys = ring.map(function (p) { return p[1]; });
+    var alongX = Math.abs(b[0] - a[0]) >= Math.abs(b[1] - a[1]);
+    return alongX
+      ? { axis: 'x', min: Math.min.apply(null, xs), max: Math.max.apply(null, xs),
+          min2: Math.min.apply(null, ys), max2: Math.max.apply(null, ys), side: mid[1] > c[1] ? 1 : -1 }
+      : { axis: 'y', min: Math.min.apply(null, ys), max: Math.max.apply(null, ys),
+          min2: Math.min.apply(null, xs), max2: Math.max.apply(null, xs), side: mid[0] > c[0] ? 1 : -1 };
+  }
+
+  /** Wall indices that are remembered (the measured wall, the front) have to
+      follow a split or a merge, or the orange wall silently moves. */
+  function reindexWalls(op, i, n) {
+    var fix = function (idx) {
+      if (idx === undefined || idx === null) return idx;
+      if (op === 'split') return idx > i ? idx + 1 : idx;
+      // removing corner i merges walls i-1 and i into wall i-1
+      if (idx === i) return (i - 1 + n) % n;
+      return idx > i ? idx - 1 : idx;
+    };
+    S.calibIdx = fix(S.calibIdx);
+    S.frontIdx = fix(S.frontIdx);
+  }
+
   function dropShape(id) {
     var pts = SHAPES[id];
     if (!pts) return;
@@ -2201,7 +2270,7 @@
     f.internals = []; f.openings = []; f.markers = [];
     S.drawing = null; S.preset = true;
     FRAME = null; MANUAL = false;
-    if (!S.scale) { settled(); S.calibIdx = frontWallIndex(f.outline); startCalibration(true); }
+    if (!S.scale) { settled(); S.calibIdx = frontWallIndex(f.outline); S.frontIdx = S.calibIdx; startCalibration(true); }
     else settled();
   }
 
@@ -2361,7 +2430,7 @@
     S.extension = { outline: [], closed: false, storeys: 1 };
     S.garden = newGarden(); S.gardenMode = 'boundary';
     S.drawing = null; S.cursor = null; S.selected = null; S.pick = null;
-    S.calibrating = false; S.kind = null; S.wallMode = 'draw';
+    S.calibrating = false; S.pickWall = false; S.kind = null; S.wallMode = 'draw';
     S.askUp = false; S.askedUp = false; S.preset = false; S.frontIdx = undefined; S.more = false;
     FRAME = null; say('');
     settled();
@@ -2506,9 +2575,6 @@
         S.confirm = null; render();
       }
 
-      hit = t.closest && t.closest('[data-wall]');
-      if (hit && S.calibrating) { S.calibIdx = +hit.getAttribute('data-wall'); render(); return; }
-
       hit = t.closest && t.closest('[data-stage]');
       if (hit && !hit.disabled) { goStage(hit.getAttribute('data-stage')); return; }
 
@@ -2609,6 +2675,7 @@
           root.DATUM.TRACE.open(S.onTrace || function () {});
           return;
         case 'sk-calib-go':  applyCalibration(); return;
+        case 'sk-pickwall':  S.pickWall = !S.pickWall; S.pick = null; say(''); render(); return;
         case 'sk-recal':     startCalibration(); return;
         case 'sk-redraw':
           snapshot();

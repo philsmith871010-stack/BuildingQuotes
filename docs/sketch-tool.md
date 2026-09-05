@@ -152,8 +152,12 @@ sentence.
 1. **Shape** — pick the nearest of three shapes (rectangle, L, T) and drag any
    corner, or tap round the corners yourself. Then one question: *roughly how
    wide is it across the front?* — in metres or feet, with a rough guide for
-   people who have never measured a house. Then one more: *does it have an
-   upstairs?* Yes copies the floor below.
+   people who have never measured a house. The shape stays live while the
+   question is up: people drag first and answer second, so a preset is
+   measured across its whole front (the orange band) rather than along one
+   wall that may just have been split. A hand-drawn shape measures its longest
+   wall, and *measure a different wall* lets you tap another. Then one more:
+   *does it have an upstairs?* Yes copies the floor below.
 2. **Inside walls** — optional. Add a wall, add a doorway, or knock one out.
    They come before the rooms because they are what makes a room a room.
 3. **Doors & windows** — pick one, tap the outside wall it is in.

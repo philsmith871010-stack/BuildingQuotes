@@ -1001,3 +1001,5 @@ html { scroll-padding-top: 62px; }
 }
 .sk-tree circle { fill: rgba(60,130,60,.22); stroke: #3C823C; stroke-width: 2; stroke-dasharray: 5 4; }
 .sk-tree .trunk { fill: #3C823C; stroke: var(--surface); stroke-width: 2; stroke-dasharray: none; }
+#sk-pickwall { justify-self: start; }
+#sk-pickwall[aria-pressed="true"] { border-color: #E4572E; color: #E4572E; }
