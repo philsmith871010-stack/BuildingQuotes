@@ -358,6 +358,11 @@
     f.internals.forEach(function (s) { pts.push(s[0], s[1]); });
     f.markers.forEach(function (mk) { pts.push([mk.x, mk.y]); });
     if (S.stage === 'extension') pts = pts.concat(ground().outline, S.extension.outline);
+    // a finished extension is part of the house on every later step, and a
+    // frame that cuts it off looks like it has been lost
+    if (S.extension.closed && (S.active === 0 || (S.active === 1 && S.extension.storeys > 1))) {
+      pts = pts.concat(S.extension.outline);
+    }
     if (S.stage === 'garden') {
       pts = pts.concat(ground().outline, S.extension.outline, S.garden.plot.outline, S.garden.trees);
       S.garden.areas.forEach(function (a) { pts = pts.concat(a.outline); });
@@ -790,7 +795,7 @@
     // so finishing the ground floor rooms leads to the upstairs, not past it
     if (S.stage === 'rooms' && f.markers.length) {
       var up = floorWithoutRooms();
-      if (up >= 0) return { id: 'sk-floor-' + up, label: 'Now the ' + S.floors[up].name.toLowerCase() };
+      if (up >= 0) return { id: 'sk-floor-' + up, label: 'Next — rooms on the ' + S.floors[up].name.toLowerCase() };
     }
     if (S.stage === 'extension' && S.drawing && S.drawing.length > 2) {
       return { id: 'sk-close-ext', label: 'Finish the extension' };
@@ -844,7 +849,7 @@
         : (S.stage === 'outline' && !f.closed && !f.outline.length && S.active > 0)
             ? 'Copy the floor below, or draw this one.'
         : (S.stage === 'rooms' && f.markers.length && floorWithoutRooms() >= 0)
-            ? 'Ground floor done. Now the rooms upstairs.'
+            ? 'Tap a room again to change what it is. When this floor is done, go up a floor.'
         : (edited && stage.done ? stage.done : stage.hint);
     }
 
@@ -921,7 +926,13 @@
     }
 
     var apply = $('sk-apply');
-    if (apply) apply.disabled = !ready();
+    if (apply) {
+      apply.disabled = !ready();
+      // one obvious button at a time: the big Next says "Done" on the last
+      // step, so the early exit only shows before then, and quietly
+      var n2 = nextAction();
+      apply.hidden = !ready() || !n2 || n2.id === 'sk-finish';
+    }
     var u = $('sk-undo'), r = $('sk-redo');
     if (u) u.disabled = !UNDO.length && !(S.drawing && S.drawing.length);
     if (r) r.disabled = !REDO.length;
@@ -1447,12 +1458,19 @@
       });
     });
 
-    if (q.scaled && q.extDoors === 0) out.push('No way in yet — add a front or back door.');
+    // "no door yet" on the walls step is nagging about a step not reached.
+    // A missing thing is only worth a look once its step is behind you.
+    var passed = function (id) {
+      var ids = ACTIVE.map(function (st) { return st.id; });
+      var here = ids.indexOf(S.stage), there = ids.indexOf(id);
+      return there >= 0 && here > there;
+    };
+    if (q.scaled && q.extDoors === 0 && passed('openings')) out.push('No way in yet — add a front or back door.');
     if (q.scaled && q.totalArea > 0) {
       var per = q.rooms.length ? q.totalArea / q.rooms.length : 0;
       if (q.rooms.length && per < 4) out.push('That is a lot of rooms for the floor area.');
       if (q.rooms.length && per > 45) out.push('That is very few rooms for the floor area.');
-      if (!q.rooms.length) out.push('No rooms marked yet, so kitchens and bathrooms are not counted.');
+      if (!q.rooms.length && passed('rooms')) out.push('No rooms marked yet, so kitchens and bathrooms are not counted.');
     }
     if (S.extension.closed && ground().closed) {
       var touches = S.extension.outline.some(function (p) {
@@ -2158,7 +2176,13 @@
     S.pickWall = false;
     render();
     var inp = $('sk-len');
-    if (inp) { inp.value = inp.value || (S.units === 'ft' ? '26' : '8'); try { inp.focus(); inp.select(); } catch (e) {} }
+    if (inp) {
+      inp.value = inp.value || (S.units === 'ft' ? '26' : '8');
+      // a keyboard sliding up over the drawing is the wrong first thing on a
+      // phone, where the first thing people do is drag a corner
+      var coarse = root.matchMedia && root.matchMedia('(pointer: coarse)').matches;
+      if (!coarse && !S.touch) { try { inp.focus(); inp.select(); } catch (e) {} }
+    }
   }
 
   /**
@@ -2500,6 +2524,7 @@
     if (S.stage === 'internal' && S.drawing) S.drawing = null;
     S.stage = id;
     if (id === 'extension' || id === 'garden') S.active = 0;     // both sit round the ground floor
+    if (id === 'rooms' && !S.roomPicked) S.roomType = S.active === 0 ? 'kitchen' : 'bedroom';
     if (id === 'garden') S.gardenMode = S.garden.plot.closed ? (S.gardenMode || 'patio') : 'boundary';
     S.drawing = null; S.cursor = null; S.selected = null; S.pick = null;
     S.kind = id === 'openings' ? (S.kind || 'window') : null;
@@ -2653,7 +2678,7 @@
       hit = t.closest && t.closest('[data-kind]');
       if (hit) { S.kind = hit.getAttribute('data-kind'); S.selected = null; render(); return; }
       hit = t.closest && t.closest('[data-room]');
-      if (hit) { S.roomType = hit.getAttribute('data-room'); render(); return; }
+      if (hit) { S.roomType = hit.getAttribute('data-room'); S.roomPicked = true; render(); return; }
       hit = t.closest && t.closest('[data-gmode]');
       if (hit) { S.gardenMode = hit.getAttribute('data-gmode'); S.drawing = null; S.pick = null; say(''); render(); return; }
       hit = t.closest && t.closest('[data-storeys]');
@@ -2675,6 +2700,7 @@
         if (act === 'sk-hint-ext') return;
         if (act === 'sk-finish') { var ap = $('sk-apply'); if (ap) ap.click(); return; }
         if (act.indexOf('sk-floor-') === 0) {
+          if (S.stage === 'rooms' && !S.roomPicked) S.roomType = +act.slice(9) === 0 ? 'kitchen' : 'bedroom';
           S.active = +act.slice(9); S.drawing = null; S.selected = null; S.pick = null;
           FRAME = null; MANUAL = false; settled(); return;
         }

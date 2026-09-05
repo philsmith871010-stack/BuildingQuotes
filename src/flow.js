@@ -953,7 +953,12 @@
       if (redraw !== false) drawNow(route, t);
       if (route.step.ground) groundFlag({ ground: t.ground }, 'ground-flag');
       var lvl = $('draw-level');
-      if (lvl) lvl.textContent = t.ground ? '−' + t.ground.depth.toFixed(3) : '±0.000';
+      if (lvl) {
+        // a foundation depth means something on a section; on a plan it is
+        // a stray "−1.000" next to the client's own drawing
+        lvl.hidden = route.step.view !== 'section';
+        lvl.textContent = t.ground ? '−' + t.ground.depth.toFixed(3) : '±0.000';
+      }
     }
 
     var fig = $('flow-total-fig');
