@@ -1000,6 +1000,7 @@ html { scroll-padding-top: 62px; }
 .sk-garea.lawn    { fill: rgba(140,196,110,.55); stroke: #6BA34C; }
 .sk-garea.drive   { fill: rgba(150,150,158,.55); stroke: #77777F; }
 .sk-garea.decking { fill: rgba(196,150,96,.55);  stroke: #A87A45; }
+.sk-garea.building { fill: rgba(60,70,80,.30); stroke: var(--ink); stroke-width: 5; }
 .sk-garea.on { stroke: var(--accent); stroke-width: 4.5; }
 .sk-galab {
   font-family: var(--mono); fill: var(--ink); letter-spacing: .12em; font-weight: 600;

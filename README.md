@@ -19,7 +19,7 @@ Two screens:
   through the ground with one datum line that never moves; the estimator is
   four questions on four routed pages, then the result.
 - **`admin.html`** — Lee's rate book. Every figure the estimator uses, for all
-  five build types, editable with a live worked example and a
+  six build types, editable with a live worked example and a
   draft-then-publish flow.
 
 Routes (hash-based, so it runs from a single file anywhere):
@@ -75,7 +75,7 @@ Deployed properly these are two pages on one domain and share storage anyway.
 
 | File | What it is |
 |---|---|
-| `src/ratebook.js` | **The rate book.** All five build types, their priced items, modifiers and worked examples, plus the generic pricer both screens use. |
+| `src/ratebook.js` | **The rate book.** All six build types, their priced items, modifiers and worked examples, plus the generic pricer both screens use. |
 | `src/store.js` | Draft and published books, change log, version history, CSV and JSON import and export. Persists to localStorage. |
 | `src/admin.js` | The rate book interface. |
 | `src/rates.js` | A thin live view of the published book, for the estimator. |
@@ -109,8 +109,10 @@ assumptions.
 
 ## Scope
 
-**The rate book covers all five build types:** extensions, renovations, loft
-conversions, new builds, and patios and outdoor work. 53 priced items in total,
+**The rate book covers all six build types:** extensions, renovations, loft
+conversions, new builds, patios and outdoor work, and garages and garden rooms.
+A new build is priced on its own: ticking it unticks an extension, loft or
+renovation, and the other way round. 58 priced items in total,
 of which 46 are still placeholders waiting on real rates — the admin counts
 them for you and stops calling a figure a placeholder the moment Lee types over
 it.

@@ -101,11 +101,11 @@
     if (!t.length) ids = STAGES.map(function (st) { return st.id; });
     else {
       if (has('extension')) { ids.push('extension'); required.extension = true; }
-      if (has('external')) { ids.push('garden'); required.garden = true; }
+      if (has('external') || has('outbuilding')) { ids.push('garden'); required.garden = true; }
       if (has('renovation') || has('newbuild')) ids.push('internal', 'openings');
       if (has('renovation') || has('newbuild') || has('loft')) ids.push('rooms');
-      if (!has('extension')) ids.push('extension');
-      if (!has('external')) ids.push('garden');
+      if (ids.indexOf('extension') < 0) ids.push('extension');
+      if (ids.indexOf('garden') < 0) ids.push('garden');
     }
     return ids.map(function (id, i) {
       var st = STAGES.filter(function (x) { return x.id === id; })[0];
@@ -135,7 +135,8 @@
     { id: 'patio',   label: 'Patio',   tag: 'PATIO' },
     { id: 'lawn',    label: 'Lawn',    tag: 'LAWN' },
     { id: 'drive',   label: 'Drive',   tag: 'DRIVE' },
-    { id: 'decking', label: 'Decking', tag: 'DECK' }
+    { id: 'decking', label: 'Decking', tag: 'DECK' },
+    { id: 'building', label: 'Garage / garden room', tag: 'GARAGE / ROOM' }
   ];
   function newGarden() { return { plot: { outline: [], closed: false }, areas: [], trees: [] }; }
 
@@ -329,7 +330,7 @@
       garden = {
         plot: plotArea,
         boundary: m(ringLength(S.garden.plot.outline)),
-        garden: Math.max(0, plotArea - footprint - (ext ? ext.area : 0)),
+        garden: Math.max(0, plotArea - footprint - (ext ? ext.area : 0) - (gA.building || 0)),
         areas: gA,
         trees: S.garden.trees.length,
         treeNearest: nearest

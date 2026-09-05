@@ -405,7 +405,7 @@
    * chooser — never saw the drawing tool at all. Hiding the best thing on the
    * site behind picking the right box first is not a defensible trade.
    */
-  var SKETCH_TYPES = ['extension', 'renovation', 'loft', 'newbuild', 'external'];
+  var SKETCH_TYPES = ['extension', 'renovation', 'loft', 'newbuild', 'external', 'outbuilding'];
 
   /* What drawing buys you, in the words of the job you are pricing. */
   var SKETCH_CTA = {
@@ -418,7 +418,9 @@
     newbuild:   { q: 'Rather draw it than guess it?',
                   help: 'Trace the footprint on a blank grid, say how long one wall is, and add a floor for each storey. Footprint, floor area, perimeter and roof all come off the drawing.' },
     external:   { q: 'Rather draw the garden than pace it?',
-                  help: 'Draw the house, then the fence line round it, then tap round the patio, lawn, drive or decking. Every area and the fence run are measured off the drawing.' }
+                  help: 'Draw the house, then the fence line round it, then tap round the patio, lawn, drive or decking. Every area and the fence run are measured off the drawing.' },
+    outbuilding: { q: 'Rather draw it than guess it?',
+                  help: 'Draw the house, the fence line, then tap round where the garage or garden room goes. Its floor area is measured off the drawing.' }
   };
 
   function applySketch(typeId, m) {
@@ -455,6 +457,8 @@
       set('perimeter', m.perimeter);
       set('roofArea', m.footprint * 1.22);
       set('storeys', m.floors);            // you drew them, so we know
+    } else if (typeId === 'outbuilding' && m.garden && m.garden.areas.building > 1) {
+      set('floorArea', m.garden.areas.building);
     } else if (typeId === 'external' && m.garden) {
       // the surfaces ARE the areas: none drawn means none, not the default
       set('patioArea', m.garden.areas.patio);
@@ -501,6 +505,12 @@
     if (laid && project.types.indexOf('external') < 0) {
       project.types.push('external');
       applySketch('external', m);
+      saveProject();
+      if (route) paintRail(route);
+    }
+    if (m.garden && m.garden.areas.building > 1 && project.types.indexOf('outbuilding') < 0) {
+      project.types.push('outbuilding');
+      applySketch('outbuilding', m);
       saveProject();
       if (route) paintRail(route);
     }
@@ -1053,6 +1063,13 @@
       var id = pick.getAttribute('data-pick');
       var at = project.types.indexOf(id);
       if (at >= 0) project.types.splice(at, 1); else project.types.push(id);
+      // a new build is a whole house: there is nothing to extend, convert or
+      // renovate yet, so it and those three untick each other
+      var HOUSE_WORK = ['extension', 'renovation', 'loft'];
+      if (at < 0) {
+        var drop = id === 'newbuild' ? HOUSE_WORK : (HOUSE_WORK.indexOf(id) >= 0 ? ['newbuild'] : []);
+        project.types = project.types.filter(function (x) { return drop.indexOf(x) < 0; });
+      }
       saveProject();
       paintChooser();
       return;

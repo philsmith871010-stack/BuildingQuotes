@@ -177,8 +177,8 @@ sentence.
    to drag to size, or draw your own against the house.
 6. **Garden** — optional. One button adds a typical plot (a short front garden,
    a long back one) to drag to your fence line, or tap round it yourself. Then
-   pick a patio, lawn, drive or decking and tap round it; tap where the trees
-   are. Everything snaps to the house, the extension, the fence and each other,
+   pick a patio, lawn, drive, decking or a garage / garden room and tap round
+   it; tap where the trees are. Everything snaps to the house, the extension, the fence and each other,
    so a lawn meets the patio and the patio meets the extension. Tap a surface
    to pick it — its corners drag, its edge takes a new corner, × removes it.
    The fence line is edited in its own mode so a tap on it in any other mode
@@ -353,6 +353,8 @@ the house.
 - Rooms are counted, not placed, so a pin in the wrong room changes nothing
   except the warning that it is outside the house.
 - Nothing is shared between devices — the drawing lives in one browser.
+- A garage or garden room drawn in the garden feeds the outbuilding type's
+  floor area and selects that type, the way a patio selects outdoor work.
 - The garden feeds the paving, decking, driveway, turf and fencing figures and
   a dig allowance of 0.3 m³ per m² of anything paved. The fence run is the
   whole plot boundary, frontage included — change it on the page if the front

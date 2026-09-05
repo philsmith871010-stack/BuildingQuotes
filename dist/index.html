@@ -1586,6 +1586,7 @@ html { scroll-padding-top: 62px; }
 .sk-garea.lawn    { fill: rgba(140,196,110,.55); stroke: #6BA34C; }
 .sk-garea.drive   { fill: rgba(150,150,158,.55); stroke: #77777F; }
 .sk-garea.decking { fill: rgba(196,150,96,.55);  stroke: #A87A45; }
+.sk-garea.building { fill: rgba(60,70,80,.30); stroke: var(--ink); stroke-width: 5; }
 .sk-garea.on { stroke: var(--accent); stroke-width: 4.5; }
 .sk-galab {
   font-family: var(--mono); fill: var(--ink); letter-spacing: .12em; font-weight: 600;
@@ -2281,7 +2282,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
  *
  * A rate book is:
  *   commercial   VAT, margin split, contingency, confidence
- *   buildTypes   extension, renovation, loft, new build, external works
+ *   buildTypes   extension, renovation, loft, new build, external works, outbuildings
  *                each with its own MEASUREMENTS, RATE LINES and MODIFIERS
  *   foundations  the shared tree / soil depth model
  *   fees         architectural, structural, building control by council
@@ -2664,7 +2665,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     {
       id: 'newbuild',
       name: 'New builds',
-      blurb: 'Single dwellings and small sites, from footings to handover.',
+      blurb: 'Single dwellings and small sites, from footings to handover. Priced on its own, not with an extension, loft or renovation.',
       enabled: true,
       usesFoundations: true,
       measurements: [
@@ -2807,6 +2808,64 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         label: '40 m² patio, 12 m of walling and 20 m of fencing',
         measurements: { patioArea: 40, deckingArea: 0, drivewayArea: 0, turfArea: 30, excavationVol: 12, wallLength: 12, fenceLength: 20, drainageLength: 8, lightPoints: 4, steps: 1 },
         modifiers: { groundConditions: 'clay', levels: 'flat', access: 'restricted', spec: 'standard' }
+      }
+    },
+
+    /* ---- Garages and garden rooms --------------------------------------
+       A detached building on its own base. Drawn in the garden step, so the
+       floor area is measured; the rest is what is inside it. */
+    {
+      id: 'outbuilding',
+      name: 'Garages and garden rooms',
+      blurb: 'A detached garage, a garden office or a summer house on its own base.',
+      enabled: true,
+      usesFoundations: false,
+      measurements: [
+        { id: 'floorArea', label: 'Floor area', unit: 'm²',
+          ask: { step: 'size', q: 'Floor area', help: 'A single garage is about 18 m². A garden office is usually 10 to 15.', input: 'area', min: 4, max: 120, by: 1, value: 15 } },
+        { id: 'garageDoors', label: 'Garage doors', unit: 'no.',
+          ask: { step: 'fit', q: 'Garage doors', help: 'Up-and-over or sectional, supplied and fitted.', input: 'count', max: 2, value: 0 } },
+        { id: 'electrics', label: 'Power and lighting', unit: 'no.',
+          ask: { step: 'fit', q: 'Power and lighting?', help: 'An armoured supply from the house, a small consumer unit, lights and sockets.', input: 'yesno', value: 1 } },
+        { id: 'plumbing', label: 'Water and waste', unit: 'no.',
+          ask: { step: 'fit', q: 'A sink or a WC?', help: 'A water supply and a drain run back to the house.', input: 'yesno', value: 0 } }
+      ],
+      steps: [
+        { id: 'size', view: 'plan', short: 'Size', title: 'How big is it?', lede: 'The floor area of the building. Everything else is priced from it.' },
+        { id: 'build', view: 'section', short: 'Build', title: 'What kind of building?', lede: 'A garage is a shell. A garden room is insulated, lined and heated, which is most of the difference in price.', modifiers: ['use', 'walls'] },
+        { id: 'fit', view: 'plan', short: 'Fit out', title: 'What goes in it?', lede: 'Doors, power and water are the items that move the figure.', modifiers: ['access', 'spec'] }
+      ],
+      lines: [
+        L('ob.base',      'Base',                   'Dig, hardcore, damp-proof membrane and a reinforced slab', 'per_m2', 'floorArea', 120, 'placeholder'),
+        L('ob.shell',     'Walls, roof and windows', 'Insulated timber frame, cladding, membrane roof, doors and windows', 'per_m2', 'floorArea', 950, 'placeholder'),
+        L('ob.garagedoor','Garage door',            'Supplied and fitted', 'per_unit', 'garageDoors', 1400, 'placeholder'),
+        L('ob.electrics', 'Power and lighting',     'Armoured supply, consumer unit, lights and sockets', 'per_unit', 'electrics', 1500, 'placeholder'),
+        L('ob.plumbing',  'Water and waste',        'Supply and drain run back to the house', 'per_unit', 'plumbing', 2200, 'placeholder')
+      ],
+      modifiers: [
+        {
+          id: 'use', label: 'What is it for?', appliesTo: ['ob.shell'], value: 'gardenroom',
+          help: 'The lining, insulation and heating are what a garden room has and a garage does not.',
+          options: [
+            { id: 'gardenroom',  label: 'Garden room or office', factor: 1.00 },
+            { id: 'garage',      label: 'Garage',                factor: 0.70 },
+            { id: 'summerhouse', label: 'Summer house',          factor: 0.55 }
+          ]
+        },
+        {
+          id: 'walls', label: 'Walls', appliesTo: ['ob.shell'], value: 'timber',
+          help: 'Brick or block to match the house costs more than a clad timber frame.',
+          options: [
+            { id: 'timber', label: 'Timber frame, clad', factor: 1.00 },
+            { id: 'brick',  label: 'Brick or block',     factor: 1.25 }
+          ]
+        },
+        ACCESS, spec(1.20, 1.50)
+      ],
+      typical: {
+        label: '15 m² garden office with power',
+        measurements: { floorArea: 15, garageDoors: 0, electrics: 1, plumbing: 0 },
+        modifiers: { use: 'gardenroom', walls: 'timber', access: 'good', spec: 'standard' }
       }
     }
   ];
@@ -3299,7 +3358,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
      new question wording. A stored book from an older shape is rebuilt from the
      current defaults with the rates carried across, so nobody is left on a
      structure the app no longer understands. */
-  var SCHEMA = 3;
+  var SCHEMA = 4;
 
   function now() { return new Date().toISOString(); }
 
@@ -5116,11 +5175,11 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (!t.length) ids = STAGES.map(function (st) { return st.id; });
     else {
       if (has('extension')) { ids.push('extension'); required.extension = true; }
-      if (has('external')) { ids.push('garden'); required.garden = true; }
+      if (has('external') || has('outbuilding')) { ids.push('garden'); required.garden = true; }
       if (has('renovation') || has('newbuild')) ids.push('internal', 'openings');
       if (has('renovation') || has('newbuild') || has('loft')) ids.push('rooms');
-      if (!has('extension')) ids.push('extension');
-      if (!has('external')) ids.push('garden');
+      if (ids.indexOf('extension') < 0) ids.push('extension');
+      if (ids.indexOf('garden') < 0) ids.push('garden');
     }
     return ids.map(function (id, i) {
       var st = STAGES.filter(function (x) { return x.id === id; })[0];
@@ -5150,7 +5209,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     { id: 'patio',   label: 'Patio',   tag: 'PATIO' },
     { id: 'lawn',    label: 'Lawn',    tag: 'LAWN' },
     { id: 'drive',   label: 'Drive',   tag: 'DRIVE' },
-    { id: 'decking', label: 'Decking', tag: 'DECK' }
+    { id: 'decking', label: 'Decking', tag: 'DECK' },
+    { id: 'building', label: 'Garage / garden room', tag: 'GARAGE / ROOM' }
   ];
   function newGarden() { return { plot: { outline: [], closed: false }, areas: [], trees: [] }; }
 
@@ -5344,7 +5404,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       garden = {
         plot: plotArea,
         boundary: m(ringLength(S.garden.plot.outline)),
-        garden: Math.max(0, plotArea - footprint - (ext ? ext.area : 0)),
+        garden: Math.max(0, plotArea - footprint - (ext ? ext.area : 0) - (gA.building || 0)),
         areas: gA,
         trees: S.garden.trees.length,
         treeNearest: nearest
@@ -8635,7 +8695,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
    * chooser — never saw the drawing tool at all. Hiding the best thing on the
    * site behind picking the right box first is not a defensible trade.
    */
-  var SKETCH_TYPES = ['extension', 'renovation', 'loft', 'newbuild', 'external'];
+  var SKETCH_TYPES = ['extension', 'renovation', 'loft', 'newbuild', 'external', 'outbuilding'];
 
   /* What drawing buys you, in the words of the job you are pricing. */
   var SKETCH_CTA = {
@@ -8648,7 +8708,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     newbuild:   { q: 'Rather draw it than guess it?',
                   help: 'Trace the footprint on a blank grid, say how long one wall is, and add a floor for each storey. Footprint, floor area, perimeter and roof all come off the drawing.' },
     external:   { q: 'Rather draw the garden than pace it?',
-                  help: 'Draw the house, then the fence line round it, then tap round the patio, lawn, drive or decking. Every area and the fence run are measured off the drawing.' }
+                  help: 'Draw the house, then the fence line round it, then tap round the patio, lawn, drive or decking. Every area and the fence run are measured off the drawing.' },
+    outbuilding: { q: 'Rather draw it than guess it?',
+                  help: 'Draw the house, the fence line, then tap round where the garage or garden room goes. Its floor area is measured off the drawing.' }
   };
 
   function applySketch(typeId, m) {
@@ -8685,6 +8747,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       set('perimeter', m.perimeter);
       set('roofArea', m.footprint * 1.22);
       set('storeys', m.floors);            // you drew them, so we know
+    } else if (typeId === 'outbuilding' && m.garden && m.garden.areas.building > 1) {
+      set('floorArea', m.garden.areas.building);
     } else if (typeId === 'external' && m.garden) {
       // the surfaces ARE the areas: none drawn means none, not the default
       set('patioArea', m.garden.areas.patio);
@@ -8731,6 +8795,12 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (laid && project.types.indexOf('external') < 0) {
       project.types.push('external');
       applySketch('external', m);
+      saveProject();
+      if (route) paintRail(route);
+    }
+    if (m.garden && m.garden.areas.building > 1 && project.types.indexOf('outbuilding') < 0) {
+      project.types.push('outbuilding');
+      applySketch('outbuilding', m);
       saveProject();
       if (route) paintRail(route);
     }
@@ -9283,6 +9353,13 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       var id = pick.getAttribute('data-pick');
       var at = project.types.indexOf(id);
       if (at >= 0) project.types.splice(at, 1); else project.types.push(id);
+      // a new build is a whole house: there is nothing to extend, convert or
+      // renovate yet, so it and those three untick each other
+      var HOUSE_WORK = ['extension', 'renovation', 'loft'];
+      if (at < 0) {
+        var drop = id === 'newbuild' ? HOUSE_WORK : (HOUSE_WORK.indexOf(id) >= 0 ? ['newbuild'] : []);
+        project.types = project.types.filter(function (x) { return drop.indexOf(x) < 0; });
+      }
       saveProject();
       paintChooser();
       return;
