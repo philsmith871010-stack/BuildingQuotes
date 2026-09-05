@@ -687,6 +687,8 @@ html { scroll-padding-top: 62px; }
   grid-template-columns: minmax(0, 1fr);
 }
 #sk-svg { width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; }
+#sk-svg.can-grab { cursor: grab; }
+#sk-svg.grabbing, #sk-svg.grabbing.can-grab { cursor: grabbing; }
 .sk-actions { position: absolute; top: .6rem; right: .6rem; display: flex; gap: .35rem; }
 
 .sk-floors {

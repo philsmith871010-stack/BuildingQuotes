@@ -1398,6 +1398,7 @@
     }
     if (press && press.pan) {
       var svg2 = $('sk-svg'), vv = frame();
+      svg2.classList.add('grabbing');
       var sc = (vv.x1 - vv.x0) / Math.max(svg2.clientWidth, 1);
       panBy((e.clientX - press.sx) * sc, (e.clientY - press.sy) * sc);
       press.sx = e.clientX; press.sy = e.clientY;
@@ -1407,6 +1408,7 @@
     if (press && press.handle) {
       if (Math.abs(e.clientX - press.x) + Math.abs(e.clientY - press.y) > 3) press.moved = true;
       if (!press.moved) return;
+      $('sk-svg').classList.add('grabbing');
       var w2 = toWorld(e), g = snapFrom(null, w2);
       var h = press.handle, f2 = floor();
       if (h.kind === 'corner') {
@@ -1434,12 +1436,17 @@
       return;
     }
 
-    if (!placingStage()) { S.cursor = null; return; }
-    var tg = snapTarget(toWorld(e));
+    // the pointer says what a press would do: a hand over anything that drags,
+    // which on a laptop is the only hint that the dots move at all
+    var raw = toWorld(e);
+    S.hoverHandle = !!handleAt(raw);
+    var svgEl = $('sk-svg');
+    if (svgEl) svgEl.classList.toggle('can-grab', S.hoverHandle);
+    if (!placingStage()) { S.cursor = null; renderSoon(); return; }
+    var tg = snapTarget(raw);
     S.snapKind = tg.kind;
     S.cursor = tg.p;
     if (S.stage === 'internal') S.cursor = keepInside(S.cursor);
-    S.hoverHandle = !!handleAt(S.cursor);
     renderSoon();
   }
 
@@ -1449,6 +1456,7 @@
     if (!S.started || S.calibrating) { press = null; return; }
     var p = press;
     press = null;
+    $('sk-svg').classList.remove('grabbing');
     try { $('sk-svg').releasePointerCapture(e.pointerId); } catch (err) {}
     if (!p) return;
 
@@ -2129,7 +2137,7 @@
     svg.addEventListener('pointerup', function (e) {
       delete touches[e.pointerId];
       if (pinch) { if (Object.keys(touches).length < 2) pinch = null; press = null; return; }
-      if (press && press.pan) { press = null; return; }
+      if (press && press.pan) { press = null; svg.classList.remove('grabbing'); return; }
       onUp(e);
     });
     svg.addEventListener('pointercancel', function (e) {
