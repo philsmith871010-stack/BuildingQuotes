@@ -134,21 +134,31 @@ The view zooms on a wheel or a pinch, pans on two fingers or a shift-drag, and
 
 ## The stages
 
-Six of them, shown as a numbered rail with a line through it rather than a row
-of tabs — tabs invite random access, and this is a sequence. The side panel
-says "Step 3 of 6" and names the stage, and one primary button always says what
-comes next. The hint changes as you go: *"Keep tapping the corners"* becomes
-*"Keep going, or tap the first corner to finish"* becomes *"Now tap the other
-end of the wall"*.
+Five of them, in the order a novice can manage them, shown as a numbered rail
+with a line through it rather than a row of tabs — tabs invite random access,
+and this is a sequence. The side panel says "Step 3 of 5" and names the stage,
+one primary button always says what comes next, and every hint is one plain
+sentence.
 
-The order a builder walks a house:
+1. **Shape** — pick the nearest of three shapes (rectangle, L, T) and drag any
+   corner, or tap round the corners yourself. Then one question: *roughly how
+   wide is it across the front?* — in metres or feet, with a rough guide for
+   people who have never measured a house. Then one more: *does it have an
+   upstairs?* Yes copies the floor below.
+2. **Rooms** — pick a type, tap the room. Finishing the ground floor leads to
+   the upstairs, because the bedrooms and the bathroom are up there.
+3. **Doors & windows** — pick one, tap the outside wall it is in.
+4. **Inside walls** — optional. Add a wall, add a doorway, or knock one out.
+5. **Extension** — optional. One button adds a rear extension on the back wall
+   to drag to size, or draw your own against the house.
 
-1. **Outline** — the shape, per floor. Copy the floor below or draw a new one.
-2. **Inside walls** — two clicks each.
-3. **Doors** — click a wall. External, bi-fold, or an internal doorway.
-4. **Windows** — click a wall.
-5. **Rooms** — a pin per room, on every floor.
-6. **Extension** — the proposed work, drawn against the existing house.
+**Built for someone who will skip things.** Most people will never draw an
+inside wall, so a floor with rooms marked but no walls gets a typical allowance
+of stud — about 0.4 m per m² of floor — rather than a plaster figure that
+quietly assumes one open barn. And a room pin is only "the same room" as
+another when nothing is between them *and* they are within two metres, so
+eight rooms can be labelled inside one open outline. A pin cannot be put
+outside the house at all.
 
 Drawing an extension is how you say you want one: it selects the extension
 build type and sizes it, rather than asking you to tick a box saying you drew

@@ -789,8 +789,8 @@ html { scroll-padding-top: 62px; }
 .sk-bifold { stroke: #E4572E; stroke-width: 9; stroke-dasharray: 8 4; }
 .sk-intDoor { stroke: #E4572E; stroke-width: 6; }
 .sk-open.sel { stroke: var(--accent); }
-.sk-pin circle { fill: var(--accent); opacity: .92; cursor: pointer; }
-.sk-pin text { font-family: var(--mono); font-size: 12px; font-weight: 600; fill: #fff; pointer-events: none; }
+.sk-pin rect { fill: var(--accent); opacity: .92; cursor: pointer; stroke: var(--surface); stroke-width: 1.5; }
+.sk-pin text { font-family: var(--mono); font-weight: 600; fill: #fff; pointer-events: none; letter-spacing: .04em; }
 .sk-area {
   font-family: var(--disp); font-weight: 700; font-stretch: 110%; font-size: 20px;
   fill: var(--accent-ink); opacity: .5; pointer-events: none;
@@ -952,3 +952,33 @@ html { scroll-padding-top: 62px; }
   font-family: var(--mono); font-size: 10px; fill: var(--warn, #B4432B);
   letter-spacing: .14em; font-weight: 600; pointer-events: none;
 }
+
+/* shapes to start from — pick and drag beats draw for almost everybody */
+.sk-shapes { display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem; }
+.sk-shapes button {
+  display: grid; gap: .3rem; justify-items: center; padding: .6rem .3rem .5rem;
+  background: var(--paper); border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+  font-family: var(--mono); font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2);
+}
+.sk-shapes button:hover { border-color: var(--accent); color: var(--accent-ink); }
+.sk-shapes svg { width: 100%; max-width: 3.4rem; height: auto; }
+.sk-shapes svg rect, .sk-shapes svg path { fill: rgba(21,76,124,.12); stroke: var(--ink); stroke-width: 2.4; stroke-linejoin: round; }
+.sk-tiny { font-size: .74rem; color: var(--ink-3); margin: .2rem 0 0; line-height: 1.4; }
+
+.sk-calib-foot { display: grid; gap: .45rem; }
+.sk-calib-foot .seg button { font-size: .72rem; padding: .28rem .55rem; }
+.sk-upstairs { display: grid; gap: .45rem; }
+.sk-upstairs[hidden] { display: none; }
+.sk-upstairs .btn { width: 100%; text-align: left; }
+
+.sk-more {
+  background: none; border: 0; padding: .35rem 0; cursor: pointer; text-align: left;
+  font-family: var(--mono); font-size: .62rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--accent-ink);
+}
+.sk-row small { font-family: var(--mono); font-size: .66rem; color: var(--ink-3); font-weight: 400; margin-left: .3rem; }
+.sk-nudge {
+  flex: 0 0 auto; width: 2.2rem; height: 2.4rem; border: 1px solid var(--rule); border-radius: 2px;
+  background: var(--surface); color: var(--ink); font-size: 1.15rem; cursor: pointer; line-height: 1;
+}
+.sk-nudge:hover { border-color: var(--accent); color: var(--accent-ink); }

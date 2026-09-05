@@ -560,14 +560,14 @@
 
     <!-- Blank canvas, or their own plan to draw over. -->
     <div class="sk-choose" id="sk-choose">
-      <h3>Draw your house.</h3>
-      <p>Trace round the outside, tell us how long one wall is, and everything else
-        is measured from that.</p>
+      <h3>Your house, in a minute.</h3>
+      <p>Pick a shape or use your own plan, say how wide it is across the front, and
+        everything else is measured from that. Nothing to draw unless you want to.</p>
       <div class="sk-choice">
         <button type="button" class="sk-card" id="sk-blank">
           <span class="sk-card-ico" aria-hidden="true">&#9633;</span>
-          <b>Start with a blank grid</b>
-          <span>Draw it from memory. Most people can.</span>
+          <b>Start with a shape</b>
+          <span>Pick the nearest shape and drag it to fit. About a minute.</span>
         </button>
         <button type="button" class="sk-card" id="sk-upload">
           <span class="sk-card-ico" aria-hidden="true">&#8673;</span>
@@ -607,13 +607,28 @@
 
         <!-- The one number the whole drawing is scaled by. -->
         <div class="sk-calib" id="sk-calib" hidden>
-          <label for="sk-len">Length of the orange wall</label>
+          <label for="sk-len" id="sk-len-label">Width across the front</label>
           <div class="sk-calib-row">
-            <input id="sk-len" type="number" step="0.05" min="0.5" inputmode="decimal" value="8.4">
-            <span>m</span>
-            <button type="button" class="btn btn-sm" id="sk-calib-go">Set</button>
+            <button type="button" class="sk-nudge" data-nudgelen="-1" aria-label="A bit less">&minus;</button>
+            <input id="sk-len" type="number" step="0.1" min="0.5" inputmode="decimal" value="8">
+            <span id="sk-unit">m</span>
+            <button type="button" class="sk-nudge" data-nudgelen="1" aria-label="A bit more">+</button>
+            <button type="button" class="btn btn-sm" id="sk-calib-go">That's it</button>
           </div>
-          <span class="hint">Tap a different wall on the drawing if you know that one instead.</span>
+          <div class="sk-calib-foot">
+            <div class="seg" id="sk-units" role="group" aria-label="Units">
+              <button type="button" data-units="m" aria-pressed="true">metres</button>
+              <button type="button" data-units="ft" aria-pressed="false">feet</button>
+            </div>
+            <span class="hint">A rough figure is fine. Most semis are 5 to 6 m across the front, detached 8 to 10. One big step is about a metre. Tap a different wall if you know that one better.</span>
+          </div>
+        </div>
+
+        <!-- One clear question, instead of a small "+ floor" nobody finds. -->
+        <div class="sk-upstairs" id="sk-upstairs" hidden>
+          <button type="button" class="btn" data-up="same">Yes &mdash; same shape as downstairs</button>
+          <button type="button" class="btn btn-ghost" data-up="diff">Yes &mdash; a different shape</button>
+          <button type="button" class="btn btn-ghost" data-up="no">No, just the one floor</button>
         </div>
 
         <div class="sk-tools" id="sk-tools"></div>

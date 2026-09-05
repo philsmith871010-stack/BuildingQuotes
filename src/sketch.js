@@ -47,27 +47,39 @@
   var CEILING = 2.4;
 
   var ROOM_TYPES = [
-    { id: 'kitchen',  label: 'Kitchen',  short: 'K' },
-    { id: 'living',   label: 'Living',   short: 'L' },
-    { id: 'bedroom',  label: 'Bedroom',  short: 'B' },
-    { id: 'bathroom', label: 'Bathroom', short: 'Ba' },
-    { id: 'wc',       label: 'WC',       short: 'W' },
-    { id: 'hall',     label: 'Hall',     short: 'H' },
-    { id: 'other',    label: 'Other',    short: '·' }
+    { id: 'kitchen',  label: 'Kitchen',  short: 'Kitchen' },
+    { id: 'living',   label: 'Living',   short: 'Living' },
+    { id: 'bedroom',  label: 'Bedroom',  short: 'Bed' },
+    { id: 'bathroom', label: 'Bathroom', short: 'Bath' },
+    { id: 'wc',       label: 'WC',       short: 'WC' },
+    { id: 'hall',     label: 'Hall',     short: 'Hall' },
+    { id: 'other',    label: 'Other',    short: 'Room' }
   ];
 
+  /*
+   * Five stages, in the order a novice can manage them: the shape (which they
+   * can pick rather than draw), the rooms (which they understand), the doors
+   * and windows (which they can see), the inside walls (hardest, and optional),
+   * and the extension (optional). Every hint is one plain sentence.
+   */
   var STAGES = [
-    { id: 'outline',   n: 1, label: 'Outline',      hint: 'Click round the outside of the house.',
-      done: 'Drag a corner to move it. Tap a wall to add one.' },
-    { id: 'internal',  n: 2, label: 'Inside walls', hint: 'Click each end of a wall inside the house.',
+    { id: 'outline',   n: 1, label: 'Shape',
+      hint: 'Pick the shape closest to your house, or tap round the corners yourself.',
+      done: 'Drag any corner to make it right. Tap a wall to add a corner.' },
+    { id: 'rooms',     n: 2, label: 'Rooms',
+      hint: 'Pick a room type, then tap where that room is.',
+      done: 'Tap a room again to change what it is. Tap a pin to remove it.' },
+    { id: 'openings',  n: 3, label: 'Doors & windows',
+      hint: 'Pick a window or a door, then tap the outside wall it is in.',
+      done: 'Drag one to move it along the wall. Tap it to change its width.' },
+    { id: 'internal',  n: 4, label: 'Inside walls',
+      hint: 'Optional. Tap one end of a wall, then the other end.',
       done: 'Drag an end to move a wall.',
+      door: 'Tap an inside wall to put a doorway in it.',
       out:  'Tap any wall you are knocking out. Tap it again to put it back.' },
-    { id: 'doors',     n: 3, label: 'Doors',        hint: 'Click a wall to put a door in it.' },
-    { id: 'windows',   n: 4, label: 'Windows',      hint: 'Click a wall to put a window in it.' },
-    { id: 'rooms',     n: 5, label: 'Rooms',        hint: 'Tap a room type, then tap the room. One label per room.',
-      done: 'Tap a labelled room again to change what it is.' },
-    { id: 'extension', n: 6, label: 'Extension',    hint: 'Draw the new bit against the house — start and finish on a house wall.',
-      done: 'Drag a corner to move it. Tap a wall to add one.' }
+    { id: 'extension', n: 5, label: 'Extension',
+      hint: 'Optional. Add a rear extension and drag it to size, or draw your own against the house.',
+      done: 'Drag any corner to make it right. Tap a wall to add a corner.' }
   ];
 
   var FLOOR_NAMES = ['Ground floor', 'First floor', 'Second floor', 'Loft'];
@@ -195,13 +207,21 @@
     var counts = {}, rooms = [];
     ROOM_TYPES.forEach(function (r) { counts[r.id] = 0; });
 
-    var removed = 0;
+    var removed = 0, estimated = false;
     S.floors.forEach(function (f) {
       f.internals.forEach(function (seg) {
         // a wall that is coming out is not there to be plastered afterwards
         if (seg.out) removed += m(dist(seg[0], seg[1]));
         else intLen += m(dist(seg[0], seg[1]));
       });
+      // Most people will skip the inside walls. A house still has them, and the
+      // plaster is priced on them, so a floor with rooms marked but no walls
+      // drawn gets a typical allowance — about 0.4 m of stud per m² of floor —
+      // rather than a plaster figure that quietly assumes one open barn.
+      if (f.closed && !f.internals.length && f.markers.length > 1) {
+        intLen += 0.4 * m(shoelace(f.outline)) * m(1);
+        estimated = true;
+      }
       if (f.closed) extWall += m(ringLength(f.outline)) * CEILING;
       f.openings.forEach(function (o) {
         // a 3 m bi-fold in a 2 m wall would over-deduct the plaster, so the
@@ -237,7 +257,7 @@
       scaled: !!S.scale,
       floors: S.floors.filter(function (f) { return f.closed; }).length,
       footprint: footprint, totalArea: total, perimeter: perim,
-      internalWall: intLen, wallRemoval: removed, plaster: plaster,
+      internalWall: intLen, internalEstimated: estimated, wallRemoval: removed, plaster: plaster,
       windows: win, windowWidth: winW, extDoors: extDoor, intDoors: intDoor,
       counts: counts, rooms: rooms, extension: ext
     };
@@ -509,7 +529,7 @@
       var isTarget = live.length > 2 && i === 0;
       var picked = !live.length && editing && S.pick && S.pick.kind === 'corner' && S.pick.i === i;
       out.push('<circle cx="' + P(p)[0] + '" cy="' + P(p)[1] + '" r="' +
-        (isTarget ? 15 * RU : 9 * RU).toFixed(1) + '" class="sk-node' +
+        (isTarget ? 15 * RU : (S.touch ? 11 : 9) * RU).toFixed(1) + '" class="sk-node' +
         (isTarget ? ' start' : '') + (picked ? ' on' : '') + '"/>');
     });
 
@@ -535,16 +555,20 @@
 
     f.markers.forEach(function (mk, i) {
       var t = ROOM_TYPES.filter(function (r) { return r.id === mk.type; })[0] || ROOM_TYPES[6];
-      out.push('<g class="sk-pin" data-marker="' + i + '"><circle cx="' + (mk.x * K) + '" cy="' + (mk.y * K) +
-        '" r="15"/><text x="' + (mk.x * K) + '" y="' + (mk.y * K + 5) + '" text-anchor="middle">' +
-        esc(t.short) + '</text></g>');
+      // a pill with the word on it — "Ba" means nothing to anybody
+      var pw = (t.short.length * 7.2 + 16) * RU, ph = 20 * RU;
+      out.push('<g class="sk-pin" data-marker="' + i + '"><rect x="' + (mk.x * K - pw / 2) + '" y="' +
+        (mk.y * K - ph / 2) + '" width="' + pw + '" height="' + ph + '" rx="' + (ph / 2) + '"/>' +
+        '<text x="' + (mk.x * K) + '" y="' + (mk.y * K + 4 * RU) + '" text-anchor="middle" font-size="' +
+        (11.5 * RU).toFixed(1) + '">' + esc(t.short) + '</text></g>');
     });
 
     if (f.closed && S.scale) {
-      out.push('<text x="' + ((v.x0 + 0.5) * K) + '" y="' + ((v.y0 + 1.4) * K) + '" class="sk-area">' +
+      // bottom left, where nothing is ever drawn — the top is where a rear
+      // extension goes
+      out.push('<text x="' + ((v.x0 + 0.5) * K) + '" y="' + ((v.y1 - 1.1) * K) + '" class="sk-area">' +
         fmt(m(shoelace(f.outline)) * m(1)) + ' m² · ' + esc(f.name.toLowerCase()) + '</text>');
-      // bottom left, where nothing is ever drawn
-      out.push('<text x="' + ((v.x0 + 0.5) * K) + '" y="' + ((v.y1 - 0.5) * K) +
+      out.push('<text x="' + ((v.x0 + 0.5) * K) + '" y="' + ((v.y1 - 0.45) * K) +
         '" class="sk-legend">1 square = ' + SNAP.toFixed(2) + ' m</text>');
     }
 
@@ -582,8 +606,7 @@
     if (id === 'outline') return f.closed && !!S.scale;
     var any = function (k) { return S.floors.some(k); };
     if (id === 'internal') return any(function (x) { return x.internals.length > 0; });
-    if (id === 'doors') return any(function (x) { return x.openings.some(function (o) { return o.kind !== 'window'; }); });
-    if (id === 'windows') return any(function (x) { return x.openings.some(function (o) { return o.kind === 'window'; }); });
+    if (id === 'openings') return any(function (x) { return x.openings.some(function (o) { return o.kind !== 'intDoor'; }); });
     if (id === 'rooms') return any(function (x) { return x.markers.length > 0; });
     return S.extension.closed;
   }
@@ -631,16 +654,30 @@
   }
 
   /** The one action that is obviously next. Nothing else needs explaining. */
+  /** A floor that still has no rooms on it, other than this one. */
+  function floorWithoutRooms() {
+    for (var i = 0; i < S.floors.length; i++) {
+      if (i !== S.active && S.floors[i].closed && !S.floors[i].markers.length) return i;
+    }
+    return -1;
+  }
+
   function nextAction() {
     var f = floor();
-    if (S.calibrating) return null;
+    if (S.calibrating || S.askUp) return null;
     if (S.stage === 'outline') {
       if (S.drawing && S.drawing.length > 2) return { id: 'sk-close-shape', label: 'Finish the outline' };
       if (!f.closed && !f.outline.length && S.active > 0 && S.floors[S.active - 1].closed) {
         return { id: 'sk-copy', label: 'Copy the ' + S.floors[S.active - 1].name.toLowerCase() };
       }
-      if (f.closed && ready()) return { id: 'sk-go-internal', label: 'Next — inside walls' };
+      if (f.closed && ready()) return { id: 'sk-go-rooms', label: 'Next — rooms' };
       return null;
+    }
+    // upstairs rooms matter most — the bedrooms and the bathroom are up there —
+    // so finishing the ground floor rooms leads to the upstairs, not past it
+    if (S.stage === 'rooms' && f.markers.length) {
+      var up = floorWithoutRooms();
+      if (up >= 0) return { id: 'sk-floor-' + up, label: 'Now the ' + S.floors[up].name.toLowerCase() };
     }
     if (S.stage === 'extension' && S.drawing && S.drawing.length > 2) {
       return { id: 'sk-close-ext', label: 'Finish the extension' };
@@ -652,6 +689,7 @@
     if (i >= 0 && i < STAGES.length - 1) {
       return { id: 'sk-go-' + STAGES[i + 1].id, label: 'Next — ' + STAGES[i + 1].label.toLowerCase() };
     }
+    if (ready()) return { id: 'sk-finish', label: 'Done — use these figures' };
     return null;
   }
 
@@ -662,7 +700,10 @@
 
     var of = $('sk-of'), name = $('sk-stagename');
     if (of) of.textContent = 'Step ' + stage.n + ' of ' + STAGES.length;
-    if (name) name.textContent = S.calibrating ? 'How big is it?' : stage.label;
+    if (name) name.textContent = S.calibrating ? 'How wide is it?' : S.askUp ? 'Upstairs?' : stage.label;
+
+    var up = $('sk-upstairs');
+    if (up) up.hidden = !S.askUp;
 
     if (hint) {
       var edited = (S.stage === 'outline' && f.closed) ||
@@ -670,25 +711,37 @@
                    (S.stage === 'internal' && f.internals.length);
       var mid = S.drawing && S.drawing.length;
       hint.textContent =
-        S.calibrating ? 'How long is the wall highlighted in orange?'
+        S.calibrating ? (S.preset
+          ? 'Roughly how wide is your house across the front — the orange wall?'
+          : 'How long is the wall highlighted in orange?')
+        : S.askUp ? 'Does the house have an upstairs?'
         : (S.stage === 'internal' && S.wallMode === 'out') ? stage.out
+        : (S.stage === 'internal' && S.wallMode === 'door') ? stage.door
         : mid && S.stage === 'internal' ? 'Now tap the other end of the wall.'
         : mid && S.drawing.length > 2 ? 'Keep going, or tap the first corner to finish.'
         : mid ? 'Keep tapping the corners.'
         : (S.stage === 'outline' && !f.closed && !f.outline.length && S.active > 0)
             ? 'Copy the floor below, or draw this one.'
+        : (S.stage === 'rooms' && f.markers.length && floorWithoutRooms() >= 0)
+            ? 'Ground floor done. Now the rooms upstairs.'
         : (edited && stage.done ? stage.done : stage.hint);
     }
 
     var cal = $('sk-calib');
     if (cal) {
       cal.hidden = !S.calibrating;
-      var lenInput = $('sk-len');
-      if (S.calibrating && lenInput && !lenInput.value) lenInput.value = '8.4';
+      var lenInput = $('sk-len'), lab = $('sk-len-label'), un = $('sk-unit');
+      if (S.calibrating && lenInput && !lenInput.value) lenInput.value = S.units === 'ft' ? '26' : '8';
+      if (lab) lab.textContent = S.preset ? 'Width across the front' : 'Length of the orange wall';
+      if (un) un.textContent = S.units === 'ft' ? 'ft' : 'm';
+      var ub = $('sk-units');
+      if (ub) Array.prototype.forEach.call(ub.querySelectorAll('button'), function (b) {
+        b.setAttribute('aria-pressed', String(b.getAttribute('data-units') === (S.units || 'm')));
+      });
     }
 
     var tools = $('sk-tools');
-    if (tools) tools.innerHTML = S.calibrating ? '' : toolsFor(S.stage);
+    if (tools) tools.innerHTML = (S.calibrating || S.askUp) ? '' : toolsFor(S.stage);
 
     var act = $('sk-next');
     if (act) {
@@ -704,18 +757,24 @@
       return '<div class="sk-row' + (strong ? ' strong' : '') + '"><span>' + k + '</span><b>' + v + '</b></div>';
     };
     var na = '—';
+    var kb = (q.counts.kitchen || 0) + ' kitchen' + ((q.counts.kitchen || 0) === 1 ? '' : 's') + ' · ' +
+      ((q.counts.bathroom || 0) + (q.counts.wc || 0)) + ' bath';
     read.innerHTML =
-      row('Floors drawn', q.floors || na) +
-      row('Footprint', q.scaled && q.footprint ? fmt(q.footprint) + ' m²' : na, true) +
-      row('Total floor area', q.scaled && q.totalArea ? fmt(q.totalArea) + ' m²' : na, true) +
-      row('Outside walls', q.perimeter ? fmt(q.perimeter) + ' m' : na) +
-      row('Inside walls', q.internalWall ? fmt(q.internalWall) + ' m' : na) +
+      row('Floor area', q.scaled && q.totalArea ? fmt(q.totalArea) + ' m²' : na, true) +
+      row('Floors', q.floors || na) +
+      row('Rooms', q.rooms.length ? q.rooms.length + ' <small>· ' + kb + '</small>' : na, q.rooms.length > 0) +
+      (q.extension ? row('Extension', fmt(q.extension.area * q.extension.storeys) + ' m²', true) : '') +
       (q.wallRemoval ? row('Walls coming out', fmt(q.wallRemoval) + ' m', true) : '') +
-      row('Wall area to plaster', q.plaster ? fmt(q.plaster, 0) + ' m²' : na) +
-      row('Windows', q.windows) +
-      row('Doors', q.extDoors + ' out · ' + q.intDoors + ' in') +
-      row('Rooms', q.rooms.length) +
-      (q.extension ? row('Extension', fmt(q.extension.area * q.extension.storeys) + ' m²', true) : '');
+      '<button type="button" class="sk-more" id="sk-more" aria-expanded="' + !!S.more + '">' +
+        (S.more ? 'Fewer details' : 'More details') + '</button>' +
+      (S.more
+        ? row('Footprint', q.scaled && q.footprint ? fmt(q.footprint) + ' m²' : na) +
+          row('Outside walls', q.perimeter ? fmt(q.perimeter) + ' m' : na) +
+          row('Inside walls', q.internalWall ? fmt(q.internalWall) + ' m' + (q.internalEstimated ? ' <small>est.</small>' : '') : na) +
+          row('Wall area to plaster', q.plaster ? fmt(q.plaster, 0) + ' m²' : na) +
+          row('Windows', q.windows) +
+          row('Doors', q.extDoors + ' out · ' + q.intDoors + ' in')
+        : '');
 
     var warn = $('sk-checks');
     if (warn) {
@@ -745,9 +804,22 @@
 
     if (stage === 'outline') {
       var f = floor();
+      // an empty floor offers shapes before it offers a blank grid: picking the
+      // nearest one and dragging a corner is something anybody can do
+      if (!f.closed && !(S.drawing && S.drawing.length)) {
+        return '<div class="sk-tool"><label>Start with a shape</label><div class="sk-shapes">' +
+          '<button type="button" data-shape="rect" aria-label="Rectangle"><svg viewBox="0 0 40 32"><rect x="4" y="4" width="32" height="24"/></svg><span>Rectangle</span></button>' +
+          '<button type="button" data-shape="l" aria-label="L shape"><svg viewBox="0 0 40 32"><path d="M4 4h32v14H22v10H4z"/></svg><span>L shape</span></button>' +
+          '<button type="button" data-shape="t" aria-label="T shape"><svg viewBox="0 0 40 32"><path d="M4 4h32v12h-9v12H13V16H4z"/></svg><span>T shape</span></button>' +
+          '</div><p class="sk-tiny">Or tap round the corners of the house on the grid.</p></div>' +
+          (S.floors.length > 1
+            ? '<button type="button" class="btn btn-ghost btn-sm' + (S.confirm === 'floor' ? ' sk-danger' : '') +
+              '" id="sk-dropfloor">' + (S.confirm === 'floor' ? 'Tap again to remove it' : 'Remove this floor') + '</button>'
+            : '');
+      }
       return (f.closed
         ? '<button type="button" class="btn btn-ghost btn-sm" id="sk-redraw">Draw this floor again</button>'
-        : '<button type="button" class="btn btn-ghost btn-sm" id="sk-rect">Start from a rectangle</button>') +
+        : '') +
         (S.scale ? '<button type="button" class="btn btn-ghost btn-sm" id="sk-recal">Change the measurement</button>' : '') +
         (S.floors.length > 1
           ? '<button type="button" class="btn btn-ghost btn-sm' + (S.confirm === 'floor' ? ' sk-danger' : '') +
@@ -769,21 +841,25 @@
 
     if (stage === 'internal') {
       var mode = S.wallMode || 'draw';
-      return '<div class="sk-tool"><label>Tapping a wall will</label>' +
-        seg([['draw', 'Draw a new one'], ['out', 'Knock it out']], mode, 'data-wallmode') + '</div>';
+      return '<div class="sk-tool"><label>I want to</label>' +
+        seg([['draw', 'Add a wall'], ['door', 'Add a doorway'], ['out', 'Knock a wall out']], mode, 'data-wallmode') + '</div>' +
+        (mode === 'door' ? widths() : '');
     }
-    if (stage === 'doors') {
-      return '<div class="sk-tool"><label>Put in</label>' +
-        seg([['door', 'Front or back door'], ['bifold', 'Bi-fold or patio'], ['intDoor', 'Inside doorway']],
-            S.kind || 'door', 'data-kind') + '</div>' + widths();
+    if (stage === 'openings') {
+      return '<div class="sk-tool"><label>Put in a</label>' +
+        seg([['window', 'Window'], ['door', 'Front or back door'], ['bifold', 'Bi-fold or patio doors']],
+            S.kind || 'window', 'data-kind') + '</div>' + widths();
     }
-    if (stage === 'windows') return widths();
     if (stage === 'rooms') {
       return '<div class="sk-tool"><label>This room is a</label>' +
         seg(ROOM_TYPES.map(function (r) { return [r.id, r.label]; }), S.roomType, 'data-room') + '</div>';
     }
     if (stage === 'extension') {
-      return '<div class="sk-tool"><label>How many storeys?</label>' +
+      return (!S.extension.closed && !(S.drawing && S.drawing.length)
+        ? '<button type="button" class="btn" id="sk-addext">Add a rear extension</button>' +
+          '<p class="sk-tiny">It goes on the back wall. Drag its corners to the size you want.</p>'
+        : '') +
+        '<div class="sk-tool"><label>How many storeys?</label>' +
         seg([[1, 'Single storey'], [2, 'Two storey']], S.extension.storeys, 'data-storeys') + '</div>' +
         (S.extension.closed ? '<button type="button" class="btn btn-ghost btn-sm" id="sk-dropext">Remove the extension</button>' : '');
     }
@@ -1010,10 +1086,17 @@
    * room a house actually has, and it stops the failure that costs money —
    * two bathroom pins in one bathroom is £6,000 of labour for one bathroom.
    */
-  function sameSpaceAs(f, p) {
+  var SAME_ROOM_M = 2;   // no wall between and closer than this: the same room
+
+  function sameSpaceAs(f, p, skip) {
     var walls = wallsOf(f);
     for (var i = 0; i < f.markers.length; i++) {
+      if (i === skip) continue;
       var q = [f.markers[i].x, f.markers[i].y];
+      // Somebody who skipped the inside walls — most people will — still has to
+      // be able to label eight rooms in one open outline. So a pin is only the
+      // same room as another when nothing is between them AND they are close.
+      if (m(dist(p, q)) >= SAME_ROOM_M) continue;
       var blocked = false;
       for (var w = 0; w < walls.length && !blocked; w++) {
         if (straddles(p, q, walls[w].a, walls[w].b)) blocked = true;
@@ -1155,7 +1238,7 @@
     return Math.min(w / (v.x1 - v.x0), h / (v.y1 - v.y0));
   }
   function grabRadius() {
-    return Math.max(0.28, Math.min(1.3, 15 / pxPerUnit()));
+    return Math.max(0.28, Math.min(1.3, (S.touch ? 20 : 15) / pxPerUnit()));
   }
 
   /*
@@ -1243,7 +1326,7 @@
       });
     }
     // a door in the wrong place should slide, not be deleted and put back
-    if (S.stage === 'doors' || S.stage === 'windows') {
+    if (S.stage === 'openings' || S.stage === 'internal') {
       var f = floor();
       f.openings.forEach(function (o) {
         var w = openingWall(f, o);
@@ -1330,8 +1413,9 @@
         });
         S.selected = h.id;
       } else if (h.kind === 'pin') {
-        f2.markers[h.i].x = g[0];
-        f2.markers[h.i].y = g[1];
+        var gp = keepInside(g);
+        f2.markers[h.i].x = gp[0];
+        f2.markers[h.i].y = gp[1];
       }
       renderSoon();
       return;
@@ -1360,15 +1444,7 @@
       // in a single space, so the one that was dragged goes back
       if (p.handle.kind === 'pin') {
         var fp = floor(), mk = fp.markers[p.handle.i];
-        var clash = -1;
-        fp.markers.forEach(function (other, i) {
-          if (i === p.handle.i || clash >= 0) return;
-          var blocked = false;
-          wallsOf(fp).forEach(function (wl) {
-            if (straddles([mk.x, mk.y], [other.x, other.y], wl.a, wl.b)) blocked = true;
-          });
-          if (!blocked) clash = i;
-        });
+        var clash = sameSpaceAs(fp, [mk.x, mk.y], p.handle.i);
         if (clash >= 0) {
           say('That room already has a label.');
           var undoTo = UNDO.pop();
@@ -1446,6 +1522,18 @@
       return;
     }
 
+    if (S.stage === 'internal' && S.wallMode === 'door') {
+      var iw = wallAt(w, 'int');
+      if (!iw) { say('Tap one of the walls inside the house.'); return; }
+      snapshot();
+      var od = { id: 'o' + (++SEQ), on: 'int', idx: iw.w.idx, t: iw.t, width: DEFAULTS.intDoor, kind: 'intDoor' };
+      f.openings.push(od);
+      S.selected = od.id;
+      say('');
+      changed();
+      return;
+    }
+
     if (S.stage === 'internal' && S.wallMode === 'out') {
       // knocking a wall through is something you do TO a wall, so you point at
       // the wall — not something you total up in metres in your head
@@ -1481,25 +1569,33 @@
 
     if (S.stage === 'rooms') {
       var g = snapFrom(null, w);
+      if (!within(f.outline, g)) { say('Tap inside the house.'); return; }
       snapshot();
       // one label per enclosed space: tapping a room that already has one
       // moves and relabels it rather than adding a second
       var already = sameSpaceAs(f, g);
       if (already >= 0) {
+        var wasType = f.markers[already].type;
         f.markers[already].x = g[0];
         f.markers[already].y = g[1];
         f.markers[already].type = S.roomType;
+        if (wasType !== S.roomType) {
+          var lab = function (id) { return (ROOM_TYPES.filter(function (r) { return r.id === id; })[0] || {}).label || id; };
+          say('That ' + lab(wasType).toLowerCase() + ' is now a ' + lab(S.roomType).toLowerCase() +
+              '. For a separate room, tap a bit further away.');
+        }
       } else {
         f.markers.push({ x: g[0], y: g[1], type: S.roomType });
+        say('');
       }
       changed();
       return;
     }
 
-    // doors and windows always land on a wall
-    var kind = S.stage === 'windows' ? 'window' : (S.kind || 'door');
-    var on = wallAt(w, kind === 'intDoor' ? 'int' : 'ext');
-    if (!on) { say(kind === 'intDoor' ? 'Tap a wall inside the house.' : 'Tap an outside wall.'); return; }
+    // doors and windows always land on an outside wall
+    var kind = S.kind || 'window';
+    var on = wallAt(w, 'ext');
+    if (!on) { say('Tap one of the outside walls.'); return; }
     snapshot();
     var o = { id: 'o' + (++SEQ), on: on.w.on, idx: on.w.idx, t: on.t,
               width: DEFAULTS[kind], kind: kind };
@@ -1617,20 +1713,23 @@
     settled();
   }
 
-  function startCalibration() {
+  function startCalibration(keepPick) {
     var f = floor();
     if (!f.closed) return;
-    // pre-pick the longest wall: it is the one somebody is most likely to know
-    var best = 0, bl = 0;
-    for (var i = 0; i < f.outline.length; i++) {
-      var L = dist(f.outline[i], f.outline[(i + 1) % f.outline.length]);
-      if (L > bl) { bl = L; best = i; }
+    if (!keepPick) {
+      // pre-pick the longest wall: it is the one somebody is most likely to know
+      var best = 0, bl = 0;
+      for (var i = 0; i < f.outline.length; i++) {
+        var L = dist(f.outline[i], f.outline[(i + 1) % f.outline.length]);
+        if (L > bl) { bl = L; best = i; }
+      }
+      S.calibIdx = best;
+      S.preset = false;
     }
-    S.calibIdx = best;
     S.calibrating = true;
     render();
     var inp = $('sk-len');
-    if (inp) { inp.value = inp.value || '8.4'; try { inp.focus(); inp.select(); } catch (e) {} }
+    if (inp) { inp.value = inp.value || (S.units === 'ft' ? '26' : '8'); try { inp.focus(); inp.select(); } catch (e) {} }
   }
 
   /**
@@ -1666,7 +1765,8 @@
     var f = floor();
     var inp = $('sk-len');
     var metres = parseFloat(inp && inp.value);
-    if (!metres || metres <= 0) { say('Type how long that wall is, in metres.'); return; }
+    if (S.units === 'ft' && metres) metres = metres * 0.3048;   // older houses are still in feet in people's heads
+    if (!metres || metres <= 0) { say('Type roughly how long that wall is.'); return; }
     if (metres < 0.5 || metres > 60) { say('That is not the length of a wall on a house.'); return; }
     var units = dist(f.outline[S.calibIdx], f.outline[(S.calibIdx + 1) % f.outline.length]);
     if (!units) return;
@@ -1677,9 +1777,105 @@
       return;
     }
     snapshot();
+    S.frontIdx = S.calibIdx;
     toMetres(metres / units);
     S.calibrating = false;
+    // one clear question instead of a small "+ floor" nobody finds
+    if (S.floors.length === 1 && !S.askedUp) S.askUp = true;
     say('');
+    settled();
+  }
+
+  function answerUpstairs(how) {
+    S.askUp = false; S.askedUp = true;
+    if (how === 'same') {
+      snapshot();
+      S.floors.push(newFloor(S.floors.length));
+      var was = S.active;
+      S.active = S.floors.length - 1;
+      copyFloorBelow();
+      S.active = was;
+      say('Upstairs added — same shape. You can change it later.');
+    } else if (how === 'diff') {
+      snapshot();
+      S.floors.push(newFloor(S.floors.length));
+      S.active = S.floors.length - 1;
+      say('Draw the upstairs, or copy the floor below and change it.');
+    }
+    FRAME = null; MANUAL = false;
+    settled();
+  }
+
+  /* ---- shapes to start from ---------------------------------------------
+   * In loose grid units, since nothing is measured yet. The bottom wall is
+   * the front, which is the one people can picture the width of.
+   */
+  /* The full-width wall is always at the bottom of the screen — that is the
+     front, facing the viewer, and it is the width people can picture. The
+     notch or the projection goes at the top, which is the garden. */
+  var SHAPES = {
+    rect: [[0, 0], [9, 0], [9, 7], [0, 7]],
+    l:    [[0, 0], [6, 0], [6, 2.5], [9, 2.5], [9, 7], [0, 7]],
+    t:    [[0, 3], [3, 3], [3, 0], [6, 0], [6, 3], [9, 3], [9, 8], [0, 8]]
+  };
+
+  function frontWallIndex(ring) {
+    // the wall whose midpoint is lowest on screen, i.e. nearest the viewer
+    var best = 0, by = -Infinity;
+    for (var i = 0; i < ring.length; i++) {
+      var a = ring[i], b = ring[(i + 1) % ring.length];
+      var my = (a[1] + b[1]) / 2;
+      if (my > by + 1e-9 || (Math.abs(my - by) < 1e-9 && dist(a, b) > dist(ring[best], ring[(best + 1) % ring.length]))) { by = my; best = i; }
+    }
+    return best;
+  }
+
+  function dropShape(id) {
+    var pts = SHAPES[id];
+    if (!pts) return;
+    snapshot();
+    var f = floor();
+    // if there is already a scale, the shape arrives in metres
+    var k = S.scale ? 1 : 1;
+    f.outline = pts.map(function (p) { return [p[0] * k, p[1] * k]; });
+    f.closed = true;
+    f.internals = []; f.openings = []; f.markers = [];
+    S.drawing = null; S.preset = true;
+    FRAME = null; MANUAL = false;
+    if (!S.scale) { settled(); S.calibIdx = frontWallIndex(f.outline); startCalibration(true); }
+    else settled();
+  }
+
+  function addRearExtension() {
+    var g = ground();
+    if (!g.closed) return;
+    var front = S.frontIdx !== undefined ? S.frontIdx : frontWallIndex(g.outline);
+    var fa = g.outline[front], fb = g.outline[(front + 1) % g.outline.length];
+    var fm = [(fa[0] + fb[0]) / 2, (fa[1] + fb[1]) / 2];
+    // the back is the wall farthest from the front
+    var best = -1, bd = -1;
+    for (var i = 0; i < g.outline.length; i++) {
+      if (i === front) continue;
+      var a = g.outline[i], b = g.outline[(i + 1) % g.outline.length];
+      var d = dist(fm, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]);
+      if (d > bd) { bd = d; best = i; }
+    }
+    var a2 = g.outline[best], b2 = g.outline[(best + 1) % g.outline.length];
+    var L = dist(a2, b2);
+    var ux = (b2[0] - a2[0]) / L, uy = (b2[1] - a2[1]) / L;
+    var n = outward(a2, b2, centroid(g.outline));
+    var nl = Math.hypot(n[0], n[1]) || 1;
+    n = [n[0] / nl, n[1] / nl];
+    var width = Math.min(3.5 / (S.scale || 1), L * 0.8), depth = 4 / (S.scale || 1);
+    var mid = [(a2[0] + b2[0]) / 2, (a2[1] + b2[1]) / 2];
+    var p1 = snapFrom(null, [mid[0] - ux * width / 2, mid[1] - uy * width / 2]);
+    var p2 = snapFrom(null, [mid[0] + ux * width / 2, mid[1] + uy * width / 2]);
+    var q1 = snapFrom(null, [p1[0] + n[0] * depth, p1[1] + n[1] * depth]);
+    var q2 = snapFrom(null, [p2[0] + n[0] * depth, p2[1] + n[1] * depth]);
+    snapshot();
+    S.extension = { outline: [p1, q1, q2, p2], closed: true, storeys: S.extension.storeys || 1 };
+    S.drawing = null;
+    FRAME = null; MANUAL = false;
     settled();
   }
 
@@ -1756,7 +1952,8 @@
     S.started = true;
     S.stage = 'outline';
     S.drawing = null; S.cursor = null; S.pick = null; S.selected = null;
-    S.calibrating = false; S.confirm = null;
+    S.calibrating = false; S.confirm = null; S.askedUp = true; S.askUp = false;
+    S.frontIdx = 0;
     MANUAL = false; FRAME = null;
     say('An example house — draw over it, or start again.');
     settled();
@@ -1794,6 +1991,7 @@
     S.extension = { outline: [], closed: false, storeys: 1 };
     S.drawing = null; S.cursor = null; S.selected = null; S.pick = null;
     S.calibrating = false; S.kind = null; S.wallMode = 'draw';
+    S.askUp = false; S.askedUp = false; S.preset = false; S.frontIdx = undefined; S.more = false;
     FRAME = null; say('');
     settled();
   }
@@ -1820,8 +2018,9 @@
     if (id !== 'outline' && !ready()) return;
     if (S.stage === 'internal' && S.drawing) S.drawing = null;
     S.stage = id;
+    if (id === 'extension') S.active = 0;     // it sits against the ground floor
     S.drawing = null; S.cursor = null; S.selected = null; S.pick = null;
-    S.kind = id === 'doors' ? (S.kind || 'door') : null;
+    S.kind = id === 'openings' ? (S.kind || 'window') : null;
     if (id === 'internal') S.wallMode = S.wallMode || 'draw';
     say('');
     refitTight();
@@ -1866,6 +2065,7 @@
 
     svg.addEventListener('pointerdown', function (e) {
       if (e.pointerType === 'touch') {
+        S.touch = true;
         var w = toWorld(e);
         touches[e.pointerId] = { sx: e.clientX, sy: e.clientY, wx: w[0], wy: w[1] };
         if (Object.keys(touches).length === 2) {
@@ -1942,6 +2142,28 @@
         S.drawing = null; S.selected = null; FRAME = null; settled();
         return;
       }
+      hit = t.closest && t.closest('[data-shape]');
+      if (hit) { dropShape(hit.getAttribute('data-shape')); return; }
+      hit = t.closest && t.closest('[data-up]');
+      if (hit) { answerUpstairs(hit.getAttribute('data-up')); return; }
+      hit = t.closest && t.closest('[data-nudgelen]');
+      if (hit) {
+        // half a metre or a couple of feet at a time, for anyone who would
+        // rather not type
+        var li2 = $('sk-len'), step = S.units === 'ft' ? 2 : 0.5;
+        var cur = parseFloat(li2.value) || 0;
+        li2.value = String(Math.max(0.5, Math.round((cur + step * +hit.getAttribute('data-nudgelen')) * 10) / 10));
+        return;
+      }
+      hit = t.closest && t.closest('[data-units]');
+      if (hit) {
+        var u0 = S.units || 'm', u1 = hit.getAttribute('data-units'), li = $('sk-len');
+        if (u0 !== u1 && li && parseFloat(li.value)) {
+          li.value = (u1 === 'ft' ? parseFloat(li.value) / 0.3048 : parseFloat(li.value) * 0.3048).toFixed(1);
+        }
+        S.units = u1; render(); return;
+      }
+
       hit = t.closest && t.closest('[data-wallmode]');
       if (hit) { S.wallMode = hit.getAttribute('data-wallmode'); S.drawing = null; S.pick = null; render(); return; }
 
@@ -1965,6 +2187,11 @@
       if (hit) {
         var act = hit.getAttribute('data-act');
         if (act === 'sk-hint-ext') return;
+        if (act === 'sk-finish') { var ap = $('sk-apply'); if (ap) ap.click(); return; }
+        if (act.indexOf('sk-floor-') === 0) {
+          S.active = +act.slice(9); S.drawing = null; S.selected = null; S.pick = null;
+          FRAME = null; MANUAL = false; settled(); return;
+        }
         if (act === 'sk-close-shape' || act === 'sk-close-ext') { closeShape(); return; }
         if (act === 'sk-copy') { copyFloorBelow(); return; }
         if (act.indexOf('sk-go-') === 0) { goStage(act.slice(6)); return; }
@@ -1983,6 +2210,8 @@
 
       switch ((btn && btn.id) || t.id) {
         case 'sk-blank':     S.started = true; settled(); return;
+        case 'sk-addext':    addRearExtension(); return;
+        case 'sk-more':      S.more = !S.more; render(); return;
         case 'sk-example':   exampleHouse(); return;
         case 'sk-upload':    if ($('sk-file')) $('sk-file').click(); return;
         case 'sk-autotrace':
@@ -1999,13 +2228,7 @@
           var f = floor();
           f.outline = []; f.closed = false; f.openings = []; f.internals = []; f.markers = [];
           S.drawing = null; FRAME = null; settled(); return;
-        case 'sk-rect':
-          snapshot();
-          S.drawing = null;
-          floor().outline = [[0, 0], [9, 0], [9, 7], [0, 7]];
-          floor().closed = true;
-          if (!S.scale) { settled(); startCalibration(); } else settled();
-          return;
+        case 'sk-rect':      dropShape('rect'); return;
         case 'sk-addfloor':
           snapshot();
           S.floors.push(newFloor(S.floors.length));
@@ -2117,7 +2340,8 @@
       S.active = Math.min(o.active || 0, o.floors.length - 1);
       SNAP = o.snap || LOOSE;
       S.started = true;
-      S.stage = o.stage || 'outline';
+      S.stage = STAGES.some(function (st) { return st.id === o.stage; }) ? o.stage : 'outline';
+      S.askedUp = true;             // a saved house has whatever floors it has
       return true;
     } catch (e) { return false; }
   }
