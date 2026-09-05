@@ -96,6 +96,15 @@ Drawing it once is never enough, so a finished outline stays editable:
 - **Tap a corner, then the ×** — the two walls either side merge. A bare tap
   never deletes anything.
 
+Corners drag on every step, not only the Shape step, because the dots are on
+screen on every step and a dot that will not move reads as broken. Splitting a
+wall and removing a corner stay on the Shape step, where a tap on a wall cannot
+mean anything else. Inside walls work the same way: drag an end to move one, tap
+it to pick it and the × appears, tap the picked wall again to start a new wall
+from it (a T-junction). On a touch screen the tap that places a room pin used to
+be followed by a click on the pin it had just drawn, which removed it; a pin is
+now only ever removed through the pointer path.
+
 Corners always land on the grid, and the grid is drawn at the snap resolution —
 a snap point you cannot see is a corner that looks misplaced.
 

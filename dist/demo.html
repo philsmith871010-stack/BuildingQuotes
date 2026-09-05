@@ -5407,10 +5407,11 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   var STAGES = [
     { id: 'outline',   n: 1, label: 'Shape',
       hint: 'Pick the shape closest to your house, or tap round the corners yourself.',
-      done: 'Drag any corner to make it right. Tap a wall to add a corner.' },
+      done: 'Drag any corner to make it right. Tap a wall to add a corner, or a corner then × to remove it.' },
     { id: 'internal',  n: 2, label: 'Inside walls',
       hint: 'Optional. Tap one end of a wall, then the other end.',
-      done: 'Drag an end to move a wall.',
+      done: 'Drag an end to move a wall. Tap a wall, then × to remove it.',
+      picked: 'Tap × to remove this wall, or tap it again to start a new wall from it.',
       door: 'Tap an inside wall to put a doorway in it.',
       out:  'Tap any wall you are knocking out. Tap it again to put it back.' },
     { id: 'openings',  n: 3, label: 'Doors & windows',
@@ -5421,7 +5422,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       done: 'Tap a room again to change what it is. Tap a pin to remove it.' },
     { id: 'extension', n: 5, label: 'Extension',
       hint: 'Optional. Add a rear extension and drag it to size, or draw your own against the house.',
-      done: 'Drag any corner to make it right. Tap a wall to add a corner.' }
+      done: 'Drag any corner to make it right. Tap a wall to add a corner, or a corner then × to remove it.' }
   ];
 
   var FLOOR_NAMES = ['Ground floor', 'First floor', 'Second floor', 'Loft'];
@@ -6059,6 +6060,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         : S.askUp ? 'Does the house have an upstairs?'
         : (S.stage === 'internal' && S.wallMode === 'out') ? stage.out
         : (S.stage === 'internal' && S.wallMode === 'door') ? stage.door
+        : (S.stage === 'internal' && !mid && S.pick && S.pick.kind === 'iwall') ? stage.picked
         : mid && S.stage === 'internal' ? 'Now tap the other end of the wall.'
         : mid && S.drawing.length > 2 ? 'Keep going, or tap the first corner to finish.'
         : mid ? 'Keep tapping the corners.'
@@ -6649,10 +6651,18 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     return null;
   }
 
+  /** Whose corners can be dragged in this stage. The house outline stays
+      draggable on every step — the dots are on screen, so they must work —
+      except while an extension is being fitted against it. */
+  function draggable() {
+    if (S.stage === 'extension') return S.extension.closed ? 'ext' : null;
+    return floor().closed ? 'floor' : null;
+  }
+
   /** The corner or wall end under the pointer, if there is one. */
   function handleAt(p) {
     var r = grabRadius(), best = null;
-    var which = editable();
+    var which = draggable();
     if (which) {
       shapeOf(which === 'ext' ? 'ext' : 'floor').outline.forEach(function (q, i) {
         var d = dist(p, q);
@@ -6826,6 +6836,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       if (hh.kind === 'pin') { floor().markers.splice(hh.i, 1); settled(); return; }
       UNDO.pop();                          // nothing changed, so nothing to undo
       REDO.length = 0;
+      // outside the shape steps a corner is only for dragging: a tap on it is
+      // a tap on the plan, so an inside wall can start from a house corner
+      if (hh.kind === 'corner' && !editable()) { onTap(p.world, e); return; }
       if (hh.kind === 'opening') { S.selected = hh.id; S.pick = null; }
       else {
         S.pick = hh.kind === 'corner'
@@ -6894,9 +6907,16 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
     if (S.stage === 'internal') {
       if (!S.drawing || !S.drawing.length) {
-        // Anywhere is a valid start, including on top of another wall — walls
-        // meet in a T far more often than they float free. Selecting a wall is
-        // a tap on one of its end handles, which is a target nothing else uses.
+        // A tap on a wall picks it, which is what a tap on a thing you have
+        // drawn means everywhere else here. A second tap on the picked wall
+        // starts a new wall from it, so a T-junction is still two taps away.
+        var on = nearestInternal(w);
+        if (on >= 0 && !(S.pick && S.pick.kind === 'iwall' && S.pick.i === on)) {
+          S.pick = { kind: 'iwall', i: on };
+          say('');
+          render();
+          return;
+        }
         if (S.pick) { S.pick = null; }
         snapshot();
         S.drawing = [keepInside(snapTarget(w).p)];
@@ -7529,8 +7549,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       }
       hit = t.closest && t.closest('[data-open]');
       if (hit) { S.selected = hit.getAttribute('data-open'); render(); return; }
-      hit = t.closest && t.closest('[data-marker]');
-      if (hit && S.stage === 'rooms') { floor().markers.splice(+hit.getAttribute('data-marker'), 1); changed(); return; }
+      // A pin is removed by the pointer path (a tap on its handle), never by
+      // the click: on a touch screen the click arrives after the tap that
+      // placed the pin has drawn it, and would remove it again at once.
 
       hit = t.closest && t.closest('[data-act]');
       if (hit) {
