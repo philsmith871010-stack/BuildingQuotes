@@ -145,7 +145,7 @@ The view zooms on a wheel or a pinch, pans on two fingers or a shift-drag, and
 
 Five of them, in the order a novice can manage them, shown as a numbered rail
 with a line through it rather than a row of tabs — tabs invite random access,
-and this is a sequence. The side panel says "Step 3 of 5" and names the stage,
+and this is a sequence. The side panel says "Step 3 of 6" and names the stage,
 one primary button always says what comes next, and every hint is one plain
 sentence.
 
@@ -161,6 +161,14 @@ sentence.
    the upstairs, because the bedrooms and the bathroom are up there.
 5. **Extension** — optional. One button adds a rear extension on the back wall
    to drag to size, or draw your own against the house.
+6. **Garden** — optional. One button adds a typical plot (a short front garden,
+   a long back one) to drag to your fence line, or tap round it yourself. Then
+   pick a patio, lawn, drive or decking and tap round it; tap where the trees
+   are. Everything snaps to the house, the extension, the fence and each other,
+   so a lawn meets the patio and the patio meets the extension. Tap a surface
+   to pick it — its corners drag, its edge takes a new corner, × removes it.
+   The fence line is edited in its own mode so a tap on it in any other mode
+   means "start the lawn here". Trees drag and a tap removes one.
 
 **Built for someone who will skip things.** Most people will never draw an
 inside wall, so a floor with rooms marked but no walls gets a typical allowance
@@ -186,7 +194,12 @@ it.
     markers:   [ { x, y, type } ],
     image                         // an uploaded plan, if there is one
   }],
-  extension: { outline, closed, storeys }
+  extension: { outline, closed, storeys },
+  garden: {
+    plot:  { outline, closed },   // the fence line
+    areas: [ { kind, outline } ], // patio | lawn | drive | decking
+    trees: [ [x, y], … ]
+  }
 }
 ```
 
@@ -326,3 +339,9 @@ the house.
 - Rooms are counted, not placed, so a pin in the wrong room changes nothing
   except the warning that it is outside the house.
 - Nothing is shared between devices — the drawing lives in one browser.
+- The garden feeds the paving, decking, driveway, turf and fencing figures and
+  a dig allowance of 0.3 m³ per m² of anything paved. The fence run is the
+  whole plot boundary, frontage included — change it on the page if the front
+  is a wall. Trees are counted and the nearest one's distance to the extension
+  is shown, but they are not yet put into the foundation-depth question
+  because a drawn tree has no species.

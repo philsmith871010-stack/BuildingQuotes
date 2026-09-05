@@ -174,9 +174,10 @@ outside on a plain grid — blank, or over your own uploaded floor plan — clos
 it, and type the length of one wall you happen to know. That single number
 scales every other wall, floor and area on the drawing.
 
-Five stages in the order a builder walks a house: shape (per floor, copy the
+Six stages in the order a builder walks a house: shape (per floor, copy the
 one below or draw a new one) → inside walls → doors and windows → a pin per
-room → the extension. Drawing an extension is how you say you want one: it selects the
+room → the extension → the garden (fence line, patio, lawn, drive, decking,
+trees). Drawing an extension is how you say you want one: it selects the
 extension build type and sizes it.
 
 It writes floor area, perimeter, internal wall runs, the plaster area net of

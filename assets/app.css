@@ -984,3 +984,20 @@ html { scroll-padding-top: 62px; }
   background: var(--surface); color: var(--ink); font-size: 1.15rem; cursor: pointer; line-height: 1;
 }
 .sk-nudge:hover { border-color: var(--accent); color: var(--accent-ink); }
+
+/* the garden: the plot is a dashed fence line, surfaces are tinted, trees are
+   canopies — the house sits on top of all of it */
+.sk-plot { fill: rgba(118,168,80,.08); stroke: none; }
+.sk-plotline { fill: none; stroke: #5B8C3A; stroke-width: 4; stroke-dasharray: 12 8; stroke-linejoin: round; stroke-linecap: round; }
+.sk-garea { stroke-width: 2.5; stroke-linejoin: round; cursor: pointer; }
+.sk-garea.patio   { fill: rgba(176,162,140,.55); stroke: #8F8270; }
+.sk-garea.lawn    { fill: rgba(140,196,110,.55); stroke: #6BA34C; }
+.sk-garea.drive   { fill: rgba(150,150,158,.55); stroke: #77777F; }
+.sk-garea.decking { fill: rgba(196,150,96,.55);  stroke: #A87A45; }
+.sk-garea.on { stroke: var(--accent); stroke-width: 4.5; }
+.sk-galab {
+  font-family: var(--mono); fill: var(--ink); letter-spacing: .12em; font-weight: 600;
+  pointer-events: none; opacity: .85;
+}
+.sk-tree circle { fill: rgba(60,130,60,.22); stroke: #3C823C; stroke-width: 2; stroke-dasharray: 5 4; }
+.sk-tree .trunk { fill: #3C823C; stroke: var(--surface); stroke-width: 2; stroke-dasharray: none; }

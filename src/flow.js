@@ -405,7 +405,7 @@
    * chooser — never saw the drawing tool at all. Hiding the best thing on the
    * site behind picking the right box first is not a defensible trade.
    */
-  var SKETCH_TYPES = ['extension', 'renovation', 'loft', 'newbuild'];
+  var SKETCH_TYPES = ['extension', 'renovation', 'loft', 'newbuild', 'external'];
 
   /* What drawing buys you, in the words of the job you are pricing. */
   var SKETCH_CTA = {
@@ -416,7 +416,9 @@
     loft:       { q: 'Not sure how much of the loft you can use?',
                   help: 'Draw the house and we will start you at about 60% of the footprint, which is what a typical semi gives you once the head height runs out. Adjust it from there.' },
     newbuild:   { q: 'Rather draw it than guess it?',
-                  help: 'Trace the footprint on a blank grid, say how long one wall is, and add a floor for each storey. Footprint, floor area, perimeter and roof all come off the drawing.' }
+                  help: 'Trace the footprint on a blank grid, say how long one wall is, and add a floor for each storey. Footprint, floor area, perimeter and roof all come off the drawing.' },
+    external:   { q: 'Rather draw the garden than pace it?',
+                  help: 'Draw the house, then the fence line round it, then tap round the patio, lawn, drive or decking. Every area and the fence run are measured off the drawing.' }
   };
 
   function applySketch(typeId, m) {
@@ -453,6 +455,15 @@
       set('perimeter', m.perimeter);
       set('roofArea', m.footprint * 1.22);
       set('storeys', m.floors);            // you drew them, so we know
+    } else if (typeId === 'external' && m.garden) {
+      // the surfaces ARE the areas: none drawn means none, not the default
+      set('patioArea', m.garden.areas.patio);
+      set('deckingArea', m.garden.areas.decking);
+      set('drivewayArea', m.garden.areas.drive);
+      set('turfArea', m.garden.areas.lawn);
+      set('fenceLength', m.garden.boundary);
+      // about 0.3 m³ of dig per m² of anything paved, on level ground
+      set('excavationVol', 0.3 * (m.garden.areas.patio + m.garden.areas.drive));
     } else if (typeId === 'loft') {
       // Usable loft area is not the footprint — only the part with head height
       // counts. Nobody knows that in square metres, but everybody knows
@@ -485,10 +496,20 @@
       }
     }
 
+    // Drawing a patio is how you say you want one, the same as the extension
+    var laid = m.garden && GARDEN_AREAS.some(function (k) { return m.garden.areas[k] > 1; });
+    if (laid && project.types.indexOf('external') < 0) {
+      project.types.push('external');
+      applySketch('external', m);
+      saveProject();
+      if (route) paintRail(route);
+    }
+
     j.touched.sketched = true;
     refreshOutputs();
     update();
   }
+  var GARDEN_AREAS = ['patio', 'lawn', 'drive', 'decking'];
 
   /** Whichever card offered the drawing, tell it what came back. */
   function sketchNote(m) {
@@ -660,7 +681,7 @@
     // One way in, not two. The tool asks whether they have a plan; making that
     // a choice between two buttons on the page before it just moves the
     // decision somewhere it has less context.
-    var sketchable = SKETCH_TYPES.indexOf(type.id) >= 0 && step.id === 'size' && root.DATUM.SKETCH;
+    var sketchable = SKETCH_TYPES.indexOf(type.id) >= 0 && step.id === type.steps[0].id && root.DATUM.SKETCH;
 
     // a step whose every figure came off the drawing is not asking anything
     var onStep = asks(type).filter(function (m) { return m.ask.step === step.id; });

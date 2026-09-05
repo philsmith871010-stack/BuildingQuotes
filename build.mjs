@@ -40,6 +40,20 @@ mkdirSync(new URL('./dist/', import.meta.url), { recursive: true });
    the combined demo at the bottom of this file. */
 const bodies = {};
 
+/* GitHub Pages serves the source pages straight from the branch, and the app
+   never reloads on its own (hash routing), so a tab that has been open all day
+   runs the JavaScript it loaded that morning — and even a reload can get the
+   cached copy for ten minutes. A version query on every local asset makes a
+   reload fetch the new file. Rewritten in the source pages, on every build. */
+const STAMP = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 12);
+for (const page of ['index.html', 'admin.html']) {
+  const path = new URL(`./${page}`, import.meta.url);
+  const html = read(`./${page}`)
+    .replace(/(<script src="(?:src|vendor)\/[^"?]+)(?:\?v=\d+)?"/g, `$1?v=${STAMP}"`)
+    .replace(/(<link rel="stylesheet" href="assets\/[^"?]+)(?:\?v=\d+)?"/g, `$1?v=${STAMP}"`);
+  writeFileSync(path, html);
+}
+
 for (const page of PAGES) {
   const html = read(`./${page.src}`);
   const css = page.css.map((p) => read(`./${p}`)).join('\n\n');

@@ -1571,6 +1571,23 @@ html { scroll-padding-top: 62px; }
 }
 .sk-nudge:hover { border-color: var(--accent); color: var(--accent-ink); }
 
+/* the garden: the plot is a dashed fence line, surfaces are tinted, trees are
+   canopies — the house sits on top of all of it */
+.sk-plot { fill: rgba(118,168,80,.08); stroke: none; }
+.sk-plotline { fill: none; stroke: #5B8C3A; stroke-width: 4; stroke-dasharray: 12 8; stroke-linejoin: round; stroke-linecap: round; }
+.sk-garea { stroke-width: 2.5; stroke-linejoin: round; cursor: pointer; }
+.sk-garea.patio   { fill: rgba(176,162,140,.55); stroke: #8F8270; }
+.sk-garea.lawn    { fill: rgba(140,196,110,.55); stroke: #6BA34C; }
+.sk-garea.drive   { fill: rgba(150,150,158,.55); stroke: #77777F; }
+.sk-garea.decking { fill: rgba(196,150,96,.55);  stroke: #A87A45; }
+.sk-garea.on { stroke: var(--accent); stroke-width: 4.5; }
+.sk-galab {
+  font-family: var(--mono); fill: var(--ink); letter-spacing: .12em; font-weight: 600;
+  pointer-events: none; opacity: .85;
+}
+.sk-tree circle { fill: rgba(60,130,60,.22); stroke: #3C823C; stroke-width: 2; stroke-dasharray: 5 4; }
+.sk-tree .trunk { fill: #3C823C; stroke: var(--surface); stroke-width: 2; stroke-dasharray: none; }
+
 </style>
 
 <!-- ==================================================================== -->
@@ -5068,8 +5085,25 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       done: 'Tap a room again to change what it is. Tap a pin to remove it.' },
     { id: 'extension', n: 5, label: 'Extension',
       hint: 'Optional. Add a rear extension and drag it to size, or draw your own against the house.',
-      done: 'Drag any corner to make it right. Tap a wall to add a corner, or a corner then × to remove it.' }
+      done: 'Drag any corner to make it right. Tap a wall to add a corner, or a corner then × to remove it.' },
+    { id: 'garden',    n: 6, label: 'Garden',
+      hint: 'Optional. Add a typical plot and drag its corners to your fence line, or tap round it yourself.',
+      done: 'Pick what is in the garden, then tap round it. Drag any corner. Tap a thing, then × to remove it.',
+      tree: 'Tap where each tree is. Tap a tree again to remove it.',
+      fence: 'Drag a corner of the fence line, or tap the line to add a corner.' }
   ];
+
+  /* The garden: the plot boundary (the fence line), the surfaces in it, and
+     the trees. Surfaces are closed shapes like the extension is; trees are
+     points like room pins. The whole thing is optional and sits after the
+     house because every one of its edges is measured off the house. */
+  var GARDEN_KINDS = [
+    { id: 'patio',   label: 'Patio',   tag: 'PATIO' },
+    { id: 'lawn',    label: 'Lawn',    tag: 'LAWN' },
+    { id: 'drive',   label: 'Drive',   tag: 'DRIVE' },
+    { id: 'decking', label: 'Decking', tag: 'DECK' }
+  ];
+  function newGarden() { return { plot: { outline: [], closed: false }, areas: [], trees: [] }; }
 
   var FLOOR_NAMES = ['Ground floor', 'First floor', 'Second floor', 'Loft'];
 
@@ -5086,6 +5120,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     floors: [newFloor(0)],
     active: 0,
     extension: { outline: [], closed: false, storeys: 1 },
+    garden: newGarden(),
     drawing: null,
     cursor: null,
     selected: null,      // an opening id
@@ -5242,13 +5277,38 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       };
     }
 
+    var garden = null;
+    if (S.garden.plot.closed) {
+      var gA = {};
+      GARDEN_KINDS.forEach(function (k) { gA[k.id] = 0; });
+      S.garden.areas.forEach(function (a) { gA[a.kind] = (gA[a.kind] || 0) + m(shoelace(a.outline)) * m(1); });
+      var plotArea = m(shoelace(S.garden.plot.outline)) * m(1);
+      // the nearest tree to whatever is being built, for the foundations
+      var target = S.extension.closed ? S.extension.outline : ground().outline;
+      var nearest = null;
+      S.garden.trees.forEach(function (t) {
+        for (var i = 0; i < target.length; i++) {
+          var d = m(projectOnSeg(t, target[i], target[(i + 1) % target.length]).d);
+          if (nearest === null || d < nearest) nearest = d;
+        }
+      });
+      garden = {
+        plot: plotArea,
+        boundary: m(ringLength(S.garden.plot.outline)),
+        garden: Math.max(0, plotArea - footprint - (ext ? ext.area : 0)),
+        areas: gA,
+        trees: S.garden.trees.length,
+        treeNearest: nearest
+      };
+    }
+
     return {
       scaled: !!S.scale,
       floors: S.floors.filter(function (f) { return f.closed; }).length,
       footprint: footprint, totalArea: total, perimeter: perim,
       internalWall: intLen, internalEstimated: estimated, wallRemoval: removed, plaster: plaster,
       windows: win, windowWidth: winW, extDoors: extDoor, intDoors: intDoor,
-      counts: counts, rooms: rooms, extension: ext
+      counts: counts, rooms: rooms, extension: ext, garden: garden
     };
   }
 
@@ -5264,6 +5324,10 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     f.internals.forEach(function (s) { pts.push(s[0], s[1]); });
     f.markers.forEach(function (mk) { pts.push([mk.x, mk.y]); });
     if (S.stage === 'extension') pts = pts.concat(ground().outline, S.extension.outline);
+    if (S.stage === 'garden') {
+      pts = pts.concat(ground().outline, S.extension.outline, S.garden.plot.outline, S.garden.trees);
+      S.garden.areas.forEach(function (a) { pts = pts.concat(a.outline); });
+    }
     if (S.drawing) pts = pts.concat(S.drawing);
     if (f.image) pts.push([f.image.x, f.image.y], [f.image.x + f.image.w, f.image.y + f.image.h]);
     return pts;
@@ -5273,8 +5337,11 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var pts = allPoints();
     if (!pts.length) return null;
     var xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
-    return { x0: Math.min.apply(null, xs) - PAD, x1: Math.max.apply(null, xs) + PAD,
-             y0: Math.min.apply(null, ys) - PAD, y1: Math.max.apply(null, ys) + PAD };
+    // a plot fills the canvas edge to edge, and its corners sit under the
+    // undo and zoom buttons unless the frame keeps clear of them
+    var pad = S.stage === 'garden' ? PAD * 1.7 : PAD;
+    return { x0: Math.min.apply(null, xs) - pad, x1: Math.max.apply(null, xs) + pad,
+             y0: Math.min.apply(null, ys) - pad, y1: Math.max.apply(null, ys) + pad };
   }
 
   function atLeast(v) {
@@ -5453,6 +5520,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (S.stage === 'extension' && ground().closed) {
       out.push('<polygon points="' + poly(ground().outline) + '" class="sk-under"/>');
     }
+    if (S.stage === 'garden') out.push(gardenSvg(RU));
 
     if (f.closed) out.push('<polygon points="' + poly(f.outline) + '" class="sk-floor"/>');
     if (f.outline.length > 1) {
@@ -5512,11 +5580,13 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var editing = editable();
     var handles = live.length ? live
       : editing === 'ext' ? S.extension.outline
+      : editing === 'plot' ? S.garden.plot.outline
       : editing === 'floor' ? f.outline
       : (f.closed ? f.outline : []);
     handles.forEach(function (p, i) {
       var isTarget = live.length > 2 && i === 0;
-      var picked = !live.length && editing && S.pick && S.pick.kind === 'corner' && S.pick.i === i;
+      var picked = !live.length && editing && S.pick && S.pick.kind === 'corner' && S.pick.i === i &&
+        (S.pick.which === editing || (editing === 'floor' && S.pick.which === 'floor'));
       out.push('<circle cx="' + P(p)[0] + '" cy="' + P(p)[1] + '" r="' +
         (isTarget ? 15 * RU : (S.touch ? 11 : 9) * RU).toFixed(1) + '" class="sk-node' +
         (isTarget ? ' start' : '') + (picked ? ' on' : '') + '"/>');
@@ -5527,9 +5597,12 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var kill = null;
     if (!live.length && S.pick) {
       if (S.pick.kind === 'corner' && editing) {
-        var ring = editing === 'ext' ? S.extension.outline : f.outline;
+        var ring = shapeOf(S.pick.which).outline;
         var c = ring[S.pick.i];
         if (c) kill = [c[0], c[1] - 26 * RU / K];
+      } else if (S.pick.kind === 'garea') {
+        var ga = S.garden.areas[S.pick.i];
+        if (ga) { var gc = centroid(ga.outline); kill = [gc[0], gc[1] - 22 * RU / K]; }
       } else if (S.pick.kind === 'iwall') {
         var seg = f.internals[S.pick.i];
         if (seg) kill = [(seg[0][0] + seg[1][0]) / 2, (seg[0][1] + seg[1][1]) / 2 - 24 * RU / K];
@@ -5597,6 +5670,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (id === 'internal') return any(function (x) { return x.internals.length > 0; });
     if (id === 'openings') return any(function (x) { return x.openings.some(function (o) { return o.kind !== 'intDoor'; }); });
     if (id === 'rooms') return any(function (x) { return x.markers.length > 0; });
+    if (id === 'garden') return S.garden.plot.closed;
     return S.extension.closed;
   }
 
@@ -5630,7 +5704,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
     var floors = $('sk-floors');
     if (floors) {
-      floors.hidden = S.stage === 'extension';
+      floors.hidden = S.stage === 'extension' || S.stage === 'garden';
       floors.innerHTML = S.floors.map(function (f, i) {
         return '<button type="button" data-skfloor="' + i + '" aria-pressed="' + (i === S.active) + '">' +
           esc(f.name.replace(' floor', '')) + '</button>';
@@ -5674,6 +5748,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (S.stage === 'extension' && S.drawing && S.drawing.length === 2) {
       return { id: 'sk-hint-ext', label: 'Finish on a house wall' };
     }
+    if (S.stage === 'garden' && S.drawing && S.drawing.length > 2) {
+      return { id: 'sk-close-garden', label: 'Finish the ' + (S.garden.plot.closed ? gardenKind(S.gardenMode).label.toLowerCase() : 'plot') };
+    }
     var i = STAGES.map(function (s) { return s.id; }).indexOf(S.stage);
     if (i >= 0 && i < STAGES.length - 1) {
       return { id: 'sk-go-' + STAGES[i + 1].id, label: 'Next — ' + STAGES[i + 1].label.toLowerCase() };
@@ -5697,6 +5774,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (hint) {
       var edited = (S.stage === 'outline' && f.closed) ||
                    (S.stage === 'extension' && S.extension.closed) ||
+                   (S.stage === 'garden' && S.garden.plot.closed) ||
                    (S.stage === 'internal' && f.internals.length);
       var mid = S.drawing && S.drawing.length;
       hint.textContent =
@@ -5707,6 +5785,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         : (S.stage === 'internal' && S.wallMode === 'out') ? stage.out
         : (S.stage === 'internal' && S.wallMode === 'door') ? stage.door
         : (S.stage === 'internal' && !mid && S.pick && S.pick.kind === 'iwall') ? stage.picked
+        : (S.stage === 'garden' && !mid && S.garden.plot.closed && S.gardenMode === 'tree') ? stage.tree
+        : (S.stage === 'garden' && !mid && S.garden.plot.closed && S.gardenMode === 'boundary') ? stage.fence
         : mid && S.stage === 'internal' ? 'Now tap the other end of the wall.'
         : mid && S.drawing.length > 2 ? 'Keep going, or tap the first corner to finish.'
         : mid ? 'Keep tapping the corners.'
@@ -5755,6 +5835,13 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       row('Rooms', q.rooms.length ? q.rooms.length + ' <small>· ' + kb + '</small>' : na, q.rooms.length > 0) +
       (q.extension ? row('Extension', fmt(q.extension.area * q.extension.storeys) + ' m²', true) : '') +
       (q.wallRemoval ? row('Walls coming out', fmt(q.wallRemoval) + ' m', true) : '') +
+      (q.garden ? row('Garden', fmt(q.garden.garden, 0) + ' m² <small>· ' + fmt(q.garden.boundary, 0) + ' m of fence</small>', true) +
+        GARDEN_KINDS.map(function (k) {
+          return q.garden.areas[k.id] ? row(k.label, fmt(q.garden.areas[k.id], 0) + ' m²') : '';
+        }).join('') +
+        (q.garden.trees ? row('Trees', q.garden.trees + (q.garden.treeNearest !== null
+          ? ' <small>· nearest ' + fmt(q.garden.treeNearest, 1) + ' m from the ' + (S.extension.closed ? 'extension' : 'house') + '</small>' : '')) : '')
+        : '') +
       '<button type="button" class="sk-more" id="sk-more" aria-expanded="' + !!S.more + '">' +
         (S.more ? 'Fewer details' : 'More details') + '</button>' +
       (S.more
@@ -5853,7 +5940,178 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         seg([[1, 'Single storey'], [2, 'Two storey']], S.extension.storeys, 'data-storeys') + '</div>' +
         (S.extension.closed ? '<button type="button" class="btn btn-ghost btn-sm" id="sk-dropext">Remove the extension</button>' : '');
     }
+    if (stage === 'garden') {
+      var gp = S.garden.plot;
+      if (!gp.closed) {
+        return (!(S.drawing && S.drawing.length)
+          ? '<button type="button" class="btn" id="sk-addplot">Add a typical plot</button>' +
+            '<p class="sk-tiny">A fence line round the house. Drag its corners to where yours is.</p>'
+          : '');
+      }
+      return '<div class="sk-tool"><label>Add a</label>' +
+        seg(GARDEN_KINDS.map(function (k) { return [k.id, k.label]; }).concat([['tree', 'Tree'], ['boundary', 'Fence line']]),
+            S.gardenMode, 'data-gmode') + '</div>' +
+        '<button type="button" class="btn btn-ghost btn-sm' + (S.confirm === 'plot' ? ' sk-danger' : '') +
+        '" id="sk-dropplot">' + (S.confirm === 'plot' ? 'Tap again to remove it all' : 'Remove the garden') + '</button>';
+    }
     return '';
+  }
+
+  /* ---- the garden ---------------------------------------------------------- */
+
+  function gardenKind(id) {
+    return GARDEN_KINDS.filter(function (k) { return k.id === id; })[0] || GARDEN_KINDS[0];
+  }
+
+  function centroid(ring) {
+    var x = 0, y = 0;
+    ring.forEach(function (p) { x += p[0]; y += p[1]; });
+    return ring.length ? [x / ring.length, y / ring.length] : [0, 0];
+  }
+
+  /** Which way the front of the house faces, as a unit step on the grid. */
+  function frontDir() {
+    var g = ground();
+    if (!g.closed) return [0, 1];
+    var i = S.frontIdx !== undefined ? S.frontIdx : frontWallIndex(g.outline);
+    var a = g.outline[i], b = g.outline[(i + 1) % g.outline.length];
+    var mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], c = centroid(g.outline);
+    var dx = mid[0] - c[0], dy = mid[1] - c[1];
+    if (Math.abs(dx) > Math.abs(dy)) return [dx > 0 ? 1 : -1, 0];
+    return [0, dy > 0 ? 1 : -1];
+  }
+
+  /** A fence line round the house: a short front garden, a long back one. */
+  function addTypicalPlot() {
+    var g = ground();
+    if (!g.closed) return;
+    var pts = g.outline.concat(S.extension.closed ? S.extension.outline : []);
+    var xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
+    var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+    var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+    var fd = frontDir(), FRONT = 5, BACK = 10, SIDE = 1.5;
+    var grow = { l: SIDE, r: SIDE, t: SIDE, b: SIDE };
+    if (fd[0] === 1)       { grow.r = FRONT; grow.l = BACK; }
+    else if (fd[0] === -1) { grow.l = FRONT; grow.r = BACK; }
+    else if (fd[1] === -1) { grow.t = FRONT; grow.b = BACK; }
+    else                   { grow.b = FRONT; grow.t = BACK; }
+    var r = function (v) { return Math.round(v / SNAP) * SNAP; };
+    snapshot();
+    S.garden.plot = {
+      outline: [[r(x0 - grow.l), r(y0 - grow.t)], [r(x1 + grow.r), r(y0 - grow.t)],
+                [r(x1 + grow.r), r(y1 + grow.b)], [r(x0 - grow.l), r(y1 + grow.b)]],
+      closed: true
+    };
+    S.gardenMode = 'patio';
+    S.pick = null;
+    FRAME = null; MANUAL = false;
+    say('');
+    settled();
+  }
+
+  function onRing(ring, p) {
+    for (var i = 0; i < ring.length; i++) {
+      if (projectOnSeg(p, ring[i], ring[(i + 1) % ring.length]).d < 1e-6) return true;
+    }
+    return false;
+  }
+
+  function areaAt(p) {
+    for (var i = S.garden.areas.length - 1; i >= 0; i--) {
+      if (insidePoly(S.garden.areas[i].outline, p)) return i;
+    }
+    return -1;
+  }
+
+  function removeArea(i) {
+    snapshot();
+    S.garden.areas.splice(i, 1);
+    S.pick = null;
+    settled();
+  }
+
+  function gardenTap(w) {
+    var gd = S.garden;
+    // the plot comes first: everything else is inside it
+    if (!gd.plot.closed) {
+      var p0 = snapTarget(w).p;
+      if (!S.drawing) { snapshot(); S.drawing = []; }
+      if (S.drawing.length > 2 && dist(p0, S.drawing[0]) < CLOSE_UNITS) { closeShape(); return; }
+      S.drawing.push(p0);
+      changed();
+      return;
+    }
+    if (S.gardenMode === 'tree') {
+      var t = snapFrom(null, w);
+      if (!within(gd.plot.outline, t)) { say('Tap inside the plot.'); return; }
+      if (within(ground().outline, t) || (S.extension.closed && within(S.extension.outline, t))) {
+        say('That would put a tree inside the house.'); return;
+      }
+      snapshot();
+      gd.trees.push(t);
+      S.pick = null;
+      say('');
+      changed();
+      return;
+    }
+    if (S.drawing && S.drawing.length) {
+      var p = snapTarget(w).p;
+      if (S.drawing.length > 2 && dist(p, S.drawing[0]) < CLOSE_UNITS) { closeShape(); return; }
+      S.drawing.push(p);
+      changed();
+      return;
+    }
+    // The fence line is edited in its own mode, so that in every other mode
+    // a tap on it means "start the lawn here", which is what it means.
+    if (S.gardenMode === 'boundary') {
+      var hit = wallOfShape(gd.plot, w);
+      if (hit) { splitWall('plot', hit.i, hit.t); return; }
+      if (S.pick) { S.pick = null; render(); }
+      return;
+    }
+    // a tap on the edge of the picked surface adds a corner to it
+    if (S.pick && S.pick.kind === 'garea' && gd.areas[S.pick.i]) {
+      var h2 = wallOfShape(gd.areas[S.pick.i], w);
+      if (h2 && !onRing(gd.plot.outline, w)) { splitWall('a' + S.pick.i, h2.i, h2.t); return; }
+    }
+    // a tap inside a surface picks it; on the picked one, lets it go. A tap on
+    // its edge is not inside it — that is where the next surface starts.
+    var inA = areaAt(w);
+    if (inA >= 0 && !onRing(gd.areas[inA].outline, snapTarget(w).p)) {
+      S.pick = (S.pick && S.pick.kind === 'garea' && S.pick.i === inA) ? null : { kind: 'garea', i: inA };
+      say('');
+      render();
+      return;
+    }
+    if (S.pick) { S.pick = null; }
+    if (!within(gd.plot.outline, snapFrom(null, w))) { say('Tap inside the plot.'); return; }
+    snapshot();
+    S.drawing = [snapTarget(w).p];
+    changed();
+  }
+
+  function gardenSvg(RU) {
+    var gd = S.garden, out = [];
+    if (gd.plot.outline.length > 1) {
+      if (gd.plot.closed) out.push('<polygon points="' + poly(gd.plot.outline) + '" class="sk-plot"/>');
+      out.push('<polyline points="' + poly(gd.plot.closed ? gd.plot.outline.concat([gd.plot.outline[0]]) : gd.plot.outline) +
+        '" class="sk-plotline"/>');
+    }
+    gd.areas.forEach(function (a, i) {
+      var on = S.pick && S.pick.kind === 'garea' && S.pick.i === i;
+      out.push('<polygon points="' + poly(a.outline) + '" class="sk-garea ' + a.kind + (on ? ' on' : '') + '"/>');
+      var c = centroid(a.outline);
+      out.push('<text x="' + (c[0] * K) + '" y="' + (c[1] * K + 4 * RU) + '" text-anchor="middle" class="sk-galab" font-size="' +
+        (11 * RU).toFixed(1) + '">' + gardenKind(a.kind).tag + ' · ' + fmt(m(shoelace(a.outline)) * m(1), 0) + ' m²</text>');
+      a.outline.forEach(function (p) {
+        out.push('<circle cx="' + (p[0] * K) + '" cy="' + (p[1] * K) + '" r="' + (7 * RU).toFixed(1) + '" class="sk-node small"/>');
+      });
+    });
+    gd.trees.forEach(function (t) {
+      out.push('<g class="sk-tree"><circle cx="' + (t[0] * K) + '" cy="' + (t[1] * K) + '" r="' + (1.4 * K) + '"/>' +
+        '<circle cx="' + (t[0] * K) + '" cy="' + (t[1] * K) + '" r="' + (5 * RU).toFixed(1) + '" class="trunk"/></g>');
+    });
+    return out.join('');
   }
 
 
@@ -5954,11 +6212,16 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     return dist(q, a) < SNAP * 0.4 || dist(q, b) < SNAP * 0.4 ? mm(on) : mm(q);
   }
 
-  function shapeOf(which) { return which === 'ext' ? S.extension : floor(); }
+  function shapeOf(which) {
+    if (which === 'ext') return S.extension;
+    if (which === 'plot') return S.garden.plot;
+    if (which && which.charAt(0) === 'a') return S.garden.areas[+which.slice(1)];
+    return floor();
+  }
 
   function splitWall(which, i, t) {
     var f = floor(), shape = shapeOf(which);
-    var pts = which === 'ext' ? null : openingPoints(f);
+    var pts = which === 'floor' ? openingPoints(f) : null;
     var p = splitPoint(shape.outline[i], shape.outline[(i + 1) % shape.outline.length], t);
     snapshot();
     shape.outline.splice(i + 1, 0, p);
@@ -5970,7 +6233,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   function removeCorner(which, i) {
     var f = floor(), shape = shapeOf(which);
     if (shape.outline.length <= 3) { say('A shape needs at least three corners.'); return; }
-    var pts = which === 'ext' ? null : openingPoints(f);
+    var pts = which === 'floor' ? openingPoints(f) : null;
     snapshot();
     shape.outline.splice(i, 1);
     if (pts) reassignOpenings(f, pts);
@@ -6143,6 +6406,23 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       if (!touches) out.push('The extension is not touching the house.');
     }
 
+    if (S.garden.plot.closed) {
+      var plot = S.garden.plot.outline;
+      var outOfPlot = ground().outline.some(function (p) { return !within(plot, p); });
+      if (outOfPlot) out.push('The house is not inside the plot.');
+      S.garden.areas.forEach(function (a) {
+        var k = gardenKind(a.kind).label.toLowerCase();
+        if (a.outline.some(function (p) { return !within(plot, p); })) out.push('The ' + k + ' runs outside the plot.');
+        // a patio laid against the back wall has corners ON the wall, which is right
+        if (a.outline.some(function (p) { return insidePoly(ground().outline, p) && !onRing(ground().outline, p); })) {
+          out.push('The ' + k + ' runs into the house.');
+        }
+      });
+      if (q.garden && q.garden.treeNearest !== null && q.garden.treeNearest < 3 && S.extension.closed) {
+        out.push('A tree is within 3 m of the extension — the foundations will need to go deeper.');
+      }
+    }
+
     // one of each, in the order found
     var seen = {}, uniq = [];
     out.forEach(function (t) { if (!seen[t]) { seen[t] = 1; uniq.push(t); } });
@@ -6158,7 +6438,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
   function stateNow() {
     return JSON.stringify({
-      floors: S.floors, extension: S.extension, scale: S.scale,
+      floors: S.floors, extension: S.extension, garden: S.garden, scale: S.scale,
       active: S.active, drawing: S.drawing, snap: SNAP
     });
   }
@@ -6166,6 +6446,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var o = JSON.parse(json);
     S.floors = o.floors;
     S.extension = o.extension;
+    S.garden = o.garden || newGarden();
     S.scale = o.scale;
     S.active = Math.min(o.active, o.floors.length - 1);
     S.drawing = o.drawing;
@@ -6255,6 +6536,18 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (S.stage === 'extension') {
       for (i = 0; i < S.extension.outline.length; i++) pts.push(S.extension.outline[i]);
     }
+    if (S.stage === 'garden') {
+      // a lawn meets the patio and the patio meets the extension: every edge
+      // out there is something the next shape wants to sit against
+      var rings = [S.garden.plot.outline, S.extension.closed ? S.extension.outline : []]
+        .concat(S.garden.areas.map(function (a) { return a.outline; }));
+      rings.forEach(function (ring) {
+        for (var k = 0; k < ring.length; k++) {
+          pts.push(ring[k]);
+          if (ring.length > 2) lines.push([ring[k], ring[(k + 1) % ring.length]]);
+        }
+      });
+    }
     if (S.drawing) S.drawing.forEach(function (p) { pts.push(p); });
     return { pts: pts, lines: lines };
   }
@@ -6286,7 +6579,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     return { p: g, kind: 'grid' };
   }
 
-  function drawingStage() { return S.stage === 'outline' || S.stage === 'extension' || S.stage === 'internal'; }
+  function drawingStage() { return S.stage === 'outline' || S.stage === 'extension' || S.stage === 'internal' || S.stage === 'garden'; }
   /** Stages where the next tap puts something down at a grid point. */
   function placingStage() { return drawingStage() || S.stage === 'rooms'; }
 
@@ -6294,6 +6587,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   function editable() {
     if (S.stage === 'outline' && floor().closed) return 'floor';
     if (S.stage === 'extension' && S.extension.closed) return 'ext';
+    if (S.stage === 'garden' && S.garden.plot.closed) return 'plot';
     return null;
   }
 
@@ -6302,6 +6596,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       except while an extension is being fitted against it. */
   function draggable() {
     if (S.stage === 'extension') return S.extension.closed ? 'ext' : null;
+    if (S.stage === 'garden') return S.garden.plot.closed ? 'plot' : null;
     return floor().closed ? 'floor' : null;
   }
 
@@ -6310,7 +6605,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var r = grabRadius(), best = null;
     var which = draggable();
     if (which) {
-      shapeOf(which === 'ext' ? 'ext' : 'floor').outline.forEach(function (q, i) {
+      shapeOf(which).outline.forEach(function (q, i) {
         var d = dist(p, q);
         if (d < r && (!best || d < best.d)) best = { kind: 'corner', which: which, i: i, d: d };
       });
@@ -6321,6 +6616,18 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
           var d = dist(p, seg[e]);
           if (d < r && (!best || d < best.d)) best = { kind: 'iend', i: i, end: e, d: d };
         });
+      });
+    }
+    if (S.stage === 'garden') {
+      S.garden.areas.forEach(function (a, ai) {
+        a.outline.forEach(function (q, i) {
+          var d = dist(p, q);
+          if (d < r && (!best || d < best.d)) best = { kind: 'corner', which: 'a' + ai, i: i, d: d };
+        });
+      });
+      S.garden.trees.forEach(function (t, i) {
+        var d = dist(p, t);
+        if (d < r && (!best || d < best.d)) best = { kind: 'tree', i: i, d: d };
       });
     }
     // a door in the wrong place should slide, not be deleted and put back
@@ -6400,8 +6707,10 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       var w2 = toWorld(e), g = snapFrom(null, w2);
       var h = press.handle, f2 = floor();
       if (h.kind === 'corner') {
-        shapeOf(h.which === 'ext' ? 'ext' : 'floor').outline[h.i] = g;
+        shapeOf(h.which).outline[h.i] = g;
         S.pick = { kind: 'corner', which: h.which, i: h.i };
+      } else if (h.kind === 'tree') {
+        S.garden.trees[h.i] = g;
       } else if (h.kind === 'iend') {
         var other = f2.internals[h.i][1 - h.end];
         var want = keepInside(g);
@@ -6465,7 +6774,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       // a drag that crosses the shape would silently corrupt the area
       var h = p.handle;
       if (h.kind === 'corner') {
-        var shape = shapeOf(h.which === 'ext' ? 'ext' : 'floor');
+        var shape = shapeOf(h.which);
         var why = selfIntersects(shape.outline) ? 'That would fold the shape over itself.'
           : hasZeroWall(shape.outline) ? 'That would put two corners on top of each other.'
           : null;
@@ -6488,11 +6797,20 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (p.handle && !p.moved) {           // a tap on a handle selects it
       var hh = p.handle;
       if (hh.kind === 'pin') { floor().markers.splice(hh.i, 1); settled(); return; }
+      if (hh.kind === 'tree') { S.garden.trees.splice(hh.i, 1); settled(); return; }
       UNDO.pop();                          // nothing changed, so nothing to undo
       REDO.length = 0;
       // outside the shape steps a corner is only for dragging: a tap on it is
       // a tap on the plan, so an inside wall can start from a house corner
       if (hh.kind === 'corner' && !editable()) { onTap(p.world, e); return; }
+      // in the garden a corner is a place to start the next shape from,
+      // unless it belongs to the thing being edited
+      if (hh.kind === 'corner' && S.stage === 'garden') {
+        var mine = hh.which === 'plot' ? S.gardenMode === 'boundary'
+          : !!(S.pick && ((S.pick.kind === 'garea' && 'a' + S.pick.i === hh.which) ||
+                          (S.pick.kind === 'corner' && S.pick.which === hh.which)));
+        if (!mine) { onTap(p.world, e); return; }
+      }
       if (hh.kind === 'opening') { S.selected = hh.id; S.pick = null; }
       else {
         S.pick = hh.kind === 'corner'
@@ -6515,7 +6833,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
     if (S.stage === 'outline' || S.stage === 'extension') {
       var which = S.stage === 'outline' ? 'floor' : 'ext';
-      var shape = shapeOf(which === 'ext' ? 'ext' : 'floor');
+      var shape = shapeOf(which);
 
       if (shape.closed) {
         // tapping a wall puts a corner in it; tapping nothing clears the selection
@@ -6534,6 +6852,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       changed();
       return;
     }
+
+    if (S.stage === 'garden') { gardenTap(w); return; }
 
     if (S.stage === 'internal' && S.wallMode === 'door') {
       var iw = wallAt(w, 'int');
@@ -6649,6 +6969,19 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
   function say(msg) { var el = $('sk-say'); if (el) el.textContent = msg || ''; }
 
+  /* Nothing here should throw, but "nothing happens" is the worst failure a
+     drawing tool can have — so if something does, it says what, on screen,
+     where a person can read it back to us. */
+  function guarded(fn) {
+    return function (e) {
+      try { return fn(e); }
+      catch (err) {
+        try { say('Something went wrong: ' + (err && err.message ? err.message : err)); } catch (e2) {}
+        if (root.console && console.error) console.error(err);
+      }
+    };
+  }
+
   /* ---- an extension closes against the house ------------------------------
    * An extension is three walls off the back, not a free-floating box: the
    * house closes the fourth side. Making somebody return to their own first
@@ -6722,6 +7055,14 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (S.stage === 'extension') {
       S.extension.outline = S.drawing.slice();
       S.extension.closed = true;
+    } else if (S.stage === 'garden') {
+      if (!S.garden.plot.closed) {
+        S.garden.plot = { outline: S.drawing.slice(), closed: true };
+        S.gardenMode = 'patio';
+      } else {
+        S.garden.areas.push({ kind: S.gardenMode, outline: S.drawing.slice(), closed: true });
+        S.pick = { kind: 'garea', i: S.garden.areas.length - 1 };
+      }
     } else {
       var f = floor();
       f.outline = S.drawing.slice();
@@ -6773,6 +7114,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       if (f.image) { f.image.x *= k; f.image.y *= k; f.image.w *= k; f.image.h *= k; }
     });
     S.extension.outline = S.extension.outline.map(conv);
+    S.garden.plot.outline = S.garden.plot.outline.map(conv);
+    S.garden.areas.forEach(function (a) { a.outline = a.outline.map(conv); });
+    S.garden.trees = S.garden.trees.map(conv);
     if (S.drawing) S.drawing = S.drawing.map(conv);
     SNAP = METRIC_SNAP;
     S.scale = 1;                 // one grid unit is one metre from here on
@@ -6967,6 +7311,17 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       outline: [[5.5, 7], [5.5, 10.5], [8.5, 10.5], [8.5, 7]],
       closed: true, storeys: 1
     };
+    // the front is the top wall here, so the drive is above and the garden below
+    S.garden = {
+      plot: { outline: [[-1.5, -5], [10, -5], [10, 20], [-1.5, 20]], closed: true },
+      areas: [
+        { kind: 'drive',   outline: [[0, -5], [4.5, -5], [4.5, 0], [0, 0]], closed: true },
+        { kind: 'patio',   outline: [[0, 7], [5.5, 7], [5.5, 10.5], [0, 10.5]], closed: true },
+        { kind: 'lawn',    outline: [[0, 10.5], [8.5, 10.5], [8.5, 18.5], [0, 18.5]], closed: true }
+      ],
+      trees: [[8, 17], [-0.5, 14]]
+    };
+    S.gardenMode = 'patio';
     S.scale = 1;
     SNAP = METRIC_SNAP;
     S.started = true;
@@ -7009,6 +7364,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     S.started = false; S.stage = 'outline'; S.scale = null;
     S.floors = [newFloor(0)]; S.active = 0;
     S.extension = { outline: [], closed: false, storeys: 1 };
+    S.garden = newGarden(); S.gardenMode = 'boundary';
     S.drawing = null; S.cursor = null; S.selected = null; S.pick = null;
     S.calibrating = false; S.kind = null; S.wallMode = 'draw';
     S.askUp = false; S.askedUp = false; S.preset = false; S.frontIdx = undefined; S.more = false;
@@ -7038,13 +7394,15 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (id !== 'outline' && !ready()) return;
     if (S.stage === 'internal' && S.drawing) S.drawing = null;
     S.stage = id;
-    if (id === 'extension') S.active = 0;     // it sits against the ground floor
+    if (id === 'extension' || id === 'garden') S.active = 0;     // both sit round the ground floor
+    if (id === 'garden') S.gardenMode = S.garden.plot.closed ? (S.gardenMode || 'patio') : 'boundary';
     S.drawing = null; S.cursor = null; S.selected = null; S.pick = null;
     S.kind = id === 'openings' ? (S.kind || 'window') : null;
     if (id === 'internal') S.wallMode = S.wallMode || 'draw';
     say('');
     refitTight();
     if (id === 'extension' && !S.extension.closed) inflate(1.35);
+    if (id === 'garden' && !S.garden.plot.closed) inflate(1.9);
     render();
   }
 
@@ -7083,7 +7441,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       zoomAt(toWorld(e), f);
     }, { passive: false });
 
-    svg.addEventListener('pointerdown', function (e) {
+    svg.addEventListener('pointerdown', guarded(function (e) {
       if (e.pointerType === 'touch') {
         S.touch = true;
         var w = toWorld(e);
@@ -7105,9 +7463,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       // click to the svg, so a tap on the ×, on a wall during calibration, or
       // on anything else inside the drawing stops reaching its handler. A drag
       // takes capture at the moment it becomes a drag.
-    });
+    }));
 
-    svg.addEventListener('pointermove', function (e) {
+    svg.addEventListener('pointermove', guarded(function (e) {
       if (touches[e.pointerId]) { touches[e.pointerId].sx = e.clientX; touches[e.pointerId].sy = e.clientY; }
       if (pinch) {
         var now = pointerSpan();
@@ -7120,14 +7478,14 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         return;
       }
       onMove(e);
-    });
+    }));
 
-    svg.addEventListener('pointerup', function (e) {
+    svg.addEventListener('pointerup', guarded(function (e) {
       delete touches[e.pointerId];
       if (pinch) { if (Object.keys(touches).length < 2) pinch = null; press = null; return; }
       if (press && press.pan) { press = null; svg.classList.remove('grabbing'); return; }
       onUp(e);
-    });
+    }));
     svg.addEventListener('pointercancel', function (e) {
       delete touches[e.pointerId];
       press = null; pinch = null;
@@ -7142,7 +7500,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       if (e.key === 'Enter') { e.preventDefault(); applyCalibration(); }
     });
 
-    $('sk-overlay').addEventListener('click', function (e) {
+    $('sk-overlay').addEventListener('click', guarded(function (e) {
       // A modal's clicks are its own. The estimator behind it binds several of
       // the same data attributes, and it was reading a button this handler had
       // already re-rendered out of the document.
@@ -7194,6 +7552,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       if (hit) { S.kind = hit.getAttribute('data-kind'); S.selected = null; render(); return; }
       hit = t.closest && t.closest('[data-room]');
       if (hit) { S.roomType = hit.getAttribute('data-room'); render(); return; }
+      hit = t.closest && t.closest('[data-gmode]');
+      if (hit) { S.gardenMode = hit.getAttribute('data-gmode'); S.drawing = null; S.pick = null; say(''); render(); return; }
       hit = t.closest && t.closest('[data-storeys]');
       if (hit) { S.extension.storeys = +hit.getAttribute('data-storeys'); render(); return; }
       hit = t.closest && t.closest('[data-width]');
@@ -7216,7 +7576,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
           S.active = +act.slice(9); S.drawing = null; S.selected = null; S.pick = null;
           FRAME = null; MANUAL = false; settled(); return;
         }
-        if (act === 'sk-close-shape' || act === 'sk-close-ext') { closeShape(); return; }
+        if (act === 'sk-close-shape' || act === 'sk-close-ext' || act === 'sk-close-garden') { closeShape(); return; }
         if (act === 'sk-copy') { copyFloorBelow(); return; }
         if (act.indexOf('sk-go-') === 0) { goStage(act.slice(6)); return; }
         return;
@@ -7229,12 +7589,20 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       if (hit) {
         if (S.pick && S.pick.kind === 'corner') removeCorner(S.pick.which, S.pick.i);
         else if (S.pick && S.pick.kind === 'iwall') removeInternal(S.pick.i);
+        else if (S.pick && S.pick.kind === 'garea') removeArea(S.pick.i);
         return;
       }
 
       switch ((btn && btn.id) || t.id) {
         case 'sk-blank':     S.started = true; settled(); return;
         case 'sk-addext':    addRearExtension(); return;
+        case 'sk-addplot':   addTypicalPlot(); return;
+        case 'sk-dropplot':
+          if (S.confirm !== 'plot') { S.confirm = 'plot'; render(); return; }
+          snapshot();
+          S.garden = newGarden(); S.gardenMode = 'boundary'; S.pick = null; S.drawing = null; S.confirm = null;
+          MANUAL = false; FRAME = null; refitTight(); inflate(1.9);
+          render(); persist(); return;
         case 'sk-more':      S.more = !S.more; render(); return;
         case 'sk-example':   exampleHouse(); return;
         case 'sk-upload':    if ($('sk-file')) $('sk-file').click(); return;
@@ -7301,7 +7669,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
           close(true); return;
       }
       if (t === $('sk-overlay')) close();
-    });
+    }));
 
     doc.addEventListener('keydown', function (e) {
       if (!$('sk-overlay').classList.contains('on')) return;
@@ -7334,7 +7702,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   function persist() {
     try {
       root.localStorage.setItem(SKEY, JSON.stringify({
-        v: 1, floors: S.floors, extension: S.extension, scale: S.scale,
+        v: 1, floors: S.floors, extension: S.extension, garden: S.garden, scale: S.scale,
         active: S.active, snap: SNAP, started: S.started, stage: S.stage
       }));
     } catch (e) {
@@ -7343,7 +7711,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         var lean = JSON.parse(JSON.stringify(S.floors));
         lean.forEach(function (f) { f.image = null; });
         root.localStorage.setItem(SKEY, JSON.stringify({
-          v: 1, floors: lean, extension: S.extension, scale: S.scale,
+          v: 1, floors: lean, extension: S.extension, garden: S.garden, scale: S.scale,
           active: S.active, snap: SNAP, started: S.started, stage: S.stage
         }));
       } catch (e2) { /* private mode, or full — carry on without saving */ }
@@ -7360,6 +7728,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       if (!o.floors[0].closed) return false;        // nothing worth restoring
       S.floors = o.floors;
       S.extension = o.extension || { outline: [], closed: false, storeys: 1 };
+      S.garden = o.garden || newGarden();
+      S.gardenMode = S.garden.plot.closed ? 'patio' : 'boundary';
       S.scale = o.scale;
       S.active = Math.min(o.active || 0, o.floors.length - 1);
       SNAP = o.snap || LOOSE;
@@ -8121,7 +8491,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
    * chooser — never saw the drawing tool at all. Hiding the best thing on the
    * site behind picking the right box first is not a defensible trade.
    */
-  var SKETCH_TYPES = ['extension', 'renovation', 'loft', 'newbuild'];
+  var SKETCH_TYPES = ['extension', 'renovation', 'loft', 'newbuild', 'external'];
 
   /* What drawing buys you, in the words of the job you are pricing. */
   var SKETCH_CTA = {
@@ -8132,7 +8502,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     loft:       { q: 'Not sure how much of the loft you can use?',
                   help: 'Draw the house and we will start you at about 60% of the footprint, which is what a typical semi gives you once the head height runs out. Adjust it from there.' },
     newbuild:   { q: 'Rather draw it than guess it?',
-                  help: 'Trace the footprint on a blank grid, say how long one wall is, and add a floor for each storey. Footprint, floor area, perimeter and roof all come off the drawing.' }
+                  help: 'Trace the footprint on a blank grid, say how long one wall is, and add a floor for each storey. Footprint, floor area, perimeter and roof all come off the drawing.' },
+    external:   { q: 'Rather draw the garden than pace it?',
+                  help: 'Draw the house, then the fence line round it, then tap round the patio, lawn, drive or decking. Every area and the fence run are measured off the drawing.' }
   };
 
   function applySketch(typeId, m) {
@@ -8169,6 +8541,15 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       set('perimeter', m.perimeter);
       set('roofArea', m.footprint * 1.22);
       set('storeys', m.floors);            // you drew them, so we know
+    } else if (typeId === 'external' && m.garden) {
+      // the surfaces ARE the areas: none drawn means none, not the default
+      set('patioArea', m.garden.areas.patio);
+      set('deckingArea', m.garden.areas.decking);
+      set('drivewayArea', m.garden.areas.drive);
+      set('turfArea', m.garden.areas.lawn);
+      set('fenceLength', m.garden.boundary);
+      // about 0.3 m³ of dig per m² of anything paved, on level ground
+      set('excavationVol', 0.3 * (m.garden.areas.patio + m.garden.areas.drive));
     } else if (typeId === 'loft') {
       // Usable loft area is not the footprint — only the part with head height
       // counts. Nobody knows that in square metres, but everybody knows
@@ -8201,10 +8582,20 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       }
     }
 
+    // Drawing a patio is how you say you want one, the same as the extension
+    var laid = m.garden && GARDEN_AREAS.some(function (k) { return m.garden.areas[k] > 1; });
+    if (laid && project.types.indexOf('external') < 0) {
+      project.types.push('external');
+      applySketch('external', m);
+      saveProject();
+      if (route) paintRail(route);
+    }
+
     j.touched.sketched = true;
     refreshOutputs();
     update();
   }
+  var GARDEN_AREAS = ['patio', 'lawn', 'drive', 'decking'];
 
   /** Whichever card offered the drawing, tell it what came back. */
   function sketchNote(m) {
@@ -8376,7 +8767,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     // One way in, not two. The tool asks whether they have a plan; making that
     // a choice between two buttons on the page before it just moves the
     // decision somewhere it has less context.
-    var sketchable = SKETCH_TYPES.indexOf(type.id) >= 0 && step.id === 'size' && root.DATUM.SKETCH;
+    var sketchable = SKETCH_TYPES.indexOf(type.id) >= 0 && step.id === type.steps[0].id && root.DATUM.SKETCH;
 
     // a step whose every figure came off the drawing is not asking anything
     var onStep = asks(type).filter(function (m) { return m.ask.step === step.id; });
