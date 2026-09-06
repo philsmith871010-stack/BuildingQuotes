@@ -770,7 +770,9 @@ html { scroll-padding-top: 62px; }
 .sk-grid { stroke: var(--rule); stroke-width: 1; opacity: .8; }
 .sk-grid.fine { stroke: var(--rule); stroke-width: 1; opacity: .34; }
 .sk-grid.major { stroke: var(--ink-3); stroke-width: 1; opacity: .55; }
-.sk-photo { opacity: .55; }
+.sk-photo { opacity: .42; }
+.sk-photo.strong { opacity: .8; }
+.sk-plantools .seg button { font-size: .74rem; }
 .sk-under { fill: rgba(90,100,110,.10); stroke: var(--ink-3); stroke-width: 2; stroke-dasharray: 7 6; }
 .sk-floor { fill: rgba(21,76,124,.09); stroke: none; }
 .sk-ext { fill: none; stroke: var(--ink); stroke-width: 7; stroke-linejoin: round; stroke-linecap: round; }

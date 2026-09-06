@@ -1356,7 +1356,9 @@ html { scroll-padding-top: 62px; }
 .sk-grid { stroke: var(--rule); stroke-width: 1; opacity: .8; }
 .sk-grid.fine { stroke: var(--rule); stroke-width: 1; opacity: .34; }
 .sk-grid.major { stroke: var(--ink-3); stroke-width: 1; opacity: .55; }
-.sk-photo { opacity: .55; }
+.sk-photo { opacity: .42; }
+.sk-photo.strong { opacity: .8; }
+.sk-plantools .seg button { font-size: .74rem; }
 .sk-under { fill: rgba(90,100,110,.10); stroke: var(--ink-3); stroke-width: 2; stroke-dasharray: 7 6; }
 .sk-floor { fill: rgba(21,76,124,.09); stroke: none; }
 .sk-ext { fill: none; stroke: var(--ink); stroke-width: 7; stroke-linejoin: round; stroke-linecap: round; }
@@ -2155,7 +2157,7 @@ html { scroll-padding-top: 62px; }
         <button type="button" class="sk-card" id="sk-upload">
           <span class="sk-card-ico" aria-hidden="true">&#8673;</span>
           <b>Use my floor plan</b>
-          <span>An estate agent plan or a photo. Draw straight over it.</span>
+          <span>A photo or screenshot of an estate agent plan. It sits under the grid and you tap round it.</span>
         </button>
       </div>
       <input type="file" id="sk-file" accept="image/*" hidden>
@@ -5139,6 +5141,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   var STAGES = [
     { id: 'outline',   n: 1, label: 'Shape',
       hint: 'Pick the shape closest to your house, or tap round the corners yourself.',
+      plan: 'Tap round the outside corners of your plan, finishing where you started. Or start with a shape and drag it to fit.',
       done: 'Drag any corner to make it right. Tap a wall to add a corner, or a corner then × to remove it.' },
     { id: 'internal',  n: 2, label: 'Inside walls',
       hint: 'Optional. Tap one end of a wall, then the other end.',
@@ -5620,10 +5623,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var RU = K / Math.max(px, 1);   // SVG user units per screen pixel
     var f = floor(), out = [];
 
-    if (f.image) {
-      out.push('<image href="' + esc(f.image.src) + '" x="' + (f.image.x * K) + '" y="' + (f.image.y * K) +
-        '" width="' + (f.image.w * K) + '" height="' + (f.image.h * K) + '" class="sk-photo"/>');
-    }
+    if (f.image) out.push(photoSvg(f.image));
     out.push(gridSvg(v, px));
 
     // the floor below, faint, so an upper floor can be drawn over it
@@ -5921,6 +5921,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         : mid && S.stage === 'internal' ? 'Now tap the other end of the wall.'
         : mid && S.drawing.length > 2 ? 'Keep going, or tap the first corner to finish.'
         : mid ? 'Keep tapping the corners.'
+        : (S.stage === 'outline' && !f.closed && !mid && f.image)
+            ? stage.plan
         : (S.stage === 'outline' && !f.closed && !f.outline.length && S.active > 0)
             ? 'Copy the floor below, or draw this one.'
         : (S.stage === 'rooms' && f.markers.length && floorWithoutRooms() >= 0)
@@ -6030,7 +6032,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
           '<button type="button" data-shape="rect" aria-label="Rectangle"><svg viewBox="0 0 40 32"><rect x="4" y="4" width="32" height="24"/></svg><span>Rectangle</span></button>' +
           '<button type="button" data-shape="l" aria-label="L shape"><svg viewBox="0 0 40 32"><path d="M4 4h32v14H22v10H4z"/></svg><span>L shape</span></button>' +
           '<button type="button" data-shape="t" aria-label="T shape"><svg viewBox="0 0 40 32"><path d="M4 4h32v12h-9v12H13V16H4z"/></svg><span>T shape</span></button>' +
-          '</div><p class="sk-tiny">Or tap round the corners of the house on the grid.</p></div>' +
+          '</div><p class="sk-tiny">' + (f.image ? 'Or tap round the corners on your plan.' : 'Or tap round the corners of the house on the grid.') + '</p></div>' +
+          planTools(f) +
           (S.floors.length > 1
             ? '<button type="button" class="btn btn-ghost btn-sm' + (S.confirm === 'floor' ? ' sk-danger' : '') +
               '" id="sk-dropfloor">' + (S.confirm === 'floor' ? 'Tap again to remove it' : 'Remove this floor') + '</button>'
@@ -6039,6 +6042,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       return (f.closed
         ? '<button type="button" class="btn btn-ghost btn-sm" id="sk-redraw">Draw this floor again</button>'
         : '') +
+        planTools(f) +
         (S.scale ? '<button type="button" class="btn btn-ghost btn-sm" id="sk-recal">Change the measurement</button>' : '') +
         (S.floors.length > 1
           ? '<button type="button" class="btn btn-ghost btn-sm' + (S.confirm === 'floor' ? ' sk-danger' : '') +
@@ -6097,6 +6101,20 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         '" id="sk-dropplot">' + (S.confirm === 'plot' ? 'Tap again to remove it all' : 'Remove the garden') + '</button>';
     }
     return '';
+  }
+
+  /** Upload a plan for this floor, or turn, strengthen or drop the one here. */
+  function planTools(f) {
+    if (!f.image) {
+      return '<button type="button" class="sk-alt" id="sk-upload">' +
+        (S.active > 0 ? 'Draw over a plan of this floor' : 'Draw over my own floor plan') + '</button>';
+    }
+    return '<div class="sk-tool sk-plantools"><label>Your plan</label><div class="seg seg-wrap">' +
+      '<button type="button" id="sk-rotplan">Turn it</button>' +
+      '<button type="button" id="sk-planstrength" aria-pressed="' + !!f.image.strong + '">' + (f.image.strong ? 'Fainter' : 'Clearer') + '</button>' +
+      '<button type="button" id="sk-upload">Swap it</button>' +
+      '<button type="button" id="sk-dropplan">Remove it</button>' +
+      '</div></div>';
   }
 
   /* ---- the garden ---------------------------------------------------------- */
@@ -7575,16 +7593,45 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     settled();
   }
 
+  /* The uploaded plan: under the grid, faint enough to draw over and clear
+     enough to read. A photo from a phone can arrive sideways, so it rotates in
+     quarter turns about its own centre; w and h are always the box on screen. */
+  function photoSvg(im) {
+    var rot = im.rot || 0, cx = im.x + im.w / 2, cy = im.y + im.h / 2;
+    var w = rot % 180 ? im.h : im.w, h = rot % 180 ? im.w : im.h;
+    return '<image href="' + esc(im.src) + '" x="' + ((cx - w / 2) * K) + '" y="' + ((cy - h / 2) * K) +
+      '" width="' + (w * K) + '" height="' + (h * K) + '" class="sk-photo' + (im.strong ? ' strong' : '') +
+      '"' + (rot ? ' transform="rotate(' + rot + ' ' + (cx * K) + ' ' + (cy * K) + ')"' : '') + '/>';
+  }
+
+  function rotatePlan() {
+    var im = floor().image;
+    if (!im) return;
+    snapshot();
+    var cx = im.x + im.w / 2, cy = im.y + im.h / 2;
+    im.rot = ((im.rot || 0) + 90) % 360;
+    var w = im.h, h = im.w;                      // the box on screen turns with it
+    im.w = w; im.h = h; im.x = cx - w / 2; im.y = cy - h / 2;
+    FRAME = null; MANUAL = false;
+    settled();
+  }
+
   function loadImage(file) {
     if (!file) return;
     var fr = new root.FileReader();
     fr.onload = function () {
       var img = new root.Image();
       img.onload = function () {
+        // sized so a typical plan fills the canvas with room round it, and so
+        // half a grid square is about 20 cm on a house — fine enough to trace
         var w = 22, h = 22 * (img.height / img.width);
-        floor().image = { src: fr.result, x: -1, y: -1, w: w, h: h };
+        if (h > 26) { h = 26; w = 26 * (img.width / img.height); }
+        snapshot();
+        floor().image = { src: fr.result, x: 0, y: 0, w: w, h: h, rot: 0, strong: false };
         S.started = true;
-        FRAME = null;
+        S.drawing = null; S.pick = null;
+        FRAME = null; MANUAL = false;
+        say('');
         settled();
       };
       img.onerror = function () { say('That file could not be opened as an image.'); };
@@ -7808,7 +7855,14 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
           render(); persist(); return;
         case 'sk-more':      S.more = !S.more; render(); return;
         case 'sk-example':   exampleHouse(); return;
-        case 'sk-upload':    if ($('sk-file')) $('sk-file').click(); return;
+        case 'sk-upload':    if ($('sk-file')) { $('sk-file').value = ''; $('sk-file').click(); } return;
+        case 'sk-rotplan':   rotatePlan(); return;
+        case 'sk-planstrength':
+          if (floor().image) { floor().image.strong = !floor().image.strong; render(); persist(); }
+          return;
+        case 'sk-dropplan':
+          if (floor().image) { snapshot(); floor().image = null; FRAME = null; MANUAL = false; settled(); }
+          return;
         case 'sk-autotrace':
           // still here for anyone with a clean estate agent plan — it finds the
           // rooms itself. Kept subordinate because drawing works on any plan.

@@ -65,7 +65,12 @@ Two consequences worth stating:
   intersection it will land on before you commit it.
 - **Uploading a plan and starting blank are the same tool.** An uploaded plan is
   a backdrop you trace over; it needs no scale of its own, because the wall you
-  measure supplies one.
+  measure supplies one. It sits under the grid at about 40% so the grid and
+  the walls you draw stay legible over it; *Clearer* lifts it to 80% for a
+  faint photo. *Turn it* rotates a sideways phone photo in quarter turns,
+  *Swap it* replaces it, *Remove it* drops it. Each floor can have its own
+  plan, and the plan scales with the drawing when a wall is measured. A PDF
+  plan has to be screenshotted first; the picker takes images only.
 
 ## The other decision: position never affects a price
 
