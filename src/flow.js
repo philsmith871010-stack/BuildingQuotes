@@ -446,8 +446,10 @@
       // the pins ARE the room list — a kitchen or a bathroom starts at a strip
       // out because that is what people are doing when they name one
       if (m.rooms && m.rooms.length) {
-        j.rooms = m.rooms.map(function (type) {
-          return { type: type, level: (type === 'kitchen' || type === 'bathroom') ? 'strip' : 'refit' };
+        j.rooms = m.rooms.map(function (type, i) {
+          var r = { type: type, level: (type === 'kitchen' || type === 'bathroom') ? 'strip' : 'refit' };
+          if (m.roomAreas && m.roomAreas[i]) r.area = m.roomAreas[i];   // measured from the walls
+          return r;
         });
         j.touched.rooms = true;
       }

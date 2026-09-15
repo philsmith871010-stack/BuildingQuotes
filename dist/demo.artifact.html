@@ -1590,6 +1590,21 @@ html { scroll-padding-top: 62px; }
 #sk-pickwall[aria-pressed="true"] { border-color: #E4572E; color: #E4572E; }
 #draw-level[hidden] { display: none; }
 
+/* typed wall lengths */
+.sk-typed-row { display: flex; align-items: center; gap: .4rem; }
+.sk-typed-row input { width: 5.2rem; font-family: var(--mono); font-size: 1rem; padding: .35rem .5rem; border: 1px solid var(--rule); border-radius: 2px; background: var(--surface); color: var(--ink); }
+.sk-typed-row span { font-family: var(--mono); font-size: .8rem; color: var(--ink-3); }
+.sk-arrows { display: inline-flex; border: 1px solid var(--rule); border-radius: 2px; overflow: hidden; margin-left: auto; }
+.sk-arrows button { border: 0; background: var(--surface); color: var(--ink); font-size: 1.05rem; width: 2.3rem; height: 2.2rem; cursor: pointer; }
+.sk-arrows button + button { border-left: 1px solid var(--rule); }
+.sk-arrows button:hover { background: var(--well); }
+.sk-arrows button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* rooms the walls found, and alignment guides */
+.sk-unnamed rect { fill: var(--surface); stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: .95; }
+.sk-unnamed text { font-family: var(--mono); fill: var(--accent-ink); letter-spacing: .03em; pointer-events: none; }
+.sk-unnamed { pointer-events: none; }
+.sk-guide { stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 6 5; opacity: .55; vector-effect: non-scaling-stroke; }
+
 
 /* ===========================================================================
    Datum — rate book admin
@@ -2733,11 +2748,17 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
   /** Each room's share of the measured floor area, by type weight. */
   function roomAreas(rooms, floorArea) {
-    var total = 0;
-    rooms.forEach(function (r) { total += roomType(r.type).weight; });
-    if (!total) return rooms.map(function () { return 0; });
+    // a room whose area was measured off the drawing keeps it; the rest share
+    // whatever floor is left, by type weight
+    var known = 0, total = 0;
+    rooms.forEach(function (r) {
+      if (r.area > 0) known += r.area; else total += roomType(r.type).weight;
+    });
+    var left = Math.max(0, (floorArea || 0) - known);
     return rooms.map(function (r) {
-      return Math.round((floorArea || 0) * roomType(r.type).weight / total * 10) / 10;
+      if (r.area > 0) return Math.round(r.area * 10) / 10;
+      if (!total) return 0;
+      return Math.round(left * roomType(r.type).weight / total * 10) / 10;
     });
   }
 
@@ -5686,7 +5707,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var perim = ground().closed ? m(ringLength(ground().outline)) : 0;
 
     var intLen = 0, win = 0, winW = 0, extDoor = 0, intDoor = 0, openArea = 0, extWall = 0;
-    var counts = {}, rooms = [];
+    var counts = {}, rooms = [], roomAreas = [];
     ROOM_TYPES.forEach(function (r) { counts[r.id] = 0; });
 
     var removed = 0, estimated = false;
@@ -5715,9 +5736,11 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         else extDoor++;
         openArea += fits * (o.kind === 'window' ? 1.3 : 2.1);
       });
-      f.markers.forEach(function (mk) {
+      var pa = pinAreas(f);
+      f.markers.forEach(function (mk, mi) {
         counts[mk.type] = (counts[mk.type] || 0) + 1;
         rooms.push(mk.type);
+        roomAreas.push(pa[mi]);
       });
     });
 
@@ -5766,7 +5789,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       footprint: footprint, totalArea: total, perimeter: perim,
       internalWall: intLen, internalEstimated: estimated, wallRemoval: removed, plaster: plaster,
       windows: win, windowWidth: winW, extDoors: extDoor, intDoors: intDoor,
-      counts: counts, rooms: rooms, extension: ext, garden: garden
+      counts: counts, rooms: rooms, roomAreas: roomAreas, extension: ext, garden: garden
     };
   }
 
@@ -6075,14 +6098,37 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         '">\u00d7</text></g>');
     }
 
+    var reg = S.stage === 'rooms' ? regionsOf(f) : null;
+    var roomy = reg && reg.list.length >= 2;
+    if (roomy) {
+      // a space the walls enclose that nobody has named yet
+      reg.list.forEach(function (r) {
+        var named = f.markers.some(function (mk) { var q = regionAt(reg, [mk.x, mk.y]); return q && q.id === r.id; });
+        if (named) return;
+        var txt = 'Tap to name · ' + fmt(r.area, 0) + ' m²';
+        var uw = (txt.length * 6.4 + 16) * RU, uh = 20 * RU;
+        out.push('<g class="sk-unnamed"><rect x="' + (r.cx * K - uw / 2) + '" y="' + (r.cy * K - uh / 2) +
+          '" width="' + uw + '" height="' + uh + '" rx="' + (uh / 2) + '"/><text x="' + (r.cx * K) + '" y="' +
+          (r.cy * K + 4 * RU) + '" text-anchor="middle" font-size="' + (10.5 * RU).toFixed(1) + '">' + txt + '</text></g>');
+      });
+    }
+    var areasNow = roomy ? pinAreas(f) : null;
     f.markers.forEach(function (mk, i) {
       var t = ROOM_TYPES.filter(function (r) { return r.id === mk.type; })[0] || ROOM_TYPES[6];
       // a pill with the word on it — "Ba" means nothing to anybody
-      var pw = (t.short.length * 7.2 + 16) * RU, ph = 20 * RU;
+      var word = t.short + (areasNow && areasNow[i] ? ' · ' + fmt(areasNow[i], 0) + ' m²' : '');
+      var pw = (word.length * 7.2 + 16) * RU, ph = 20 * RU;
       out.push('<g class="sk-pin" data-marker="' + i + '"><rect x="' + (mk.x * K - pw / 2) + '" y="' +
         (mk.y * K - ph / 2) + '" width="' + pw + '" height="' + ph + '" rx="' + (ph / 2) + '"/>' +
         '<text x="' + (mk.x * K) + '" y="' + (mk.y * K + 4 * RU) + '" text-anchor="middle" font-size="' +
-        (11.5 * RU).toFixed(1) + '">' + esc(t.short) + '</text></g>');
+        (11.5 * RU).toFixed(1) + '">' + esc(word) + '</text></g>');
+    });
+
+    // alignment guides while something is being dragged
+    (S.guides || []).forEach(function (g) {
+      out.push(g.axis === 'x'
+        ? '<line x1="' + (g.v * K) + '" y1="' + (v.y0 * K) + '" x2="' + (g.v * K) + '" y2="' + (v.y1 * K) + '" class="sk-guide"/>'
+        : '<line x1="' + (v.x0 * K) + '" y1="' + (g.v * K) + '" x2="' + (v.x1 * K) + '" y2="' + (g.v * K) + '" class="sk-guide"/>');
     });
 
     if (f.closed && S.scale) {
@@ -6265,8 +6311,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         : (S.stage === 'garden' && !mid && S.garden.plot.closed && S.gardenMode === 'tree') ? stage.tree
         : (S.stage === 'garden' && !mid && S.garden.plot.closed && S.gardenMode === 'boundary') ? stage.fence
         : mid && S.stage === 'internal' ? 'Now tap the other end of the wall.'
-        : mid && S.drawing.length > 2 ? 'Keep going, or tap the first corner to finish.'
-        : mid ? 'Keep tapping the corners.'
+        : mid && S.drawing.length > 2 ? 'Keep going, or tap the first corner to finish. Or type the next wall below.'
+        : mid ? 'Keep tapping the corners, or type the next wall below.'
         : (S.stage === 'outline' && !f.closed && !mid && f.image)
             ? stage.plan
         : (S.stage === 'outline' && !f.closed && !f.outline.length && S.active > 0)
@@ -6295,7 +6341,15 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     }
 
     var tools = $('sk-tools');
-    if (tools) tools.innerHTML = (S.calibrating || S.askUp) ? '' : toolsFor(S.stage);
+    if (tools) {
+      // the panel re-renders on every hover and pointer-leave, so a length
+      // somebody is half way through typing has to survive the re-render
+      var typedEl = $('sk-typed');
+      var keep = typedEl ? { v: typedEl.value, focus: doc.activeElement === typedEl } : null;
+      tools.innerHTML = (S.calibrating || S.askUp) ? '' : typedTools() + toolsFor(S.stage);
+      typedEl = $('sk-typed');
+      if (keep && typedEl) { typedEl.value = keep.v; if (keep.focus) { try { typedEl.focus(); } catch (e) {} } }
+    }
 
     var act = $('sk-next');
     if (act) {
@@ -6449,6 +6503,52 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     return '';
   }
 
+  /* ---- typing the next wall -------------------------------------------------
+   * Some people know the lengths. Type one and point the way with an arrow
+   * and the corner lands exactly there. Typing before the house is measured
+   * makes the grid metres on the spot, so the measuring question never comes.
+   */
+  var DIRS = { up: [0, -1], right: [1, 0], down: [0, 1], left: [-1, 0] };
+  function typedTools() {
+    if (!(S.drawing && S.drawing.length) || S.calibrating) return '';
+    if (!drawingStage()) return '';
+    var ft = S.units === 'ft';
+    return '<div class="sk-tool sk-typed"><label>Or type the next wall</label>' +
+      '<div class="sk-typed-row"><input id="sk-typed" type="number" step="0.1" min="0.1" inputmode="decimal" placeholder="' + (ft ? '15' : '4.5') + '">' +
+      '<span>' + (ft ? 'ft' : 'm') + '</span>' +
+      '<div class="sk-arrows" role="group" aria-label="Which way it goes">' +
+      '<button type="button" data-dir="up" aria-label="Up">↑</button>' +
+      '<button type="button" data-dir="right" aria-label="Right">→</button>' +
+      '<button type="button" data-dir="down" aria-label="Down">↓</button>' +
+      '<button type="button" data-dir="left" aria-label="Left">←</button></div></div>' +
+      '<p class="sk-tiny">Type the length, then tap the way the wall goes.</p></div>';
+  }
+  function addTyped(dir) {
+    var inp = $('sk-typed');
+    var len = parseFloat(inp && inp.value);
+    if (!len || len <= 0) { say('Type how long the wall is.'); return; }
+    if (S.units === 'ft') len = len * 0.3048;
+    if (len > 60) { say('That is not the length of a wall on a house.'); return; }
+    if (!(S.drawing && S.drawing.length)) return;
+    // typing a length is measuring: the grid becomes metres now
+    if (!S.scale) { toMetres(1); }
+    var d = DIRS[dir];
+    if (!d) {
+      // Enter: carry on the way the pointer points, else straight on
+      var last = S.drawing[S.drawing.length - 1], prev = S.drawing[S.drawing.length - 2];
+      var vx = 1, vy = 0;
+      if (S.cursor && dist(S.cursor, last) > 0.01) { vx = S.cursor[0] - last[0]; vy = S.cursor[1] - last[1]; }
+      else if (prev) { vx = last[0] - prev[0]; vy = last[1] - prev[1]; }
+      var ang = Math.round(Math.atan2(vy, vx) / (Math.PI / 4)) * (Math.PI / 4);
+      d = [Math.cos(ang), Math.sin(ang)];
+    }
+    var from = S.drawing[S.drawing.length - 1];
+    var to = [from[0] + d[0] * len, from[1] + d[1] * len];
+    onTap(to, 'typed');
+    var again = $('sk-typed');
+    if (again) { again.value = ''; try { again.focus(); } catch (err) {} }
+  }
+
   /** Upload a plan for this floor, or turn, strengthen or drop the one here. */
   function planTools(f) {
     if (!f.image) {
@@ -6561,7 +6661,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       return;
     }
     if (S.drawing && S.drawing.length) {
-      var p = snapTarget(w).p;
+      var p = S.typedTap ? snapFrom(null, w) : snapTarget(w).p;
       if (S.drawing.length > 2 && dist(p, S.drawing[0]) < CLOSE_UNITS) { closeShape(); return; }
       S.drawing.push(p);
       changed();
@@ -6849,6 +6949,89 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
    */
   var SAME_ROOM_M = 2;   // no wall between and closer than this: the same room
 
+  /* ---- rooms found from the walls ----------------------------------------
+   * Once the inside walls enclose spaces, the spaces are the rooms, and their
+   * areas are real rather than shared out by type. A quarter-metre grid over
+   * the floor, walls block cells, a flood fill labels what is left. Good to a
+   * few per cent, which is better than a weight, and cheap enough to run on
+   * every render. Only when there is at least one inside wall: an open floor
+   * is one region, and pins there keep the old behaviour.
+   */
+  var REG = {};
+  function regionsOf(f) {
+    if (!f.closed || !S.scale || !f.internals.length) return null;
+    var key = JSON.stringify([f.outline, f.internals]);
+    var fi = S.floors.indexOf(f);
+    if (REG[fi] && REG[fi].key === key) return REG[fi].reg;
+    var c = 0.25;
+    var xs = f.outline.map(function (q) { return q[0]; }), ys = f.outline.map(function (q) { return q[1]; });
+    var x0 = Math.min.apply(null, xs), y0 = Math.min.apply(null, ys);
+    var nx = Math.ceil((Math.max.apply(null, xs) - x0) / c), ny = Math.ceil((Math.max.apply(null, ys) - y0) / c);
+    if (nx < 1 || ny < 1 || nx * ny > 400000) return null;
+    var open = new Uint8Array(nx * ny), lab = new Int32Array(nx * ny), i, j;
+    for (j = 0; j < ny; j++) for (i = 0; i < nx; i++) {
+      open[j * nx + i] = insidePoly(f.outline, [x0 + (i + 0.5) * c, y0 + (j + 0.5) * c]) ? 1 : 0;
+    }
+    f.internals.forEach(function (sg) {
+      var L = dist(sg[0], sg[1]), n = Math.max(1, Math.ceil(L / (c / 3)));
+      for (var k = 0; k <= n; k++) {
+        var t = k / n, px = sg[0][0] + (sg[1][0] - sg[0][0]) * t, py = sg[0][1] + (sg[1][1] - sg[0][1]) * t;
+        var ci = Math.floor((px - x0) / c), cj = Math.floor((py - y0) / c);
+        if (ci >= 0 && ci < nx && cj >= 0 && cj < ny) open[cj * nx + ci] = 0;
+      }
+    });
+    var list = [], next = 1, stack = [];
+    for (j = 0; j < ny; j++) for (i = 0; i < nx; i++) {
+      var at = j * nx + i;
+      if (!open[at] || lab[at]) continue;
+      var id = next++, n2 = 0, sx = 0, sy = 0;
+      lab[at] = id; stack.push(at);
+      while (stack.length) {
+        var cur = stack.pop(), cx = cur % nx, cy = (cur - cx) / nx;
+        n2++; sx += cx; sy += cy;
+        [[cx - 1, cy], [cx + 1, cy], [cx, cy - 1], [cx, cy + 1]].forEach(function (q) {
+          if (q[0] < 0 || q[0] >= nx || q[1] < 0 || q[1] >= ny) return;
+          var b = q[1] * nx + q[0];
+          if (open[b] && !lab[b]) { lab[b] = id; stack.push(b); }
+        });
+      }
+      list.push({ id: id, n: n2, area: n2 * c * c, mx: sx / n2, my: sy / n2 });
+    }
+    // a label wants a cell of its own region near the middle, which the mean
+    // of an L-shaped room is not
+    list.forEach(function (r) {
+      var best = null, bd = Infinity;
+      for (j = 0; j < ny; j++) for (i = 0; i < nx; i++) {
+        if (lab[j * nx + i] !== r.id) continue;
+        var d = (i - r.mx) * (i - r.mx) + (j - r.my) * (j - r.my);
+        if (d < bd) { bd = d; best = [i, j]; }
+      }
+      r.cx = x0 + (best[0] + 0.5) * c; r.cy = y0 + (best[1] + 0.5) * c;
+      r.small = r.area < 1.5;                          // a sliver between two walls, not a room
+    });
+    var reg = { c: c, x0: x0, y0: y0, nx: nx, ny: ny, lab: lab, list: list.filter(function (r) { return !r.small; }) };
+    REG[fi] = { key: key, reg: reg };
+    return reg;
+  }
+  function regionAt(reg, p) {
+    if (!reg) return null;
+    var i = Math.floor((p[0] - reg.x0) / reg.c), j = Math.floor((p[1] - reg.y0) / reg.c);
+    if (i < 0 || i >= reg.nx || j < 0 || j >= reg.ny) return null;
+    var id = reg.lab[j * reg.nx + i];
+    return reg.list.filter(function (r) { return r.id === id; })[0] || null;
+  }
+  /** Each pin's measured area, or null where the walls do not say. */
+  function pinAreas(f) {
+    var reg = regionsOf(f);
+    if (!reg || reg.list.length < 2) return f.markers.map(function () { return null; });
+    var share = {};
+    f.markers.forEach(function (mk) { var r = regionAt(reg, [mk.x, mk.y]); if (r) share[r.id] = (share[r.id] || 0) + 1; });
+    return f.markers.map(function (mk) {
+      var r = regionAt(reg, [mk.x, mk.y]);
+      return r ? r.area / share[r.id] : null;
+    });
+  }
+
   function sameSpaceAs(f, p, skip) {
     var walls = wallsOf(f);
     for (var i = 0; i < f.markers.length; i++) {
@@ -7133,6 +7316,21 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         });
       });
     }
+    // the middle of a wall drags the whole wall sideways: corners win when
+    // they are close, and a tap (no drag) on the wall still means what it did
+    if (!best && which) {
+      var ring = shapeOf(which).outline;
+      for (var wi = 0; wi < ring.length; wi++) {
+        var pr = projectOnSeg(p, ring[wi], ring[(wi + 1) % ring.length]);
+        if (pr.d < r && pr.t > 0.12 && pr.t < 0.88 && (!best || pr.d < best.d)) best = { kind: 'wall', which: which, i: wi, d: pr.d };
+      }
+    }
+    if (!best && S.stage === 'internal') {
+      floor().internals.forEach(function (seg, i) {
+        var pr = projectOnSeg(p, seg[0], seg[1]);
+        if (pr.d < r && pr.t > 0.12 && pr.t < 0.88 && (!best || pr.d < best.d)) best = { kind: 'iwallmid', i: i, d: pr.d };
+      });
+    }
     if (S.stage === 'garden') {
       S.garden.areas.forEach(function (a, ai) {
         a.outline.forEach(function (q, i) {
@@ -7177,9 +7375,61 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var h = handleAt(w);
     if (!h) return;
     press.handle = h;
+    if (h.kind === 'wall') {
+      var ring0 = shapeOf(h.which).outline;
+      press.orig = [ring0[h.i].slice(), ring0[(h.i + 1) % ring0.length].slice()];
+    } else if (h.kind === 'iwallmid') {
+      var sg0 = floor().internals[h.i];
+      press.orig = [sg0[0].slice(), sg0[1].slice()];
+    }
+    if (h.kind === 'wall' || h.kind === 'iwallmid') {
+      press.origInt = floor().internals.map(function (sg) { return [sg[0].slice(), sg[1].slice()]; });
+    }
     snapshot();
     try { $('sk-svg').setPointerCapture(e.pointerId); } catch (err) {}
     e.preventDefault();
+  }
+
+  /** Slide a wall sideways by the part of the drag that is across it. */
+  function slideWall(orig, from, to) {
+    var dx = orig[1][0] - orig[0][0], dy = orig[1][1] - orig[0][1], L = Math.hypot(dx, dy) || 1;
+    var nx = -dy / L, ny = dx / L;
+    var s = (to[0] - from[0]) * nx + (to[1] - from[1]) * ny;
+    s = Math.round(s / SNAP) * SNAP;
+    return [snapFrom(null, [orig[0][0] + nx * s, orig[0][1] + ny * s]),
+            snapFrom(null, [orig[1][0] + nx * s, orig[1][1] + ny * s])];
+  }
+
+  /** Walls that ended on the wall being slid stay attached: their ends move
+      with it, so a T-junction stays a T-junction. */
+  function carryEnds(f2, orig, moved, skip) {
+    var shift = [moved[0][0] - orig[0][0], moved[0][1] - orig[0][1]];
+    press.origInt.forEach(function (sg, k) {
+      if (k === skip) return;
+      [0, 1].forEach(function (e) {
+        var p0 = sg[e];
+        if (projectOnSeg(p0, orig[0], orig[1]).d < 1e-6) {
+          f2.internals[k][e] = keepInside(snapFrom(null, [p0[0] + shift[0], p0[1] + shift[1]]));
+        } else {
+          f2.internals[k][e] = p0.slice();
+        }
+      });
+    });
+  }
+
+  /** Faint lines through any other corner the dragged point lines up with. */
+  function guidesFor(g, which, skip) {
+    var pts = [], out = [];
+    var ring = shapeOf(which).outline;
+    ring.forEach(function (q, i) { if (skip.indexOf(i) < 0) pts.push(q); });
+    if (which !== 'floor') pts = pts.concat(ground().outline);
+    if (which !== 'ext' && S.extension.closed) pts = pts.concat(S.extension.outline);
+    var seenX = {}, seenY = {};
+    pts.forEach(function (q) {
+      if (Math.abs(q[0] - g[0]) < 1e-9 && !seenX[q[0]]) { seenX[q[0]] = 1; out.push({ axis: 'x', v: q[0] }); }
+      if (Math.abs(q[1] - g[1]) < 1e-9 && !seenY[q[1]]) { seenY[q[1]] = 1; out.push({ axis: 'y', v: q[1] }); }
+    });
+    return out;
   }
 
   /* Rendering on every pointer move is fine for a plan this size, but only
@@ -7224,6 +7474,22 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       if (h.kind === 'corner') {
         shapeOf(h.which).outline[h.i] = g;
         S.pick = { kind: 'corner', which: h.which, i: h.i };
+        S.guides = guidesFor(g, h.which, [h.i]);
+      } else if (h.kind === 'wall') {
+        var ringW = shapeOf(h.which).outline, moved = slideWall(press.orig, press.world, w2);
+        ringW[h.i] = moved[0]; ringW[(h.i + 1) % ringW.length] = moved[1];
+        if (h.which === 'floor') carryEnds(f2, press.orig, moved, -1);
+        S.pick = null;
+        S.guides = guidesFor(moved[0], h.which, [h.i, (h.i + 1) % ringW.length])
+          .concat(guidesFor(moved[1], h.which, [h.i, (h.i + 1) % ringW.length]));
+      } else if (h.kind === 'iwallmid') {
+        var movedI = slideWall(press.orig, press.world, w2);
+        var a1 = keepInside(movedI[0]), b1 = keepInside(movedI[1]);
+        if (!crossesOutline(a1, b1)) {
+          f2.internals[h.i][0] = a1; f2.internals[h.i][1] = b1;
+          carryEnds(f2, press.orig, [a1, b1], h.i);
+        }
+        S.pick = { kind: 'iwall', i: h.i };
       } else if (h.kind === 'tree') {
         S.garden.trees[h.i] = g;
       } else if (h.kind === 'iend') {
@@ -7288,7 +7554,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       }
       // a drag that crosses the shape would silently corrupt the area
       var h = p.handle;
-      if (h.kind === 'corner') {
+      S.guides = null;
+      if (h.kind === 'corner' || h.kind === 'wall') {
         var shape = shapeOf(h.which);
         var why = selfIntersects(shape.outline) ? 'That would fold the shape over itself.'
           : hasZeroWall(shape.outline) ? 'That would put two corners on top of each other.'
@@ -7315,6 +7582,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       if (hh.kind === 'tree') { S.garden.trees.splice(hh.i, 1); settled(); return; }
       UNDO.pop();                          // nothing changed, so nothing to undo
       REDO.length = 0;
+      S.guides = null;
+      if (hh.kind === 'wall' || hh.kind === 'iwallmid') { onTap(p.world, e); return; }
       // outside the shape steps a corner is only for dragging: a tap on it is
       // a tap on the plan, so an inside wall can start from a house corner
       if (hh.kind === 'corner' && !editable()) { onTap(p.world, e); return; }
@@ -7349,6 +7618,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (S.stage === 'outline' || S.stage === 'extension') {
       var which = S.stage === 'outline' ? 'floor' : 'ext';
       var shape = shapeOf(which);
+      var exact = e === 'typed';
 
       if (shape.closed) {
         // while measuring, "a different wall" means the next tap picks one
@@ -7367,7 +7637,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         return;
       }
 
-      var p = snapTarget(w).p;
+      var p = exact ? snapFrom(null, w) : snapTarget(w).p;
       if (!S.drawing) { snapshot(); S.drawing = []; }
       if (S.drawing.length > 2 && dist(p, S.drawing[0]) < CLOSE_UNITS) { closeShape(); return; }
       // an extension that started on the house can finish on it too
@@ -7377,7 +7647,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       return;
     }
 
-    if (S.stage === 'garden') { gardenTap(w); return; }
+    if (S.stage === 'garden') { S.typedTap = e === 'typed'; gardenTap(w); S.typedTap = false; return; }
 
     if (S.stage === 'internal' && S.wallMode === 'door') {
       var iw = wallAt(w, 'int');
@@ -7421,7 +7691,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         changed();
         return;
       }
-      var end = keepInside(snapTarget(w).p);
+      var end = keepInside(e === 'typed' ? snapFrom(null, w) : snapTarget(w).p);
       if (dist(end, S.drawing[0]) < SNAP * 0.5) { S.drawing = null; changed(); return; }
       if (crossesOutline(S.drawing[0], end)) { say('That wall would run outside the house.'); return; }
       f.internals.push([S.drawing[0], end]);
@@ -7595,6 +7865,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     S.drawing = null;
     S.cursor = null;
     if (S.stage === 'outline' && !S.scale) startCalibration();
+    // typed lengths measured it already, so the next question is the upstairs
+    else if (S.stage === 'outline' && S.floors.length === 1 && !S.askedUp) S.askUp = true;
     settled();
   }
 
@@ -8097,6 +8369,10 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (len) len.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') { e.preventDefault(); applyCalibration(); }
     });
+    // the typed-length box is re-rendered, so it is listened to from the overlay
+    $('sk-overlay').addEventListener('keydown', function (e) {
+      if (e.target && e.target.id === 'sk-typed' && e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); addTyped(null); }
+    });
 
     $('sk-overlay').addEventListener('click', guarded(function (e) {
       // A modal's clicks are its own. The estimator behind it binds several of
@@ -8147,6 +8423,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       if (hit) { S.kind = hit.getAttribute('data-kind'); S.selected = null; render(); return; }
       hit = t.closest && t.closest('[data-room]');
       if (hit) { S.roomType = hit.getAttribute('data-room'); S.roomPicked = true; render(); return; }
+      hit = t.closest && t.closest('[data-dir]');
+      if (hit) { addTyped(hit.getAttribute('data-dir')); return; }
       hit = t.closest && t.closest('[data-gmode]');
       if (hit) { S.gardenMode = hit.getAttribute('data-gmode'); S.drawing = null; S.pick = null; say(''); render(); return; }
       hit = t.closest && t.closest('[data-storeys]');
@@ -9136,8 +9414,10 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       // the pins ARE the room list — a kitchen or a bathroom starts at a strip
       // out because that is what people are doing when they name one
       if (m.rooms && m.rooms.length) {
-        j.rooms = m.rooms.map(function (type) {
-          return { type: type, level: (type === 'kitchen' || type === 'bathroom') ? 'strip' : 'refit' };
+        j.rooms = m.rooms.map(function (type, i) {
+          var r = { type: type, level: (type === 'kitchen' || type === 'bathroom') ? 'strip' : 'refit' };
+          if (m.roomAreas && m.roomAreas[i]) r.area = m.roomAreas[i];   // measured from the walls
+          return r;
         });
         j.touched.rooms = true;
       }

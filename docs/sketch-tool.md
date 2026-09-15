@@ -177,7 +177,11 @@ sentence.
    They come before the rooms because they are what makes a room a room.
 3. **Doors & windows** — pick one, tap the outside wall it is in.
 4. **Rooms** — pick a type, tap the room. Finishing the ground floor leads to
-   the upstairs, because the bedrooms and the bathroom are up there.
+   the upstairs, because the bedrooms and the bathroom are up there. Once the
+   inside walls enclose spaces, the spaces are found for you: each shows "Tap
+   to name · 12 m²" until it is named, a named room's pill carries its real
+   area, and that area is what the room-by-room renovation price uses. A floor
+   with no inside walls still works the old way, with areas shared by type.
 5. **Extension** — optional. One button adds a rear extension on the back wall
    to drag to size, or draw your own against the house.
 6. **Garden** — optional. One button adds a typical plot (a short front garden,
@@ -253,6 +257,22 @@ sketch tool does not call into it. Nothing here is copyleft, and nothing in
 
 If this becomes IP that matters commercially, that separation is what keeps the
 answer to "what do you actually own?" a short one.
+
+## Typing a wall, and sliding one
+
+Some people know the lengths. While a run is open the panel offers *type the
+next wall*: a length in metres or feet and four arrows, or Enter to carry on
+the way the pointer points. The corner lands exactly there. Typing before the
+house has been measured makes the grid metres on the spot, so the measuring
+question never comes, and typing the closing length closes the shape.
+
+Every wall also slides. Grab the middle of an outside wall and it moves
+sideways with both neighbours stretching; the same for an inside wall. Walls
+that ended on the wall being slid move with it, so a T-junction stays a
+T-junction. A tap on a wall still does what it did (a corner on an outside
+wall, a pick on an inside one) because a slide needs a drag. While anything is
+dragged, a faint dashed guide appears through any other corner it lines up
+with.
 
 ## Snapping to what is already there
 
@@ -355,7 +375,8 @@ the house.
   would be a second drawing.
 - Ceiling height is assumed at 2.4 m rather than asked. It multiplies the
   plaster area and nothing else.
-- Rooms are counted, not placed, so a pin in the wrong room changes nothing
+- On a floor with no inside walls rooms are counted, not placed, so a pin in
+  the wrong place changes nothing
   except the warning that it is outside the house.
 - Nothing is shared between devices — the drawing lives in one browser.
 - A garage or garden room drawn in the garden feeds the outbuilding type's

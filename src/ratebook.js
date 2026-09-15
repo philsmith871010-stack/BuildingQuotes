@@ -108,11 +108,17 @@
 
   /** Each room's share of the measured floor area, by type weight. */
   function roomAreas(rooms, floorArea) {
-    var total = 0;
-    rooms.forEach(function (r) { total += roomType(r.type).weight; });
-    if (!total) return rooms.map(function () { return 0; });
+    // a room whose area was measured off the drawing keeps it; the rest share
+    // whatever floor is left, by type weight
+    var known = 0, total = 0;
+    rooms.forEach(function (r) {
+      if (r.area > 0) known += r.area; else total += roomType(r.type).weight;
+    });
+    var left = Math.max(0, (floorArea || 0) - known);
     return rooms.map(function (r) {
-      return Math.round((floorArea || 0) * roomType(r.type).weight / total * 10) / 10;
+      if (r.area > 0) return Math.round(r.area * 10) / 10;
+      if (!total) return 0;
+      return Math.round(left * roomType(r.type).weight / total * 10) / 10;
     });
   }
 

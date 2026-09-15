@@ -1013,3 +1013,18 @@ html { scroll-padding-top: 62px; }
 #sk-pickwall { justify-self: start; }
 #sk-pickwall[aria-pressed="true"] { border-color: #E4572E; color: #E4572E; }
 #draw-level[hidden] { display: none; }
+
+/* typed wall lengths */
+.sk-typed-row { display: flex; align-items: center; gap: .4rem; }
+.sk-typed-row input { width: 5.2rem; font-family: var(--mono); font-size: 1rem; padding: .35rem .5rem; border: 1px solid var(--rule); border-radius: 2px; background: var(--surface); color: var(--ink); }
+.sk-typed-row span { font-family: var(--mono); font-size: .8rem; color: var(--ink-3); }
+.sk-arrows { display: inline-flex; border: 1px solid var(--rule); border-radius: 2px; overflow: hidden; margin-left: auto; }
+.sk-arrows button { border: 0; background: var(--surface); color: var(--ink); font-size: 1.05rem; width: 2.3rem; height: 2.2rem; cursor: pointer; }
+.sk-arrows button + button { border-left: 1px solid var(--rule); }
+.sk-arrows button:hover { background: var(--well); }
+.sk-arrows button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* rooms the walls found, and alignment guides */
+.sk-unnamed rect { fill: var(--surface); stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: .95; }
+.sk-unnamed text { font-family: var(--mono); fill: var(--accent-ink); letter-spacing: .03em; pointer-events: none; }
+.sk-unnamed { pointer-events: none; }
+.sk-guide { stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 6 5; opacity: .55; vector-effect: non-scaling-stroke; }
