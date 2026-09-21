@@ -249,7 +249,7 @@
     wallsOf(floor()).forEach(function (w) {
       if (on && w.on !== on) return;
       var pr = projectOnSeg(p, w.a, w.b);
-      if (pr.d < 0.7 && (!best || pr.d < best.d)) best = { w: w, t: pr.t, d: pr.d };
+      if (pr.d < Math.max(0.6, grabRadius() * 1.5) && (!best || pr.d < best.d)) best = { w: w, t: pr.t, d: pr.d };
     });
     return best;
   }
@@ -397,8 +397,11 @@
     // a plot fills the canvas edge to edge, and its corners sit under the
     // undo and zoom buttons unless the frame keeps clear of them
     var pad = S.stage === 'garden' ? PAD * 1.7 : PAD;
+    var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+    // the undo and zoom buttons sit over the top of the canvas
+    var top = pad + (y1 - y0 + 2 * pad) * 0.12;
     return { x0: Math.min.apply(null, xs) - pad, x1: Math.max.apply(null, xs) + pad,
-             y0: Math.min.apply(null, ys) - pad, y1: Math.max.apply(null, ys) + pad };
+             y0: y0 - top, y1: y1 + pad };
   }
 
   function atLeast(v) {
@@ -582,8 +585,9 @@
     }
     f.internals.forEach(function (seg, i) {
       var on = S.pick && S.pick.kind === 'iwall' && S.pick.i === i;
+      var hot = S.hotWall === i && !press;
       out.push('<line x1="' + P(seg[0])[0] + '" y1="' + P(seg[0])[1] + '" x2="' + P(seg[1])[0] +
-        '" y2="' + P(seg[1])[1] + '" class="sk-int' + (on ? ' on' : '') + (seg.out ? ' out' : '') + '"/>');
+        '" y2="' + P(seg[1])[1] + '" class="sk-int' + (on ? ' on' : '') + (seg.out ? ' out' : '') + (hot ? ' hot' : '') + '"/>');
       if (seg.out) {
         out.push('<text x="' + ((seg[0][0] + seg[1][0]) / 2 * K) + '" y="' +
           ((seg[0][1] + seg[1][1]) / 2 * K - 8 * RU) + '" text-anchor="middle" class="sk-outlab">COMING OUT</text>');
@@ -596,7 +600,7 @@
       }
     });
 
-    if (S.extension.outline.length > 1) {
+    if (S.extension.outline.length > 1 && (S.stage === 'extension' || !S.extension.closed || extOn(S.active))) {
       if (S.extension.closed) out.push('<polygon points="' + poly(S.extension.outline) + '" class="sk-extension"/>');
       out.push('<polyline points="' + poly(S.extension.closed ? S.extension.outline.concat([S.extension.outline[0]]) : S.extension.outline) +
         '" class="sk-extline"/>');
@@ -627,6 +631,20 @@
     }
 
     out.push(openingsAndTags(f));
+    if (S.ghost && !press) {
+      var gw = openingWall(f, S.ghost);
+      if (gw) {
+        var gL = dist(gw.a, gw.b);
+        if (gL) {
+          var gux = (gw.b[0] - gw.a[0]) / gL, guy = (gw.b[1] - gw.a[1]) / gL;
+          var ghalf = Math.min(S.scale ? S.ghost.width / S.scale : S.ghost.width, gL * 0.9) / 2;
+          var gc = [gw.a[0] + gux * (S.ghost.t * gL), gw.a[1] + guy * (S.ghost.t * gL)];
+          var g1 = [gc[0] - gux * ghalf, gc[1] - guy * ghalf], g2 = [gc[0] + gux * ghalf, gc[1] + guy * ghalf];
+          out.push('<line x1="' + P(g1)[0] + '" y1="' + P(g1)[1] + '" x2="' + P(g2)[0] + '" y2="' + P(g2)[1] +
+            '" class="sk-open sk-' + S.ghost.kind + ' ghost"/>');
+        }
+      }
+    }
 
     // corners. The first one is fat and obvious once closing is possible, which
     // is the whole of the instruction "finish where you started".
@@ -901,7 +919,7 @@
         : (S.stage === 'outline' && !f.closed && !f.outline.length && S.active > 0)
             ? 'Copy the floor below, or draw this one.'
         : (S.stage === 'rooms' && f.markers.length && floorWithoutRooms() >= 0)
-            ? 'Tap a room again to change what it is. When this floor is done, go up a floor.'
+            ? 'Tap a label to change or remove it. When this floor is done, go up a floor.'
         : (edited && stage.done ? stage.done : stage.hint);
     }
 
@@ -929,7 +947,11 @@
       // somebody is half way through typing has to survive the re-render
       var typedEl = $('sk-typed');
       var keep = typedEl ? { v: typedEl.value, focus: doc.activeElement === typedEl } : null;
-      tools.innerHTML = (S.calibrating || S.askUp) ? '' : typedTools() + toolsFor(S.stage);
+      var afterNext = S.stage === 'outline' && floor().closed && !(S.drawing && S.drawing.length);
+      var html = (S.calibrating || S.askUp) ? '' : toolsFor(S.stage) + typedTools() + cancelTool();
+      tools.innerHTML = afterNext ? '' : html;
+      var tools2 = $('sk-tools2');
+      if (tools2) tools2.innerHTML = afterNext ? html : '';
       typedEl = $('sk-typed');
       if (keep && typedEl) { typedEl.value = keep.v; if (keep.focus) { try { typedEl.focus(); } catch (e) {} } }
     }
@@ -1038,11 +1060,20 @@
               '" id="sk-dropfloor">' + (S.confirm === 'floor' ? 'Tap again to remove it' : 'Remove this floor') + '</button>'
             : '');
       }
-      return (f.closed
-        ? '<button type="button" class="btn btn-ghost btn-sm" id="sk-redraw">Draw this floor again</button>'
-        : '') +
-        planTools(f) +
-        (S.scale ? '<button type="button" class="btn btn-ghost btn-sm" id="sk-recal">Change the measurement</button>' : '') +
+      // a finished shape: the small things you might still want, as a quiet
+      // row after the big Next, not a stack of buttons in front of it
+      if (f.closed) {
+        return '<div class="sk-quiet">' +
+          (S.scale ? '<button type="button" class="sk-alt" id="sk-recal">Change the measurement</button>' : '') +
+          '<button type="button" class="sk-alt" id="sk-redraw">Draw this floor again</button>' +
+          (f.image ? '' : '<button type="button" class="sk-alt" id="sk-upload">Draw over a plan</button>') +
+          (S.floors.length > 1
+            ? '<button type="button" class="sk-alt' + (S.confirm === 'floor' ? ' sk-danger' : '') +
+              '" id="sk-dropfloor">' + (S.confirm === 'floor' ? 'Tap again to remove it' : 'Remove this floor') + '</button>'
+            : '') +
+          '</div>' + (f.image ? planTools(f) : '');
+      }
+      return planTools(f) +
         (S.floors.length > 1
           ? '<button type="button" class="btn btn-ghost btn-sm' + (S.confirm === 'floor' ? ' sk-danger' : '') +
             '" id="sk-dropfloor">' + (S.confirm === 'floor' ? 'Tap again to remove it' : 'Remove this floor') + '</button>'
@@ -1108,6 +1139,11 @@
    * makes the grid metres on the spot, so the measuring question never comes.
    */
   var DIRS = { up: [0, -1], right: [1, 0], down: [0, 1], left: [-1, 0] };
+  function cancelTool() {
+    if (!(S.drawing && S.drawing.length) || S.calibrating) return '';
+    var what = S.stage === 'internal' ? 'this wall' : S.stage === 'garden' && S.garden.plot.closed ? 'this shape' : S.stage === 'garden' ? 'the plot' : S.stage === 'extension' ? 'the extension' : 'this shape';
+    return '<button type="button" class="sk-alt sk-alt-quiet" id="sk-cancelrun">Cancel ' + what + '</button>';
+  }
   function typedTools() {
     if (!(S.drawing && S.drawing.length) || S.calibrating) return '';
     if (!drawingStage()) return '';
@@ -1732,8 +1768,8 @@
     if (q.scaled && q.extDoors === 0 && passed('openings')) out.push('No way in yet — add a front or back door.');
     if (q.scaled && q.totalArea > 0) {
       var per = q.rooms.length ? q.totalArea / q.rooms.length : 0;
-      if (q.rooms.length && per < 4) out.push('That is a lot of rooms for the floor area.');
-      if (q.rooms.length && per > 45) out.push('That is very few rooms for the floor area.');
+      if (q.rooms.length && per < 4 && passed('rooms')) out.push('That is a lot of rooms for the floor area.');
+      if (q.rooms.length && per > 45 && passed('rooms')) out.push('That is very few rooms for the floor area.');
       if (!q.rooms.length && passed('rooms')) out.push('No rooms marked yet, so kitchens and bathrooms are not counted.');
     }
     if (S.extension.closed && ground().closed) {
@@ -2180,18 +2216,30 @@
     var raw = toWorld(e);
     var hh = handleAt(raw);
     S.hoverHandle = !!hh;
-    if (!placingStage()) { S.cursor = null; }
+    S.ghost = null; S.hotWall = -1;
+    var pointing = placingStage() && !(S.stage === 'internal' && !drawingWalls());
+    if (!pointing) { S.cursor = null; }
     else {
       var tg = snapTarget(raw);
       S.snapKind = tg.kind;
       S.cursor = tg.p;
       if (S.stage === 'internal') S.cursor = keepInside(S.cursor);
     }
+    // the preview of what a tap will do, where it will do it
+    if (!hh && S.stage === 'internal' && S.wallMode === 'door') {
+      var dw = wallAt(raw, 'int') || wallAt(raw, 'ext') || wallAt(raw, 'xt');
+      if (dw) S.ghost = { on: dw.w.on, idx: dw.w.idx, t: dw.t, kind: dw.w.on === 'int' ? 'intDoor' : 'door', width: dw.w.on === 'int' ? DEFAULTS.intDoor : DEFAULTS.door };
+    } else if (!hh && S.stage === 'openings') {
+      var ow = wallAt(raw, 'ext') || wallAt(raw, 'xt'), ok2 = S.kind || 'window';
+      if (ow) S.ghost = { on: ow.w.on, idx: ow.w.idx, t: ow.t, kind: ok2, width: DEFAULTS[ok2] };
+    } else if (S.stage === 'internal' && S.wallMode === 'out') {
+      S.hotWall = nearestInternal(raw);
+    }
     setCursor(cursorFor(raw, hh));
     renderSoon();
   }
 
-  function onLeave() { S.cursor = null; setCursor(''); render(); }
+  function onLeave() { S.cursor = null; S.ghost = null; S.hotWall = -1; setCursor(''); render(); }
 
   /* ---- the pointer says what a click will do --------------------------------
    * A crosshair everywhere told nobody anything. Each state gets its own
@@ -2377,7 +2425,7 @@
       snapshot();
       var od = iw
         ? { id: 'o' + (++SEQ), on: 'int', idx: iw.w.idx, t: iw.t, width: DEFAULTS.intDoor, kind: 'intDoor' }
-        : { id: 'o' + (++SEQ), on: 'ext', idx: ext.w.idx, t: ext.t, width: DEFAULTS.door, kind: 'door' };
+        : { id: 'o' + (++SEQ), on: ext.w.on, idx: ext.w.idx, t: ext.t, width: DEFAULTS.door, kind: 'door' };
       f.openings.push(od);
       S.selected = od.id;
       say('');
@@ -2487,7 +2535,14 @@
     return best;
   }
 
-  function say(msg) { var el = $('sk-say'); if (el) el.textContent = msg || ''; }
+  function say(msg, tone) {
+    var el = $('sk-say');
+    if (!el) return;
+    el.textContent = msg || '';
+    // a refusal reads as a warning; anything else is just a note
+    var warn = tone === 'warn' || /^(That|Tap |Type |Nothing|A shape|Two corners|Something went wrong)/.test(msg || '');
+    el.classList.toggle('is-note', !!msg && !warn);
+  }
 
   /* Nothing here should throw, but "nothing happens" is the worst failure a
      drawing tool can have — so if something does, it says what, on screen,
@@ -3145,7 +3200,7 @@
       }
 
       hit = t.closest && t.closest('[data-wallmode]');
-      if (hit) { S.wallMode = hit.getAttribute('data-wallmode'); S.drawing = null; S.pick = null; render(); return; }
+      if (hit) { S.wallMode = hit.getAttribute('data-wallmode'); S.drawing = null; S.pick = null; S.selected = null; S.ghost = null; S.hotWall = -1; say(''); render(); return; }
 
       hit = t.closest && t.closest('[data-kind]');
       if (hit) { S.kind = hit.getAttribute('data-kind'); S.selected = null; render(); return; }
@@ -3211,6 +3266,7 @@
         case 'sk-blank':     S.started = true; settled(); return;
         case 'sk-addext':    addRearExtension(); return;
         case 'sk-addplot':   addTypicalPlot(); return;
+        case 'sk-cancelrun': S.drawing = null; S.cursor = null; say(''); render(); return;
         case 'sk-dropplot':
           if (S.confirm !== 'plot') { S.confirm = 'plot'; render(); return; }
           snapshot();

@@ -724,6 +724,7 @@ html { scroll-padding-top: 62px; }
 }
 .sk-hint { font-size: .9rem; color: var(--ink-2); line-height: 1.45; margin: -.35rem 0 0; }
 .sk-say { font-size: .78rem; color: var(--warn); margin: 0; }
+.sk-say.is-note { color: var(--ink-2); }
 .sk-say:empty { display: none; }
 .sk-nextbtn { width: 100%; }
 
@@ -795,6 +796,7 @@ html { scroll-padding-top: 62px; }
 .sk-bifold { stroke: #E4572E; stroke-width: 9; stroke-dasharray: 8 4; }
 .sk-intDoor { stroke: #E4572E; stroke-width: 6; }
 .sk-open.sel { stroke: var(--accent); }
+.sk-open.ghost { opacity: .55; stroke-dasharray: 6 4; pointer-events: none; }
 .sk-pin rect { fill: var(--accent); opacity: .92; cursor: pointer; stroke: var(--surface); stroke-width: 1.5; }
 .sk-pin.on rect { stroke: #E4572E; stroke-width: 3; opacity: 1; }
 .sk-pin text { font-family: var(--mono); font-weight: 600; fill: #fff; pointer-events: none; letter-spacing: .04em; }
@@ -1076,3 +1078,14 @@ html { scroll-padding-top: 62px; }
 .sk-live-k { font-family: var(--mono); font-size: .62rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
 .sk-live b { font-family: var(--disp); font-size: 1.25rem; font-weight: 700; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
 .sk-live small { font-size: .74rem; color: var(--ink-3); line-height: 1.35; }
+
+/* every control in the drawing tool's panel says it is a control */
+.sk-side button, .sk-actions button, .sk-floors button, .sk-stages button:not(:disabled), .sk-choose button { cursor: pointer; }
+.sk-side input[type="number"], .sk-side input[type="text"] { cursor: text; }
+.sk-side button:disabled { cursor: not-allowed; }
+
+.sk-quiet { display: flex; flex-wrap: wrap; gap: .2rem .9rem; justify-content: center; }
+.sk-quiet .sk-alt { font-size: .76rem; }
+.sk-quiet .sk-alt.sk-danger { color: var(--warn); }
+.sk-tools-after:empty { display: none; }
+.sk-int.hot { stroke: var(--warn, #B4432B); stroke-dasharray: 9 6; opacity: .85; }

@@ -282,6 +282,20 @@ wall, a pick on an inside one) because a slide needs a drag. While anything is
 dragged, a faint dashed guide appears through any other corner it lines up
 with.
 
+## What the panel shows, and in what order
+
+The side panel is one column read top to bottom: where you are (step and
+name), one sentence saying what to do, the tools for this step, the one big
+Next button, and then the figures. A refusal reads in the warning colour; a
+note ("Upstairs added") reads as a note. On a finished shape the small things
+you might still want (change the measurement, draw the floor again, draw over a
+plan, remove the floor) sit as a quiet row *after* Next, not as a stack of
+buttons in front of it. While a run of corners or a wall is open there is a
+Cancel link, so a phone user is never stuck mid-run. A doorway or window is
+previewed on the wall it will land on before the tap, and a wall to knock out
+lights up red under the pointer. The frame keeps its top clear of the undo and
+zoom buttons, so no corner ever hides under them.
+
 ## The pointer says what a click will do
 
 A crosshair everywhere told nobody anything. Each state has its own cursor: a
