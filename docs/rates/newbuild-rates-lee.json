@@ -1,0 +1,1755 @@
+{
+ "source": "Lee Todd, L Todd Construction, new build rates shared with Phil, September 2026",
+ "currency": "GBP",
+ "sections": [
+  {
+   "no": "1",
+   "title": "Reduce Levels And Foundations",
+   "items": [
+    {
+     "item": "Excavate to reduce levels",
+     "rate": 28.14,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Cart away clean and inert spoil",
+     "rate": 56.28,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Excavate foundations",
+     "rate": 28.14,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Cart away foundation spoil",
+     "rate": 56.28,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Trench-fill concrete to 450mm BGL",
+     "rate": 191.36,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Claymaster",
+     "rate": 25.33,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "2",
+   "title": "Below-DPC Walls",
+   "items": [
+    {
+     "item": "Below-DPC blockwork",
+     "rate": 63.04,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Air bricks and telescopic vents",
+     "rate": 12.38,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Below-DPC brickwork",
+     "rate": 137.33,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Cavity fill",
+     "rate": 198.12,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "DPC",
+     "rate": 5.18,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "2b",
+   "title": "Internal Below-DPC Walls",
+   "items": [
+    {
+     "item": "Below-DPC blockwork",
+     "rate": 56.28,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Air bricks",
+     "rate": 11.26,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Below-DPC brickwork",
+     "rate": 137.33,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Cavity fill",
+     "rate": 191.36,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "DPC",
+     "rate": 4.5,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "3",
+   "title": "Beam-And-Block Floor",
+   "items": [
+    {
+     "item": "Treatment to floor area",
+     "rate": 2.25,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "50mm concrete oversite",
+     "rate": 191.36,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Compacting oversite",
+     "rate": 8.44,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "1200-gauge radon barrier",
+     "rate": 11.26,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "150mm PCC beam-and-block floor",
+     "rate": 73.73,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "150mm Celotex XR4150 insulation",
+     "rate": 30.96,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "25mm perimeter insulation",
+     "rate": 16.88,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "500-gauge separating layer",
+     "rate": 4.5,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "65mm fibre-reinforced sand and cement screed",
+     "rate": 33.77,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "4",
+   "title": "Below-Ground Foul Drainage",
+   "items": [
+    {
+     "item": "Excavate for below-ground drainage runs",
+     "rate": 28.14,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Cart away clean and inert spoil",
+     "rate": 56.28,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "110mm PVC-u drainage pipework",
+     "rate": 13.51,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Shingle bed and surround",
+     "rate": 12.95,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Backfilling with selected fill",
+     "rate": 84.42,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Bends and junctions as required",
+     "rate": 225.13,
+     "unit": "item",
+     "flag": "PS",
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "5",
+   "title": "Below-Ground Surface Drainage",
+   "items": [
+    {
+     "item": "Excavate for below-ground drainage runs",
+     "rate": 28.14,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Cart away clean and inert spoil",
+     "rate": 56.28,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "110mm PVC-u drainage pipework",
+     "rate": 13.51,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Shingle bed and surround",
+     "rate": 12.95,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Backfilling with selected fill",
+     "rate": 84.42,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Bends and junctions as required",
+     "rate": 168.85,
+     "unit": "item",
+     "flag": "PS",
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "6",
+   "title": "Inspection Chambers And Drainage Sundries",
+   "items": [
+    {
+     "item": "Inspection chamber",
+     "rate": 562.83,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Soakaway",
+     "rate": 675.39,
+     "unit": "m³",
+     "flag": "PS",
+     "note": null
+    },
+    {
+     "item": "Connection into existing drainage",
+     "rate": 562.83,
+     "unit": "item",
+     "flag": "PS",
+     "note": null
+    },
+    {
+     "item": "Bridging lintel",
+     "rate": 59.1,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Rainwater pipe connection to below-ground drainage",
+     "rate": 50.65,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Inlet gully",
+     "rate": 174.48,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "ACO drain",
+     "rate": 84.42,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Rodding eye",
+     "rate": 106.94,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "7",
+   "title": "Superstructure — Cavity Brick Wall",
+   "items": [
+    {
+     "item": "Wienerberger Mardale Antique facing brickwork",
+     "rate": 199.24,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "100mm GA4100 insulation",
+     "rate": 23.98,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "100mm blockwork",
+     "rate": 63.04,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "8",
+   "title": "Superstructure — Timber Cladding",
+   "items": [
+    {
+     "item": "Millboard dark brown composite cladding",
+     "rate": 191.36,
+     "unit": "m²",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "19mm x 38mm battens",
+     "rate": 19.7,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Vapour-control layer",
+     "rate": 5.18,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "100mm blockwork",
+     "rate": 63.04,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "100mm GA4100 insulation",
+     "rate": 23.98,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "9",
+   "title": "Party Walls",
+   "items": [
+    {
+     "item": "100mm blockwork",
+     "rate": 63.04,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "100mm Rockwool RWA45 insulation",
+     "rate": 18.91,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "100mm blockwork (second leaf)",
+     "rate": 63.04,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "10",
+   "title": "Wall Sundries",
+   "items": [
+    {
+     "item": "Cavity ties",
+     "rate": 0.51,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Cavity tray",
+     "rate": 14.86,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Cavity closure",
+     "rate": 14.3,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Soldier course",
+     "rate": 33.77,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Weep holes",
+     "rate": 1.91,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "11",
+   "title": "Lintels",
+   "items": [
+    {
+     "item": "Catnic CG110/125, 1200mm",
+     "rate": 109.11,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Catnic CG110/125, 1800mm",
+     "rate": 166.97,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Catnic CH110/125, 1800mm",
+     "rate": 272.32,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Catnic CH110/125, 1950mm",
+     "rate": 292.74,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Catnic CH110/125, 2400mm",
+     "rate": 360.83,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Catnic CX110/125, 1350mm",
+     "rate": 183.81,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "12",
+   "title": "Upper-Floor Construction",
+   "items": [
+    {
+     "item": "220mm x 50mm floor joists",
+     "rate": 55.16,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "100mm Rockwool RWA45 insulation",
+     "rate": 13.51,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "150mm Celotex XR4150 insulation",
+     "rate": 32.42,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "22mm tongue-and-groove chipboard",
+     "rate": 23.64,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "18mm WPB plywood",
+     "rate": 27.02,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Soffit board",
+     "rate": 33.77,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "13",
+   "title": "Staircase, Ceilings And Balcony",
+   "items": [
+    {
+     "item": "Softwood staircase",
+     "rate": 2307.6,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Softwood handrails",
+     "rate": 163.22,
+     "unit": "m",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Softwood balustrade",
+     "rate": 196.99,
+     "unit": "m",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "150mm x 50mm ceiling joists",
+     "rate": 51.78,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "150mm loft-roll insulation, two layers",
+     "rate": 18.01,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Glass Juliet balcony",
+     "rate": 562.83,
+     "unit": "m",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Oak staircase revised allowance",
+     "rate": 9000.0,
+     "unit": "item",
+     "flag": "PC Sum",
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "14",
+   "title": "Structural Steelwork",
+   "items": [
+    {
+     "item": "FF1B — 178mm x 102mm UB 19",
+     "rate": 99.26,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "FF2 — 178mm x 102mm UB 19 plus FLT 300mm x 8mm",
+     "rate": 195.55,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "FF3 — 254mm x 146mm UB 31",
+     "rate": 160.2,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "RF1 cranked — 254mm x 146mm UB 37",
+     "rate": 191.21,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "RF2 cranked — 254mm x 146mm UB 37",
+     "rate": 191.21,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "RF3 — 254mm x 146mm UB 37",
+     "rate": 191.21,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Steelwork fabrication",
+     "rate": 1238.22,
+     "unit": "item",
+     "flag": "PS",
+     "note": null
+    },
+    {
+     "item": "Galvanising steelwork",
+     "rate": 562.83,
+     "unit": "item",
+     "flag": "PS",
+     "note": null
+    },
+    {
+     "item": "Padstones",
+     "rate": 60.38,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Fireproofing",
+     "rate": 26.61,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Rafter trimmers, 2 No. 200mm x 47mm",
+     "rate": 30.39,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Valley beams, 2 No. 220mm x 47mm",
+     "rate": 32.64,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Floor trimmers, 2 No. 220mm x 47mm",
+     "rate": 32.64,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Floor trimmers, 3 No. 220mm x 47mm",
+     "rate": 44.46,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Revised structural steelwork allowance",
+     "rate": 80000.0,
+     "unit": "item",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "15",
+   "title": "Roof",
+   "items": [
+    {
+     "item": "Wienerberger Humber Tuscan plain roof tiles",
+     "rate": 108.06,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "25mm x 38mm roof battens",
+     "rate": 19.7,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Breather membrane",
+     "rate": 5.74,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "200mm x 50mm rafters",
+     "rate": 60.22,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "100mm x 50mm wall plate",
+     "rate": 23.08,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Ridge",
+     "rate": 33.21,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Valley",
+     "rate": 27.58,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Roof straps",
+     "rate": 8.5,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "UPVC soffit",
+     "rate": 21.95,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "UPVC fascia",
+     "rate": 21.95,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Verge trim",
+     "rate": 21.95,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "UPVC gutters",
+     "rate": 24.76,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "UPVC downpipes",
+     "rate": 24.76,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Concealed gutter",
+     "rate": 151.96,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "16",
+   "title": "External Doors",
+   "items": [
+    {
+     "item": "Front door, 990mm x 2110mm",
+     "rate": 1040.47,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Kitchen rear door, 1600mm x 2110mm",
+     "rate": 1555.45,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Bedroom 2 balcony door, 1600mm x 2140mm",
+     "rate": 1555.45,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "17",
+   "title": "Windows — Original UPVC Rates",
+   "items": [
+    {
+     "item": "Window, 1500mm x 1200mm",
+     "rate": 711.21,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Window, 2240mm x 1200mm",
+     "rate": 909.94,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Window, 1500mm x 1200mm alternative rate",
+     "rate": 608.88,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Window, 690mm x 1200mm",
+     "rate": 309.76,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Window, 1600mm x 2140mm",
+     "rate": 1142.65,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "18",
+   "title": "Windows — Revised Aluminium Allowance",
+   "items": [
+    {
+     "item": "All aluminium windows",
+     "rate": 50000.0,
+     "unit": "item",
+     "flag": "PC Sum",
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "19",
+   "title": "Rooflights",
+   "items": [
+    {
+     "item": "Rooflight, 1070mm x 890mm",
+     "rate": 939.44,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Rooflight, 1300mm x 730mm",
+     "rate": 936.47,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Rooflight, 1070mm x 870mm",
+     "rate": 920.17,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Rooflight, 610mm x 890mm",
+     "rate": 616.81,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "20",
+   "title": "Internal Walls And Partitions",
+   "items": [
+    {
+     "item": "50mm x 100mm studwork",
+     "rate": 27.02,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "50mm Rockwool Flexi insulation",
+     "rate": 9.57,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "12.5mm plasterboard to each side",
+     "rate": 11.82,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "100mm Rockwool Flexi insulation",
+     "rate": 19.14,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "12.5mm plasterboard to one side",
+     "rate": 11.82,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Plasterboard dabbed to masonry walls, both sides",
+     "rate": 15.2,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Plasterboard dabbed to external walls",
+     "rate": 15.2,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Boxing-in SVP pipes",
+     "rate": 1350.79,
+     "unit": "item",
+     "flag": "PS",
+     "note": null
+    },
+    {
+     "item": "12.5mm plasterboard to ceilings",
+     "rate": 11.82,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "3mm skim finish",
+     "rate": 15.2,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "21",
+   "title": "Joinery",
+   "items": [
+    {
+     "item": "Install standard single door",
+     "rate": 112.57,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Supply standard single door",
+     "rate": 112.57,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Install ironmongery",
+     "rate": 28.14,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Supply ironmongery",
+     "rate": 39.4,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Door frame",
+     "rate": 78.8,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Install FD30 single door",
+     "rate": 112.57,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Supply FD30 single door",
+     "rate": 168.85,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Install FD30 ironmongery",
+     "rate": 28.14,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Supply FD30 ironmongery",
+     "rate": 39.4,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "FD30 door frame",
+     "rate": 78.8,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Intumescent strip",
+     "rate": 6.19,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Install pocket door",
+     "rate": 225.13,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Supply pocket door",
+     "rate": 450.26,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Install pocket-door mechanism",
+     "rate": 123.82,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Supply pocket-door mechanism and frame kit",
+     "rate": 253.27,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Install pocket-door ironmongery",
+     "rate": 33.77,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Supply pocket-door ironmongery",
+     "rate": 56.28,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Architraves",
+     "rate": 11.26,
+     "unit": "m",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Skirting",
+     "rate": 14.63,
+     "unit": "m",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Window boards",
+     "rate": 35.46,
+     "unit": "m",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Bespoke joinery",
+     "rate": null,
+     "unit": "—",
+     "flag": "Excluded",
+     "note": null
+    },
+    {
+     "item": "Fitted wardrobes",
+     "rate": 17000.0,
+     "unit": "item",
+     "flag": "PC Sum",
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "22",
+   "title": "Decoration",
+   "items": [
+    {
+     "item": "One mist coat and two final coats of matt emulsion",
+     "rate": 11.92,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Primer and eggshell to skirting and architraves",
+     "rate": 10.64,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Primer and eggshell to window boards",
+     "rate": 11.92,
+     "unit": "m",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Primer and eggshell to doors",
+     "rate": 62.42,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "23",
+   "title": "Floor Finishes",
+   "items": [
+    {
+     "item": "Install floor tiles",
+     "rate": 66.98,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Ground-floor LVT supplied and fitted",
+     "rate": 90.0,
+     "unit": "m²",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Ground-floor LVT area allowance",
+     "rate": 108.39,
+     "unit": "m² (quantity, not a rate)",
+     "flag": null,
+     "note": "project specific"
+    },
+    {
+     "item": "Ground-floor LVT total allowance",
+     "rate": 9755.1,
+     "unit": "item",
+     "flag": "net",
+     "note": "project specific"
+    }
+   ]
+  },
+  {
+   "no": "24",
+   "title": "Wall Finishes",
+   "items": [
+    {
+     "item": "Install bathroom wall tiles",
+     "rate": 66.98,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Install ensuite wall tiles",
+     "rate": 66.98,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Install kitchen splashback tiles",
+     "rate": 66.98,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Supply tiles",
+     "rate": 2701.58,
+     "unit": "item",
+     "flag": "PC Sum",
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "25",
+   "title": "Kitchens And Bathrooms",
+   "items": [
+    {
+     "item": "Install kitchen appliances, units and worktops",
+     "rate": 2532.73,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Supply kitchen appliances, units and worktops",
+     "rate": 16322.04,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Install WC",
+     "rate": 422.12,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Install bathroom",
+     "rate": 886.46,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Install ensuite",
+     "rate": 886.46,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Supply sanitaryware",
+     "rate": 8104.74,
+     "unit": "item",
+     "flag": "PC Sum",
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "26",
+   "title": "Electrical Works",
+   "items": [
+    {
+     "item": "Consumer unit",
+     "rate": 548.76,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "First-fix cabling to lights, sockets and switches",
+     "rate": 48.0,
+     "unit": "item",
+     "flag": "PC Sum",
+     "note": "CHECK: \"£48,00\" as written; likely £4,800 or £48,000"
+    },
+    {
+     "item": "Pendant light",
+     "rate": 35.18,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Downlight",
+     "rate": 40.81,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Socket and spur",
+     "rate": 30.96,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Switch",
+     "rate": 30.96,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Shaver point",
+     "rate": 57.69,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Television point",
+     "rate": 63.32,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Telephone point",
+     "rate": 63.32,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Data point",
+     "rate": 63.32,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Smoke/heat detector",
+     "rate": 88.65,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Extractor",
+     "rate": 126.64,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Kitchen extractor installation",
+     "rate": 196.99,
+     "unit": "each",
+     "flag": "PS",
+     "note": null
+    },
+    {
+     "item": "External light fitting",
+     "rate": 60.5,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "External socket",
+     "rate": 90.0,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "TV aerial",
+     "rate": 471.37,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "EV charging point",
+     "rate": 1055.3,
+     "unit": "each",
+     "flag": "PS",
+     "note": null
+    },
+    {
+     "item": "Electrical works to mechanical plant",
+     "rate": 1604.06,
+     "unit": "item",
+     "flag": "PS",
+     "note": null
+    },
+    {
+     "item": "Builders' work in connection (electrical)",
+     "rate": 1744.77,
+     "unit": "item",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Testing and commissioning (electrical)",
+     "rate": 337.7,
+     "unit": "item",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "O&M manuals (electrical)",
+     "rate": 225.13,
+     "unit": "item",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Revised total electrical works allowance",
+     "rate": 35000.0,
+     "unit": "item",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "27",
+   "title": "Mechanical And Plumbing",
+   "items": [
+    {
+     "item": "ASHP",
+     "rate": 9978.6,
+     "unit": "each",
+     "flag": "PS",
+     "note": null
+    },
+    {
+     "item": "Hot-water tank",
+     "rate": 1668.79,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Gas works",
+     "rate": 844.24,
+     "unit": "item",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Install radiator",
+     "rate": 92.87,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Supply radiator",
+     "rate": 112.57,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Drayton TRV",
+     "rate": 29.55,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Radiator pipework",
+     "rate": 2679.07,
+     "unit": "item",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Install towel radiator",
+     "rate": 92.87,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Supply towel radiator",
+     "rate": 112.57,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Towel-radiator TRV",
+     "rate": 29.55,
+     "unit": "each",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Towel-radiator pipework",
+     "rate": 1148.17,
+     "unit": "item",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Hot and cold water pipework and sundries",
+     "rate": 5663.47,
+     "unit": "item",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Waste plumbing and drainage",
+     "rate": 4974.0,
+     "unit": "item",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Outdoor tap, pipework and sundries",
+     "rate": 534.69,
+     "unit": "item",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Builders' work in connection (plumbing)",
+     "rate": 3602.11,
+     "unit": "item",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Testing and commissioning (plumbing)",
+     "rate": 337.7,
+     "unit": "item",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "O&M manuals (plumbing)",
+     "rate": 225.13,
+     "unit": "item",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Revised total plumbing allowance",
+     "rate": 28000.0,
+     "unit": "item",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "no": "28",
+   "title": "External Works",
+   "items": [
+    {
+     "item": "Excavate to reduce levels",
+     "rate": 25.58,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Cart away clean and inert spoil",
+     "rate": 56.28,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "MOT Type 1, 150mm assumed",
+     "rate": 90.56,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Compacting hardcore",
+     "rate": 7.67,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Sand blinding, 50mm assumed",
+     "rate": 79.31,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Compacting sand",
+     "rate": 7.67,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Paving",
+     "rate": 53.21,
+     "unit": "m²",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Block paving",
+     "rate": 107.45,
+     "unit": "m²",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "1800mm fencing",
+     "rate": 86.47,
+     "unit": "m",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Bike shed",
+     "rate": 1627.5,
+     "unit": "each",
+     "flag": "PC Sum",
+     "note": null
+    },
+    {
+     "item": "Topsoil, 150mm assumed",
+     "rate": 122.8,
+     "unit": "m³",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Turf",
+     "rate": 18.93,
+     "unit": "m²",
+     "flag": null,
+     "note": null
+    },
+    {
+     "item": "Electric garage door",
+     "rate": 3000.0,
+     "unit": "item",
+     "flag": "allowance",
+     "note": null
+    }
+   ]
+  }
+ ]
+}
