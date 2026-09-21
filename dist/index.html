@@ -5248,9 +5248,10 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       plan: 'Tap round the outside corners of your plan, finishing where you started. Or start with a shape and drag it to fit.',
       done: 'Drag any corner to make it right. Tap a wall to add a corner, or a corner then × to remove it.' },
     { id: 'internal',  n: 2, label: 'Inside walls',
-      hint: 'Optional. Tap one end of a wall, then the other end.',
-      done: 'Drag an end to move a wall. Tap a wall, then × to remove it.',
-      picked: 'Tap × to remove this wall, or tap it again to start a new wall from it.',
+      hint: 'Optional. Tap one end of a wall, then the other end — or drag from one to the other. Nothing moves while you are adding.',
+      done: 'Tap or drag to add another wall. Choose "Move or remove" to change one.',
+      move: 'Drag an end or a whole wall. Tap a wall, then × to remove it.',
+      picked: 'Tap × to remove this wall, or drag an end to move it.',
       door: 'Tap an inside wall to put a doorway in it.',
       out:  'Tap any wall you are knocking out. Tap it again to put it back.' },
     { id: 'openings',  n: 3, label: 'Doors & windows',
@@ -5754,7 +5755,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         out.push('<text x="' + ((seg[0][0] + seg[1][0]) / 2 * K) + '" y="' +
           ((seg[0][1] + seg[1][1]) / 2 * K - 8 * RU) + '" text-anchor="middle" class="sk-outlab">COMING OUT</text>');
       }
-      if (S.stage === 'internal' && S.wallMode !== 'out') {
+      if (movingWalls()) {
         [0, 1].forEach(function (e) {
           out.push('<circle cx="' + P(seg[e])[0] + '" cy="' + P(seg[e])[1] + '" r="' +
             (8 * RU).toFixed(1) + '" class="sk-node small"/>');
@@ -6044,7 +6045,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         : S.askUp ? 'Does the house have an upstairs?'
         : (S.stage === 'internal' && S.wallMode === 'out') ? stage.out
         : (S.stage === 'internal' && S.wallMode === 'door') ? stage.door
-        : (S.stage === 'internal' && !mid && S.pick && S.pick.kind === 'iwall') ? stage.picked
+        : (S.stage === 'internal' && S.wallMode === 'move' && S.pick && S.pick.kind === 'iwall') ? stage.picked
+        : (S.stage === 'internal' && S.wallMode === 'move') ? stage.move
         : (S.stage === 'garden' && !mid && S.garden.plot.closed && S.gardenMode === 'tree') ? stage.tree
         : (S.stage === 'garden' && !mid && S.garden.plot.closed && S.gardenMode === 'boundary') ? stage.fence
         : mid && S.stage === 'internal' ? 'Now tap the other end of the wall.'
@@ -6202,7 +6204,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (stage === 'internal') {
       var mode = S.wallMode || 'draw';
       return '<div class="sk-tool"><label>I want to</label>' +
-        seg([['draw', 'Add a wall'], ['door', 'Add a doorway'], ['out', 'Knock a wall out']], mode, 'data-wallmode') + '</div>' +
+        seg([['draw', 'Add a wall'], ['move', 'Move or remove'], ['door', 'Add a doorway'], ['out', 'Knock a wall out']], mode, 'data-wallmode') + '</div>' +
         (mode === 'door' ? widths() : '');
     }
     if (stage === 'openings') {
@@ -7029,7 +7031,15 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   /** Whose corners can be dragged in this stage. The house outline stays
       draggable on every step — the dots are on screen, so they must work —
       except while an extension is being fitted against it. */
+  /* Adding walls and moving them are different modes, because a tap that
+     should start a wall on an outside wall was being taken as "drag this wall",
+     and on a phone every tap moves a few pixels. While adding, nothing on the
+     canvas is a handle: every tap and every drag draws. */
+  function drawingWalls() { return S.stage === 'internal' && (S.wallMode || 'draw') === 'draw'; }
+  function movingWalls()  { return S.stage === 'internal' && S.wallMode === 'move'; }
+
   function draggable() {
+    if (drawingWalls()) return null;
     if (S.stage === 'extension') return S.extension.closed ? 'ext' : null;
     if (S.stage === 'garden') return S.garden.plot.closed ? 'plot' : null;
     return floor().closed ? 'floor' : null;
@@ -7045,7 +7055,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         if (d < r && (!best || d < best.d)) best = { kind: 'corner', which: which, i: i, d: d };
       });
     }
-    if (S.stage === 'internal') {
+    if (movingWalls()) {
       floor().internals.forEach(function (seg, i) {
         [0, 1].forEach(function (e) {
           var d = dist(p, seg[e]);
@@ -7062,7 +7072,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         if (pr.d < r && pr.t > 0.12 && pr.t < 0.88 && (!best || pr.d < best.d)) best = { kind: 'wall', which: which, i: wi, d: pr.d };
       }
     }
-    if (!best && S.stage === 'internal') {
+    if (!best && movingWalls()) {
       floor().internals.forEach(function (seg, i) {
         var pr = projectOnSeg(p, seg[0], seg[1]);
         if (pr.d < r && pr.t > 0.12 && pr.t < 0.88 && (!best || pr.d < best.d)) best = { kind: 'iwallmid', i: i, d: pr.d };
@@ -7081,7 +7091,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       });
     }
     // a door in the wrong place should slide, not be deleted and put back
-    if (S.stage === 'openings' || S.stage === 'internal') {
+    if (S.stage === 'openings' || (S.stage === 'internal' && (movingWalls() || S.wallMode === 'door'))) {
       var f = floor();
       f.openings.forEach(function (o) {
         var w = openingWall(f, o);
@@ -7186,10 +7196,18 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
      * finger alike. Requiring two fingers or a modifier key to move the plan is
      * a rule nobody knows and nothing on screen tells them.
      */
-    if (press && !press.handle && !press.pan && !S.drawing) {
+    if (press && !press.handle && !press.pan && !S.drawing && !drawingWalls()) {
       if (Math.abs(e.clientX - press.x) + Math.abs(e.clientY - press.y) > 10) {
         press.pan = true;
         press.sx = press.x; press.sy = press.y;
+        try { $('sk-svg').setPointerCapture(e.pointerId); } catch (err) {}
+      }
+    }
+    // while adding walls a drag is a wall: press at one end, let go at the other
+    if (press && !press.handle && !press.rubber && drawingWalls()) {
+      if (Math.abs(e.clientX - press.x) + Math.abs(e.clientY - press.y) > 10) {
+        press.rubber = true;
+        if (!S.drawing || !S.drawing.length) { snapshot(); S.drawing = [keepInside(snapTarget(press.world).p)]; }
         try { $('sk-svg').setPointerCapture(e.pointerId); } catch (err) {}
       }
     }
@@ -7343,6 +7361,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       return;
     }
 
+    if (p.rubber && S.drawing && S.drawing.length) { onTap(toWorld(e), e); return; }   // the other end of a dragged wall
     if (Math.abs(e.clientX - p.x) + Math.abs(e.clientY - p.y) > 8) return;   // a drag on nothing
     var tgt = p.target || e.target;
     if (tgt && tgt.closest && tgt.closest('[data-killpick]')) return;       // the overlay handler removes it
@@ -7410,19 +7429,20 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       return;
     }
 
+    if (movingWalls()) {
+      // a tap on a wall picks it (and the × appears); a tap elsewhere lets go
+      var on = nearestInternal(w);
+      S.pick = (on >= 0 && !(S.pick && S.pick.kind === 'iwall' && S.pick.i === on)) ? { kind: 'iwall', i: on } : null;
+      say('');
+      render();
+      return;
+    }
+
     if (S.stage === 'internal') {
       if (!S.drawing || !S.drawing.length) {
-        // A tap on a wall picks it, which is what a tap on a thing you have
-        // drawn means everywhere else here. A second tap on the picked wall
-        // starts a new wall from it, so a T-junction is still two taps away.
-        var on = nearestInternal(w);
-        if (on >= 0 && !(S.pick && S.pick.kind === 'iwall' && S.pick.i === on)) {
-          S.pick = { kind: 'iwall', i: on };
-          say('');
-          render();
-          return;
-        }
-        if (S.pick) { S.pick = null; }
+        // anywhere is a valid start: a corner, an outside wall, the middle of
+        // another inside wall (a T-junction) or open floor
+        S.pick = null;
         snapshot();
         S.drawing = [keepInside(snapTarget(w).p)];
         changed();

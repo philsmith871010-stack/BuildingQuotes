@@ -173,8 +173,12 @@ sentence.
    wall that may just have been split. A hand-drawn shape measures its longest
    wall, and *measure a different wall* lets you tap another. Then one more:
    *does it have an upstairs?* Yes copies the floor below.
-2. **Inside walls** — optional. Add a wall, add a doorway, or knock one out.
-   They come before the rooms because they are what makes a room a room.
+2. **Inside walls** — optional. Add a wall, move or remove one, add a doorway,
+   or knock one out. They come before the rooms because they are what makes a
+   room a room. Adding and moving are separate modes on purpose: while adding,
+   nothing on the canvas is a handle, so a tap or a drag that starts on an
+   outside wall or a corner starts a wall there instead of moving it. Tap one
+   end then the other, or drag from one to the other.
 3. **Doors & windows** — pick one, tap the outside wall it is in.
 4. **Rooms** — pick a type, tap the room. Finishing the ground floor leads to
    the upstairs, because the bedrooms and the bathroom are up there. Once the
@@ -266,8 +270,9 @@ the way the pointer points. The corner lands exactly there. Typing before the
 house has been measured makes the grid metres on the spot, so the measuring
 question never comes, and typing the closing length closes the shape.
 
-Every wall also slides. Grab the middle of an outside wall and it moves
-sideways with both neighbours stretching; the same for an inside wall. Walls
+Every wall also slides (on the Shape step, or in "Move or remove" on the
+inside-walls step). Grab the middle of an outside wall and it moves sideways
+with both neighbours stretching; the same for an inside wall. Walls
 that ended on the wall being slid move with it, so a T-junction stays a
 T-junction. A tap on a wall still does what it did (a corner on an outside
 wall, a pick on an inside one) because a slide needs a drag. While anything is
