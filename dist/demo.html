@@ -1276,9 +1276,7 @@ html { scroll-padding-top: 62px; }
   display: grid; grid-template-rows: auto minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr);
 }
-#sk-svg { width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; }
-#sk-svg.can-grab { cursor: grab; }
-#sk-svg.grabbing, #sk-svg.grabbing.can-grab { cursor: grabbing; }
+#sk-svg { width: 100%; height: 100%; display: block; touch-action: none; }
 .sk-actions { position: absolute; top: .6rem; right: .6rem; display: flex; gap: .35rem; }
 
 .sk-floors {
@@ -1384,6 +1382,7 @@ html { scroll-padding-top: 62px; }
 .sk-intDoor { stroke: #E4572E; stroke-width: 6; }
 .sk-open.sel { stroke: var(--accent); }
 .sk-pin rect { fill: var(--accent); opacity: .92; cursor: pointer; stroke: var(--surface); stroke-width: 1.5; }
+.sk-pin.on rect { stroke: #E4572E; stroke-width: 3; opacity: 1; }
 .sk-pin text { font-family: var(--mono); font-weight: 600; fill: #fff; pointer-events: none; letter-spacing: .04em; }
 .sk-area {
   font-family: var(--disp); font-weight: 700; font-stretch: 110%; font-size: 20px;
@@ -1641,6 +1640,28 @@ html { scroll-padding-top: 62px; }
 .sk-unnamed text { font-family: var(--mono); fill: var(--accent-ink); letter-spacing: .03em; pointer-events: none; }
 .sk-unnamed { pointer-events: none; }
 .sk-guide { stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 6 5; opacity: .55; vector-effect: non-scaling-stroke; }
+
+/* the pointer says what a click will do */
+#sk-svg { cursor: default; }
+#sk-svg.cur-arrow { cursor: default; }
+#sk-svg.cur-grab { cursor: grab; }
+#sk-svg.cur-no { cursor: not-allowed; }
+#sk-svg.cur-draw { cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M4 24 L6 18 L18 6 L22 10 L10 22 Z' fill='%23fff' stroke='%2314191D' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cpath d='M18 6 L22 10' stroke='%2314191D' stroke-width='1.6'/%3E%3Cpath d='M21 19 h6 M24 16 v6' stroke='%2314191D' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") 4 24, crosshair; }
+#sk-svg.cur-draw-snap { cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M4 24 L6 18 L18 6 L22 10 L10 22 Z' fill='%23fff' stroke='%2314191D' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cpath d='M18 6 L22 10' stroke='%2314191D' stroke-width='1.6'/%3E%3Ccircle cx='5' cy='23' r='4' fill='%23154C7C' stroke='%23fff' stroke-width='1.5'/%3E%3C/svg%3E") 4 24, crosshair; }
+#sk-svg.cur-split { cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M3 14 H25' stroke='%2314191D' stroke-width='2.5' stroke-linecap='round'/%3E%3Cpath d='M3 14 H25' stroke='%23fff' stroke-width='5' stroke-linecap='round' opacity='.9'/%3E%3Cpath d='M3 14 H25' stroke='%2314191D' stroke-width='2.5' stroke-linecap='round'/%3E%3Ccircle cx='14' cy='14' r='6' fill='%23fff' stroke='%23154C7C' stroke-width='1.5'/%3E%3Cpath d='M11 14 h6 M14 11 v6' stroke='%23154C7C' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") 14 14, copy; }
+#sk-svg.cur-door { cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M4 22 H24' stroke='%2314191D' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M9 22 V8 A14 14 0 0 1 23 22' fill='none' stroke='%23154C7C' stroke-width='1.6' stroke-dasharray='2 2'/%3E%3Cpath d='M9 22 V7' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3Crect x='9' y='7' width='4' height='15' fill='%23154C7C'/%3E%3C/svg%3E") 14 22, pointer; }
+#sk-svg.cur-out { cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M4 14 H24' stroke='%2314191D' stroke-width='4' stroke-linecap='round' stroke-dasharray='3 3'/%3E%3Ccircle cx='14' cy='14' r='7' fill='%23fff' stroke='%23B4432B' stroke-width='1.5'/%3E%3Cpath d='M10.5 10.5 L17.5 17.5 M17.5 10.5 L10.5 17.5' stroke='%23B4432B' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E") 14 14, pointer; }
+#sk-svg.cur-pin { cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Crect x='4' y='6' width='20' height='11' rx='5.5' fill='%23154C7C' stroke='%23fff' stroke-width='1.5'/%3E%3Cpath d='M14 17 L14 25' stroke='%2314191D' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='14' cy='25' r='2' fill='%2314191D'/%3E%3Ctext x='14' y='14' font-family='monospace' font-size='7' font-weight='700' text-anchor='middle' fill='%23fff'%3EROOM%3C/text%3E%3C/svg%3E") 14 25, pointer; }
+#sk-svg.cur-pick { cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M4 14 H24' stroke='%2314191D' stroke-width='4' stroke-linecap='round'/%3E%3Ccircle cx='14' cy='14' r='7' fill='none' stroke='%23fff' stroke-width='2.5'/%3E%3Ccircle cx='14' cy='14' r='7' fill='none' stroke='%23154C7C' stroke-width='1.2'/%3E%3C/svg%3E") 14 14, pointer; }
+#sk-svg.grabbing { cursor: grabbing !important; }
+.sk-node.small.target { stroke: var(--accent); stroke-width: 1.6; fill: var(--surface); }
+
+/* the running total inside the drawing tool */
+.sk-live { display: grid; gap: .1rem; padding: .6rem .75rem; margin: .2rem 0 .4rem; background: var(--accent-soft); border-left: 3px solid var(--accent); }
+.sk-live[hidden] { display: none; }
+.sk-live-k { font-family: var(--mono); font-size: .62rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+.sk-live b { font-family: var(--disp); font-size: 1.25rem; font-weight: 700; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.sk-live small { font-size: .74rem; color: var(--ink-3); line-height: 1.35; }
 
 
 /* ===========================================================================
@@ -2574,6 +2595,7 @@ select.cell:hover { border-color: var(--rule); }
 
         <div class="sk-tools" id="sk-tools"></div>
         <button type="button" class="btn sk-nextbtn" id="sk-next" data-act="" hidden></button>
+        <div class="sk-live" id="sk-live" hidden></div>
         <div class="sk-read" id="sk-read"></div>
         <div class="sk-checks" id="sk-checks" hidden></div>
         <button type="button" class="sk-alt sk-alt-quiet" id="sk-apply" disabled>Finish now and use what I have &rarr;</button>
@@ -5608,14 +5630,14 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       done: 'Tap or drag to add another wall. Choose "Move or remove" to change one.',
       move: 'Drag an end or a whole wall. Tap a wall, then × to remove it.',
       picked: 'Tap × to remove this wall, or drag an end to move it.',
-      door: 'Tap an inside wall to put a doorway in it.',
+      door: 'Tap a wall to put a doorway in it. Drag a doorway to move it along the wall. Tap it, then × to remove it.',
       out:  'Tap any wall you are knocking out. Tap it again to put it back.' },
     { id: 'openings',  n: 3, label: 'Doors & windows',
       hint: 'Pick a window or a door, then tap the outside wall it is in.',
       done: 'Drag one to move it along the wall. Tap it to change its width.' },
     { id: 'rooms',     n: 4, label: 'Rooms',
-      hint: 'Pick a room type, then tap where that room is.',
-      done: 'Tap a room again to change what it is. Tap a pin to remove it.' },
+      hint: 'Pick a room type, then tap where that room is. Tap a label to change or remove it.',
+      done: 'Tap a label to pick it, then choose what it is, or × to remove it. Drag a label to move it.' },
     { id: 'extension', n: 5, label: 'Extension',
       hint: 'Optional. Add a rear extension and drag it to size, or draw your own against the house.',
       done: 'Drag any corner to make it right. Tap a wall to add a corner, or a corner then × to remove it.' },
@@ -5767,6 +5789,13 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         out.push({ on: 'ext', idx: i, a: f.outline[i], b: f.outline[(i + 1) % f.outline.length] });
       }
     }
+    // the extension's walls take doors and windows too — the bi-folds go on
+    // its garden wall, not the house's
+    var fi = S.floors.indexOf(f);
+    if (fi >= 0 && extOn(fi)) {
+      var xo = S.extension.outline;
+      for (i = 0; i < xo.length; i++) out.push({ on: 'xt', idx: i, a: xo[i], b: xo[(i + 1) % xo.length] });
+    }
     for (i = 0; i < f.internals.length; i++) {
       out.push({ on: 'int', idx: i, a: f.internals[i][0], b: f.internals[i][1] });
     }
@@ -5801,7 +5830,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var perim = ground().closed ? m(ringLength(ground().outline)) : 0;
 
     var intLen = 0, win = 0, winW = 0, extDoor = 0, intDoor = 0, openArea = 0, extWall = 0;
-    var counts = {}, rooms = [], roomAreas = [];
+    var counts = {}, rooms = [], roomAreas = [], xt = { bifold: 0, windows: 0, doors: 0 };
     ROOM_TYPES.forEach(function (r) { counts[r.id] = 0; });
 
     var removed = 0, estimated = false;
@@ -5825,6 +5854,11 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         // figure that reaches the price is the one that physically fits
         var wl = openingWall(f, o);
         var fits = wl ? Math.min(o.width, m(dist(wl.a, wl.b))) : o.width;
+        if (o.on === 'xt') {
+          if (o.kind === 'bifold') xt.bifold += fits;
+          else if (o.kind === 'window') xt.windows++;
+          else xt.doors++;
+        }
         if (o.kind === 'window') { win++; winW += fits; }
         else if (o.kind === 'intDoor') intDoor++;
         else extDoor++;
@@ -5848,7 +5882,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         area: m(shoelace(S.extension.outline)) * m(1),
         width: m(Math.max.apply(null, xs) - Math.min.apply(null, xs)),
         depth: m(Math.max.apply(null, ys) - Math.min.apply(null, ys)),
-        storeys: S.extension.storeys
+        storeys: S.extension.storeys,
+        bifold: xt.bifold, windows: xt.windows, doors: xt.doors
       };
     }
 
@@ -6111,10 +6146,10 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         out.push('<text x="' + ((seg[0][0] + seg[1][0]) / 2 * K) + '" y="' +
           ((seg[0][1] + seg[1][1]) / 2 * K - 8 * RU) + '" text-anchor="middle" class="sk-outlab">COMING OUT</text>');
       }
-      if (movingWalls()) {
+      if (movingWalls() || drawingWalls()) {
         [0, 1].forEach(function (e) {
           out.push('<circle cx="' + P(seg[e])[0] + '" cy="' + P(seg[e])[1] + '" r="' +
-            (8 * RU).toFixed(1) + '" class="sk-node small"/>');
+            ((movingWalls() ? 8 : 6) * RU).toFixed(1) + '" class="sk-node small' + (drawingWalls() ? ' target' : '') + '"/>');
         });
       }
     });
@@ -6177,6 +6212,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         var ring = shapeOf(S.pick.which).outline;
         var c = ring[S.pick.i];
         if (c) kill = [c[0], c[1] - 26 * RU / K];
+      } else if (S.pick.kind === 'pin') {
+        var pk = f.markers[S.pick.i];
+        if (pk) kill = [pk.x, pk.y - 26 * RU / K];
       } else if (S.pick.kind === 'garea') {
         var ga = S.garden.areas[S.pick.i];
         if (ga) { var gc = centroid(ga.outline); kill = [gc[0], gc[1] - 22 * RU / K]; }
@@ -6184,6 +6222,13 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         var seg = f.internals[S.pick.i];
         if (seg) kill = [(seg[0][0] + seg[1][0]) / 2, (seg[0][1] + seg[1][1]) / 2 - 24 * RU / K];
       }
+    }
+    if (!live.length && !kill && S.selected && (S.stage === 'openings' || S.stage === 'internal')) {
+      f.openings.forEach(function (o) {
+        if (o.id !== S.selected) return;
+        var wl = openingWall(f, o);
+        if (wl) kill = [wl.a[0] + (wl.b[0] - wl.a[0]) * o.t, wl.a[1] + (wl.b[1] - wl.a[1]) * o.t - 26 * RU / K];
+      });
     }
     if (kill) {
       out.push('<g class="sk-kill" data-killpick="1"><circle cx="' + (kill[0] * K) + '" cy="' +
@@ -6212,7 +6257,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       // a pill with the word on it — "Ba" means nothing to anybody
       var word = t.short + (areasNow && areasNow[i] ? ' · ' + fmt(areasNow[i], 0) + ' m²' : '');
       var pw = (word.length * 7.2 + 16) * RU, ph = 20 * RU;
-      out.push('<g class="sk-pin" data-marker="' + i + '"><rect x="' + (mk.x * K - pw / 2) + '" y="' +
+      var picked = S.pick && S.pick.kind === 'pin' && S.pick.i === i;
+      out.push('<g class="sk-pin' + (picked ? ' on' : '') + '" data-marker="' + i + '"><rect x="' + (mk.x * K - pw / 2) + '" y="' +
         (mk.y * K - ph / 2) + '" width="' + pw + '" height="' + ph + '" rx="' + (ph / 2) + '"/>' +
         '<text x="' + (mk.x * K) + '" y="' + (mk.y * K + 4 * RU) + '" text-anchor="middle" font-size="' +
         (11.5 * RU).toFixed(1) + '">' + esc(word) + '</text></g>');
@@ -6456,6 +6502,22 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var read = $('sk-read');
     if (!read) return;
     var q = measure();
+    // the running total: priced by the estimator from the figures so far, and
+    // only re-priced when the figures change, not on every hover
+    var live = null;
+    if (ready() && S.onLive) {
+      var key = JSON.stringify([q, S.types]);
+      if (LIVE.key !== key) { LIVE.key = key; try { LIVE.v = S.onLive(q); } catch (e2) { LIVE.v = null; } }
+      live = LIVE.v;
+    }
+    var liveEl = $('sk-live');
+    if (liveEl) {
+      liveEl.hidden = !live;
+      if (live) {
+        liveEl.innerHTML = '<span class="sk-live-k">Estimate so far</span>' +
+          '<b>' + live.text + '</b><small>' + esc(live.note || '') + '</small>';
+      }
+    }
     var row = function (k, v, strong) {
       return '<div class="sk-row' + (strong ? ' strong' : '') + '"><span>' + k + '</span><b>' + v + '</b></div>';
     };
@@ -6922,7 +6984,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
   function splitWall(which, i, t) {
     var f = floor(), shape = shapeOf(which);
-    var pts = which === 'floor' ? openingPoints(f) : null;
+    var pts = (which === 'floor' || which === 'ext') ? openingPoints(f) : null;
     var p = splitPoint(shape.outline[i], shape.outline[(i + 1) % shape.outline.length], t);
     snapshot();
     shape.outline.splice(i + 1, 0, p);
@@ -6935,7 +6997,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   function removeCorner(which, i) {
     var f = floor(), shape = shapeOf(which);
     if (shape.outline.length <= 3) { say('A shape needs at least three corners.'); return; }
-    var pts = which === 'floor' ? openingPoints(f) : null;
+    var pts = (which === 'floor' || which === 'ext') ? openingPoints(f) : null;
     snapshot();
     if (which === 'floor' && S.active === 0) reindexWalls('remove', i, shape.outline.length);
     shape.outline.splice(i, 1);
@@ -6943,6 +7005,15 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     S.pick = null;
     say('');
     settled();
+  }
+
+  function removeSelectedOpening() {
+    if (!S.selected) return;
+    snapshot();
+    floor().openings = floor().openings.filter(function (o) { return o.id !== S.selected; });
+    S.selected = null;
+    say('');
+    changed();
   }
 
   function removeInternal(i) {
@@ -6994,9 +7065,20 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
    * the endpoint simply cannot go outside: it stops at the wall, the same way
    * a corner stops on the grid. No message, no argument.
    */
+  /** Does the extension count as part of this floor? */
+  function extOn(fi) {
+    return S.extension.closed && (fi === 0 || (fi === 1 && S.extension.storeys > 1));
+  }
+  /** Inside the house, the extension included where it applies. */
+  function insideHouse(p, fi) {
+    var f = S.floors[fi === undefined ? S.active : fi];
+    if (within(f.outline, p)) return true;
+    return extOn(fi === undefined ? S.active : fi) && within(S.extension.outline, p);
+  }
+
   function keepInside(p) {
     var f = floor();
-    if (!f.closed || within(f.outline, p)) return p;
+    if (!f.closed || insideHouse(p)) return p;
     var c = centroid(f.outline);
     for (var t = 0.08; t <= 1; t += 0.08) {
       var q = snapFrom(null, [p[0] + (c[0] - p[0]) * t, p[1] + (c[1] - p[1]) * t]);
@@ -7009,6 +7091,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   function crossesOutline(a, b) {
     var f = floor();
     if (!f.closed) return false;
+    // a wall between the house and its extension crosses the wall they share,
+    // which is the one that is being opened up
+    if (extOn(S.active) && insideHouse(a) && insideHouse(b)) return false;
     for (var i = 0; i < f.outline.length; i++) {
       if (straddles(a, b, f.outline[i], f.outline[(i + 1) % f.outline.length])) return true;
     }
@@ -7053,19 +7138,39 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
    * is one region, and pins there keep the old behaviour.
    */
   var REG = {};
+  var LIVE = { key: null, v: null };
   function regionsOf(f) {
-    if (!f.closed || !S.scale || !f.internals.length) return null;
-    var key = JSON.stringify([f.outline, f.internals]);
-    var fi = S.floors.indexOf(f);
+    var fi = S.floors.indexOf(f), hasExt = extOn(fi);
+    if (!f.closed || !S.scale || (!f.internals.length && !hasExt)) return null;
+    var key = JSON.stringify([f.outline, f.internals, hasExt ? S.extension.outline : null]);
     if (REG[fi] && REG[fi].key === key) return REG[fi].reg;
     var c = 0.25;
-    var xs = f.outline.map(function (q) { return q[0]; }), ys = f.outline.map(function (q) { return q[1]; });
+    var all = f.outline.concat(hasExt ? S.extension.outline : []);
+    var xs = all.map(function (q) { return q[0]; }), ys = all.map(function (q) { return q[1]; });
     var x0 = Math.min.apply(null, xs), y0 = Math.min.apply(null, ys);
     var nx = Math.ceil((Math.max.apply(null, xs) - x0) / c), ny = Math.ceil((Math.max.apply(null, ys) - y0) / c);
     if (nx < 1 || ny < 1 || nx * ny > 400000) return null;
     var open = new Uint8Array(nx * ny), lab = new Int32Array(nx * ny), i, j;
     for (j = 0; j < ny; j++) for (i = 0; i < nx; i++) {
-      open[j * nx + i] = insidePoly(f.outline, [x0 + (i + 0.5) * c, y0 + (j + 0.5) * c]) ? 1 : 0;
+      var cp = [x0 + (i + 0.5) * c, y0 + (j + 0.5) * c];
+      open[j * nx + i] = (insidePoly(f.outline, cp) || (hasExt && insidePoly(S.extension.outline, cp))) ? 1 : 0;
+    }
+    // the wall the extension shares with the house stays a wall for the
+    // rooms' sake: the extension is its own room until someone says otherwise
+    if (hasExt) {
+      for (var hk = 0; hk < f.outline.length; hk++) {
+        var ha = f.outline[hk], hb = f.outline[(hk + 1) % f.outline.length];
+        var hL = dist(ha, hb), hn = Math.max(1, Math.ceil(hL / (c / 3)));
+        var nxn = -(hb[1] - ha[1]) / (hL || 1), nyn = (hb[0] - ha[0]) / (hL || 1);
+        for (var hs = 0; hs <= hn; hs++) {
+          var ht = hs / hn, hx = ha[0] + (hb[0] - ha[0]) * ht, hy = ha[1] + (hb[1] - ha[1]) * ht;
+          [[hx + nxn * c / 2, hy + nyn * c / 2], [hx - nxn * c / 2, hy - nyn * c / 2]].forEach(function (q) {
+            if (!insidePoly(S.extension.outline, q) || insidePoly(f.outline, q)) return;
+            var qi = Math.floor((q[0] - x0) / c), qj = Math.floor((q[1] - y0) / c);
+            if (qi >= 0 && qi < nx && qj >= 0 && qj < ny) open[qj * nx + qi] = 0;
+          });
+        }
+      }
     }
     f.internals.forEach(function (sg) {
       var L = dist(sg[0], sg[1]), n = Math.max(1, Math.ceil(L / (c / 3)));
@@ -7421,7 +7526,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     }
     // the middle of a wall drags the whole wall sideways: corners win when
     // they are close, and a tap (no drag) on the wall still means what it did
-    if (!best && which) {
+    var slideOK = S.stage === 'outline' || S.stage === 'extension' ||
+                  (S.stage === 'garden' && S.gardenMode === 'boundary');
+    if (!best && which && slideOK) {
       var ring = shapeOf(which).outline;
       for (var wi = 0; wi < ring.length; wi++) {
         var pr = projectOnSeg(p, ring[wi], ring[(wi + 1) % ring.length]);
@@ -7577,7 +7684,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     }
 
     if (press && press.handle) {
-      if (Math.abs(e.clientX - press.x) + Math.abs(e.clientY - press.y) > 3) press.moved = true;
+      // a click on a trackpad wobbles a pixel or two; a finger more
+      if (Math.abs(e.clientX - press.x) + Math.abs(e.clientY - press.y) > (S.touch ? 8 : 5)) press.moved = true;
       if (!press.moved) return;
       $('sk-svg').classList.add('grabbing');
       var w2 = toWorld(e), g = snapFrom(null, w2);
@@ -7628,18 +7736,69 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     // the pointer says what a press would do: a hand over anything that drags,
     // which on a laptop is the only hint that the dots move at all
     var raw = toWorld(e);
-    S.hoverHandle = !!handleAt(raw);
-    var svgEl = $('sk-svg');
-    if (svgEl) svgEl.classList.toggle('can-grab', S.hoverHandle);
-    if (!placingStage()) { S.cursor = null; renderSoon(); return; }
-    var tg = snapTarget(raw);
-    S.snapKind = tg.kind;
-    S.cursor = tg.p;
-    if (S.stage === 'internal') S.cursor = keepInside(S.cursor);
+    var hh = handleAt(raw);
+    S.hoverHandle = !!hh;
+    if (!placingStage()) { S.cursor = null; }
+    else {
+      var tg = snapTarget(raw);
+      S.snapKind = tg.kind;
+      S.cursor = tg.p;
+      if (S.stage === 'internal') S.cursor = keepInside(S.cursor);
+    }
+    setCursor(cursorFor(raw, hh));
     renderSoon();
   }
 
-  function onLeave() { S.cursor = null; render(); }
+  function onLeave() { S.cursor = null; setCursor(''); render(); }
+
+  /* ---- the pointer says what a click will do --------------------------------
+   * A crosshair everywhere told nobody anything. Each state gets its own
+   * cursor: a pen while a tap draws (with a dot when it will snap to something),
+   * a hand over anything that drags, a "+" on a wall that a tap will split, a
+   * door or a hammer over a wall those modes act on, a pin where a room can be
+   * named, and "not here" wherever a tap would be refused.
+   */
+  function setCursor(name) {
+    var el = $('sk-svg');
+    if (!el) return;
+    var keep = el.classList.contains('grabbing');
+    el.setAttribute('class', (keep ? 'grabbing ' : '') + (name ? 'cur-' + name : ''));
+  }
+  function cursorFor(w, h) {
+    var f = floor();
+    if (S.calibrating) return S.pickWall ? 'pick' : 'arrow';
+    if (S.askUp) return 'arrow';
+    var snapped = S.snapKind && S.snapKind !== 'grid';
+    if (h && h.kind === 'pin') return 'pick';
+    if (h && h.kind !== 'wall') return 'grab';
+    if (S.drawing && S.drawing.length) return snapped ? 'draw-snap' : 'draw';
+    if (S.stage === 'outline') {
+      if (!f.closed) return snapped ? 'draw-snap' : 'draw';
+      return wallOfShape(f, w) ? 'split' : 'arrow';
+    }
+    if (S.stage === 'extension') {
+      if (!S.extension.closed) return snapped ? 'draw-snap' : 'draw';
+      return wallOfShape(S.extension, w) ? 'split' : 'arrow';
+    }
+    if (S.stage === 'internal') {
+      if (drawingWalls()) return insideHouse(snapFrom(null, w)) ? (snapped ? 'draw-snap' : 'draw') : 'no';
+      if (movingWalls()) return nearestInternal(w) >= 0 ? 'grab' : 'arrow';
+      if (S.wallMode === 'door') return (wallAt(w, 'int') || wallAt(w, 'ext') || wallAt(w, 'xt')) ? 'door' : 'no';
+      if (S.wallMode === 'out') return nearestInternal(w) >= 0 ? 'out' : 'no';
+    }
+    if (S.stage === 'openings') return (wallAt(w, 'ext') || wallAt(w, 'xt')) ? 'door' : 'no';
+    if (S.stage === 'rooms') return (h && h.kind === 'pin') ? 'pick' : insideHouse(snapFrom(null, w)) ? 'pin' : 'no';
+    if (S.stage === 'garden') {
+      var gd = S.garden;
+      if (!gd.plot.closed) return snapped ? 'draw-snap' : 'draw';
+      if (S.gardenMode === 'boundary') return wallOfShape(gd.plot, w) ? 'split' : 'arrow';
+      if (S.gardenMode === 'tree') return within(gd.plot.outline, snapFrom(null, w)) ? 'pin' : 'no';
+      if (S.pick && S.pick.kind === 'garea' && gd.areas[S.pick.i] && wallOfShape(gd.areas[S.pick.i], w)) return 'split';
+      if (areaAt(w) >= 0) return 'pick';
+      return within(gd.plot.outline, snapFrom(null, w)) ? (snapped ? 'draw-snap' : 'draw') : 'no';
+    }
+    return 'arrow';
+  }
 
   function onUp(e) {
     if (!S.started) { press = null; return; }
@@ -7689,7 +7848,15 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
     if (p.handle && !p.moved) {           // a tap on a handle selects it
       var hh = p.handle;
-      if (hh.kind === 'pin') { floor().markers.splice(hh.i, 1); settled(); return; }
+      if (hh.kind === 'pin') {
+        // a tap on a label picks it: the type buttons then change it, × removes it
+        UNDO.pop(); REDO.length = 0;
+        S.pick = (S.pick && S.pick.kind === 'pin' && S.pick.i === hh.i) ? null : { kind: 'pin', i: hh.i };
+        if (S.pick) { S.roomType = floor().markers[hh.i].type; S.roomPicked = true; }
+        say('');
+        render();
+        return;
+      }
       if (hh.kind === 'tree') { S.garden.trees.splice(hh.i, 1); settled(); return; }
       UNDO.pop();                          // nothing changed, so nothing to undo
       REDO.length = 0;
@@ -7762,10 +7929,13 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (S.stage === 'garden') { S.typedTap = e === 'typed'; gardenTap(w); S.typedTap = false; return; }
 
     if (S.stage === 'internal' && S.wallMode === 'door') {
-      var iw = wallAt(w, 'int');
-      if (!iw) { say('Tap one of the walls inside the house.'); return; }
+      // an inside wall gets a doorway; an outside wall gets a door
+      var iw = wallAt(w, 'int'), ext = iw ? null : (wallAt(w, 'ext') || wallAt(w, 'xt'));
+      if (!iw && !ext) { say('Tap a wall to put the doorway in.'); return; }
       snapshot();
-      var od = { id: 'o' + (++SEQ), on: 'int', idx: iw.w.idx, t: iw.t, width: DEFAULTS.intDoor, kind: 'intDoor' };
+      var od = iw
+        ? { id: 'o' + (++SEQ), on: 'int', idx: iw.w.idx, t: iw.t, width: DEFAULTS.intDoor, kind: 'intDoor' }
+        : { id: 'o' + (++SEQ), on: 'ext', idx: ext.w.idx, t: ext.t, width: DEFAULTS.door, kind: 'door' };
       f.openings.push(od);
       S.selected = od.id;
       say('');
@@ -7815,8 +7985,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     }
 
     if (S.stage === 'rooms') {
+      if (S.pick && S.pick.kind === 'pin') S.pick = null;
       var g = snapFrom(null, w);
-      if (!within(f.outline, g)) { say('Tap inside the house.'); return; }
+      if (!insideHouse(g)) { say('Tap inside the house.'); return; }
       snapshot();
       // one label per enclosed space: tapping a room that already has one
       // moves and relabels it rather than adding a second
@@ -7841,7 +8012,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
     // doors and windows always land on an outside wall
     var kind = S.kind || 'window';
-    var on = wallAt(w, 'ext');
+    var on = wallAt(w, 'ext') || wallAt(w, 'xt');
     if (!on) { say('Tap one of the outside walls.'); return; }
     snapshot();
     var o = { id: 'o' + (++SEQ), on: on.w.on, idx: on.w.idx, t: on.t,
@@ -8287,10 +8458,12 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
   /* ---- wiring ------------------------------------------------------------------ */
 
-  function open(onApply, onTrace, onClose, types) {
+  function open(onApply, onTrace, onClose, types, onLive) {
     S.onApply = onApply || null;
     S.onTrace = onTrace || null;
     S.onClose = onClose || null;
+    S.onLive = onLive || null;
+    LIVE = { key: null, v: null };
     setTypes(types);
     var resumed = !S.started && recall();
     var wrap = $('sk-overlay');
@@ -8535,7 +8708,17 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       hit = t.closest && t.closest('[data-kind]');
       if (hit) { S.kind = hit.getAttribute('data-kind'); S.selected = null; render(); return; }
       hit = t.closest && t.closest('[data-room]');
-      if (hit) { S.roomType = hit.getAttribute('data-room'); S.roomPicked = true; render(); return; }
+      if (hit) {
+        S.roomType = hit.getAttribute('data-room'); S.roomPicked = true;
+        // with a label picked, the type buttons change that label
+        if (S.pick && S.pick.kind === 'pin' && floor().markers[S.pick.i]) {
+          snapshot();
+          floor().markers[S.pick.i].type = S.roomType;
+          changed();
+          return;
+        }
+        render(); return;
+      }
       hit = t.closest && t.closest('[data-dir]');
       if (hit) { addTyped(hit.getAttribute('data-dir')); return; }
       hit = t.closest && t.closest('[data-gmode]');
@@ -8577,6 +8760,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         if (S.pick && S.pick.kind === 'corner') removeCorner(S.pick.which, S.pick.i);
         else if (S.pick && S.pick.kind === 'iwall') removeInternal(S.pick.i);
         else if (S.pick && S.pick.kind === 'garea') removeArea(S.pick.i);
+        else if (S.pick && S.pick.kind === 'pin') { snapshot(); floor().markers.splice(S.pick.i, 1); S.pick = null; settled(); }
+        else if (S.selected) removeSelectedOpening();
         return;
       }
 
@@ -8668,6 +8853,15 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
     doc.addEventListener('keydown', function (e) {
       if (!$('sk-overlay').classList.contains('on')) return;
+      if (e.key === 'Delete' && doc.activeElement && doc.activeElement.tagName !== 'INPUT') {
+        e.preventDefault();
+        if (S.selected) removeSelectedOpening();
+        else if (S.pick && S.pick.kind === 'corner') removeCorner(S.pick.which, S.pick.i);
+        else if (S.pick && S.pick.kind === 'iwall') removeInternal(S.pick.i);
+        else if (S.pick && S.pick.kind === 'garea') removeArea(S.pick.i);
+        else if (S.pick && S.pick.kind === 'pin') { snapshot(); floor().markers.splice(S.pick.i, 1); S.pick = null; settled(); }
+        return;
+      }
       if (e.key === 'Escape') {
         if (S.drawing) { S.drawing = null; S.cursor = null; render(); }
         else if (S.pick || S.selected) { S.pick = null; S.selected = null; render(); }
@@ -9571,6 +9765,13 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       jx.measurements.depth = Math.round(m.extension.depth * 4) / 4;
       jx.touched.width = true;
       jx.touched.depth = true;
+      // bi-folds drawn on the extension's own walls are its bi-fold width
+      if (m.extension.bifold > 0) {
+        jx.measurements.bifoldWidth = Math.round(m.extension.bifold * 10) / 10;
+        jx.touched.bifoldWidth = true;
+        jx.fromDraw = jx.fromDraw || {};
+        jx.fromDraw.bifoldWidth = true;
+      }
       jx.touched.sketched = true;
       jx.fromDraw = jx.fromDraw || {};
       jx.fromDraw.width = true;
@@ -9603,6 +9804,31 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     update();
   }
   var GARDEN_AREAS = ['patio', 'lawn', 'drive', 'decking'];
+
+  /* The running total shown inside the drawing tool. The figures so far are
+     applied to a scratch copy of the jobs and priced; nothing the client has
+     answered is touched until they press Done. */
+  function liveTotal(m) {
+    var savedJobs = JSON.stringify(jobs), savedTypes = project.types.slice(), savedRoute = route;
+    try {
+      route = null;                                   // no rail repaint from applySketch
+      applySketchEverywhere(m);
+      var proj = priceNow();
+      var incl = incVat;
+      var lo = incl ? proj.low : proj.lowExVat, hi = incl ? proj.high : proj.highExVat;
+      if (!lo || !isFinite(lo)) return null;
+      var what = selected().map(function (t) { return t.name.toLowerCase(); }).join(' + ');
+      return { text: rounded(lo, 'down') + ' to ' + rounded(hi, 'up'), note: what + (incl ? ', including VAT' : ', excluding VAT') + '. Changes as you draw.' };
+    } catch (e) {
+      return null;
+    } finally {
+      var back = JSON.parse(savedJobs);
+      Object.keys(jobs).forEach(function (k) { delete jobs[k]; });
+      Object.keys(back).forEach(function (k) { jobs[k] = back[k]; });
+      project.types = savedTypes;
+      route = savedRoute;
+    }
+  }
 
   /** Whichever card offered the drawing, tell it what came back. */
   function sketchNote(m) {
@@ -9655,6 +9881,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   function roomsHtml(typeId, j) {
     var LV = RB.ROOMS.levels;
     var areas = RB.ROOMS.areas(j.rooms, j.measurements.floorArea || 0);
+    // rooms that came off the drawing are the drawing's to change
+    var drawn = !!(j.touched && j.touched.sketched && hasDrawing());
 
     var rows = j.rooms.map(function (r, i) {
       var t = RB.ROOMS.typeOf(r.type);
@@ -9676,7 +9904,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
           }).join('') +
         '</div>' +
         '<span class="room-cost">' + cost + '</span>' +
-        '<button type="button" class="room-x" data-drop="' + i + '" aria-label="Remove this ' + esc(t.label) + '">×</button>' +
+        (drawn ? '<span class="room-x" aria-hidden="true"></span>'
+               : '<button type="button" class="room-x" data-drop="' + i + '" aria-label="Remove this ' + esc(t.label) + '">×</button>') +
         // the ticks: what is actually being done in this room
         '<div class="room-jobs" role="group" aria-label="Work in the ' + esc(t.label.toLowerCase()) + '">' +
           jobs.map(function (jb) {
@@ -9693,10 +9922,13 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
           return '<button type="button" data-all="' + l.id + '">' + esc(l.label) + '</button>';
         }).join('') + '</div></div>' +
       '<div class="room-list">' + rows + '</div>' +
-      '<div class="room-add"><span class="q-help">Add a room</span>' +
-        '<div class="seg seg-wrap">' + RB.ROOMS.types.map(function (t) {
-          return '<button type="button" data-add="' + t.id + '">+ ' + esc(t.label) + '</button>';
-        }).join('') + '</div></div>' +
+      (drawn
+        ? '<div class="room-add"><span class="q-help">These are the rooms you named on the drawing.</span>' +
+          '<button type="button" class="btn btn-ghost btn-sm" id="do-sketch">Change the rooms on the drawing</button></div>'
+        : '<div class="room-add"><span class="q-help">Add a room</span>' +
+          '<div class="seg seg-wrap">' + RB.ROOMS.types.map(function (t) {
+            return '<button type="button" data-add="' + t.id + '">+ ' + esc(t.label) + '</button>';
+          }).join('') + '</div></div>') +
       '<p class="q-help room-note">' +
         LV.slice(1).map(function (l) { return '<b>' + esc(l.label) + '</b> — ' + esc(l.blurb); }).join('<br>') +
         '<br>A preset is a starting point. Tick and untick under each room to say what is really happening in it.' +
@@ -10391,7 +10623,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         function (m) { applySketchEverywhere(m); onwards(); },
         function (area, rooms) { applyTrace(area, rooms); onwards(); },
         function () { ROUTER.go('/start'); },         // closed without finishing
-        project.types
+        project.types,
+        liveTotal
       );
       return;
     }

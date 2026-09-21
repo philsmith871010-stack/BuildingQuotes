@@ -180,7 +180,10 @@ sentence.
    outside wall or a corner starts a wall there instead of moving it. Tap one
    end then the other, or drag from one to the other.
 3. **Doors & windows** — pick one, tap the outside wall it is in.
-4. **Rooms** — pick a type, tap the room. Finishing the ground floor leads to
+4. **Rooms** — pick a type, tap the room. Tap a label to pick it: the type
+   buttons then change it, × removes it, and it drags. The rooms page of the
+   estimator lists exactly these rooms and no others; adding a room means
+   naming it on the drawing. Finishing the ground floor leads to
    the upstairs, because the bedrooms and the bathroom are up there. Once the
    inside walls enclose spaces, the spaces are found for you: each shows "Tap
    to name · 12 m²" until it is named, a named room's pill carries its real
@@ -278,6 +281,36 @@ T-junction. A tap on a wall still does what it did (a corner on an outside
 wall, a pick on an inside one) because a slide needs a drag. While anything is
 dragged, a faint dashed guide appears through any other corner it lines up
 with.
+
+## The pointer says what a click will do
+
+A crosshair everywhere told nobody anything. Each state has its own cursor: a
+pen while a tap draws (with a blue dot when the point will snap to something),
+a hand over anything that drags, a "+" on a wall that a tap will split, a door
+over a wall a doorway can go in, a hammer over a wall that can be knocked out,
+a pin where a room can be named, a ring over a label that a tap will pick, and
+"not here" wherever a tap would be refused. A wall-middle handle defers to what
+a tap does there, so on the doors step a wall shows the door cursor, not a
+hand, and walls slide only on the Shape step and in "Move or remove".
+
+## Doorways, doors and the extension
+
+"Add a doorway" on the inside-walls step takes an outside wall too and puts an
+outside door there. A doorway or door is selected when placed, drags along its
+wall, and shows a × for removal; the Delete key removes whatever is picked or
+selected. The extension counts as part of the floor it sits on (both floors
+when two-storey): inside walls, doorways, windows, doors and room labels all go
+in it, its walls take bi-folds (a bi-fold drawn there is the extension's
+bi-fold width on the estimate), and the wall it shares with the house stays a
+wall for the purpose of finding rooms, so the extension is its own room until
+someone knocks through.
+
+## A running total
+
+Once the house is measured the side panel shows *Estimate so far*: the figures
+so far applied to a scratch copy of the client's answers and priced with the
+rate book, re-priced only when the figures change. Nothing the client has
+answered is touched until they press Done.
 
 ## Snapping to what is already there
 

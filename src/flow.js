@@ -490,6 +490,13 @@
       jx.measurements.depth = Math.round(m.extension.depth * 4) / 4;
       jx.touched.width = true;
       jx.touched.depth = true;
+      // bi-folds drawn on the extension's own walls are its bi-fold width
+      if (m.extension.bifold > 0) {
+        jx.measurements.bifoldWidth = Math.round(m.extension.bifold * 10) / 10;
+        jx.touched.bifoldWidth = true;
+        jx.fromDraw = jx.fromDraw || {};
+        jx.fromDraw.bifoldWidth = true;
+      }
       jx.touched.sketched = true;
       jx.fromDraw = jx.fromDraw || {};
       jx.fromDraw.width = true;
@@ -522,6 +529,31 @@
     update();
   }
   var GARDEN_AREAS = ['patio', 'lawn', 'drive', 'decking'];
+
+  /* The running total shown inside the drawing tool. The figures so far are
+     applied to a scratch copy of the jobs and priced; nothing the client has
+     answered is touched until they press Done. */
+  function liveTotal(m) {
+    var savedJobs = JSON.stringify(jobs), savedTypes = project.types.slice(), savedRoute = route;
+    try {
+      route = null;                                   // no rail repaint from applySketch
+      applySketchEverywhere(m);
+      var proj = priceNow();
+      var incl = incVat;
+      var lo = incl ? proj.low : proj.lowExVat, hi = incl ? proj.high : proj.highExVat;
+      if (!lo || !isFinite(lo)) return null;
+      var what = selected().map(function (t) { return t.name.toLowerCase(); }).join(' + ');
+      return { text: rounded(lo, 'down') + ' to ' + rounded(hi, 'up'), note: what + (incl ? ', including VAT' : ', excluding VAT') + '. Changes as you draw.' };
+    } catch (e) {
+      return null;
+    } finally {
+      var back = JSON.parse(savedJobs);
+      Object.keys(jobs).forEach(function (k) { delete jobs[k]; });
+      Object.keys(back).forEach(function (k) { jobs[k] = back[k]; });
+      project.types = savedTypes;
+      route = savedRoute;
+    }
+  }
 
   /** Whichever card offered the drawing, tell it what came back. */
   function sketchNote(m) {
@@ -574,6 +606,8 @@
   function roomsHtml(typeId, j) {
     var LV = RB.ROOMS.levels;
     var areas = RB.ROOMS.areas(j.rooms, j.measurements.floorArea || 0);
+    // rooms that came off the drawing are the drawing's to change
+    var drawn = !!(j.touched && j.touched.sketched && hasDrawing());
 
     var rows = j.rooms.map(function (r, i) {
       var t = RB.ROOMS.typeOf(r.type);
@@ -595,7 +629,8 @@
           }).join('') +
         '</div>' +
         '<span class="room-cost">' + cost + '</span>' +
-        '<button type="button" class="room-x" data-drop="' + i + '" aria-label="Remove this ' + esc(t.label) + '">×</button>' +
+        (drawn ? '<span class="room-x" aria-hidden="true"></span>'
+               : '<button type="button" class="room-x" data-drop="' + i + '" aria-label="Remove this ' + esc(t.label) + '">×</button>') +
         // the ticks: what is actually being done in this room
         '<div class="room-jobs" role="group" aria-label="Work in the ' + esc(t.label.toLowerCase()) + '">' +
           jobs.map(function (jb) {
@@ -612,10 +647,13 @@
           return '<button type="button" data-all="' + l.id + '">' + esc(l.label) + '</button>';
         }).join('') + '</div></div>' +
       '<div class="room-list">' + rows + '</div>' +
-      '<div class="room-add"><span class="q-help">Add a room</span>' +
-        '<div class="seg seg-wrap">' + RB.ROOMS.types.map(function (t) {
-          return '<button type="button" data-add="' + t.id + '">+ ' + esc(t.label) + '</button>';
-        }).join('') + '</div></div>' +
+      (drawn
+        ? '<div class="room-add"><span class="q-help">These are the rooms you named on the drawing.</span>' +
+          '<button type="button" class="btn btn-ghost btn-sm" id="do-sketch">Change the rooms on the drawing</button></div>'
+        : '<div class="room-add"><span class="q-help">Add a room</span>' +
+          '<div class="seg seg-wrap">' + RB.ROOMS.types.map(function (t) {
+            return '<button type="button" data-add="' + t.id + '">+ ' + esc(t.label) + '</button>';
+          }).join('') + '</div></div>') +
       '<p class="q-help room-note">' +
         LV.slice(1).map(function (l) { return '<b>' + esc(l.label) + '</b> — ' + esc(l.blurb); }).join('<br>') +
         '<br>A preset is a starting point. Tick and untick under each room to say what is really happening in it.' +
@@ -1310,7 +1348,8 @@
         function (m) { applySketchEverywhere(m); onwards(); },
         function (area, rooms) { applyTrace(area, rooms); onwards(); },
         function () { ROUTER.go('/start'); },         // closed without finishing
-        project.types
+        project.types,
+        liveTotal
       );
       return;
     }
