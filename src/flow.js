@@ -577,20 +577,32 @@
 
     var rows = j.rooms.map(function (r, i) {
       var t = RB.ROOMS.typeOf(r.type);
-      return '<div class="room-row" data-room="' + i + '">' +
+      var on = RB.ROOMS.roomJobs(r), preset = RB.ROOMS.matchLevel(r);
+      var jobs = RB.ROOMS.jobsFor(r.type);
+      var ticked = jobs.filter(function (jb) { return on[jb.id]; }).length;
+      var cost = ticked ? money(roomCost(typeId, j, r, areas[i])) : '—';
+      return '<div class="room-row' + (ticked ? '' : ' is-idle') + '" data-room="' + i + '">' +
         '<div class="room-what">' +
           '<b>' + esc(t.label) + '</b>' +
           '<span class="room-area">' + areas[i].toFixed(1) + ' m²</span>' +
+          (preset === null ? '<span class="room-custom">custom</span>' : '') +
         '</div>' +
-        '<div class="seg room-seg" role="group" aria-label="' + esc(t.label) + '">' +
+        '<div class="seg room-seg" role="group" aria-label="' + esc(t.label) + ' preset">' +
           LV.map(function (l) {
             return '<button type="button" data-level="' + l.id + '" aria-pressed="' +
-              ((r.level || 'refit') === l.id) + '" title="' + esc(l.label) + ' — ' + esc(l.blurb) + '">' +
+              (preset === l.id) + '" title="' + esc(l.label) + ' — ' + esc(l.blurb) + '">' +
               esc(l.short) + '</button>';
           }).join('') +
         '</div>' +
-        '<span class="room-cost">' + (r.level === 'none' ? '—' : money(roomCost(typeId, j, r, areas[i]))) + '</span>' +
+        '<span class="room-cost">' + cost + '</span>' +
         '<button type="button" class="room-x" data-drop="' + i + '" aria-label="Remove this ' + esc(t.label) + '">×</button>' +
+        // the ticks: what is actually being done in this room
+        '<div class="room-jobs" role="group" aria-label="Work in the ' + esc(t.label.toLowerCase()) + '">' +
+          jobs.map(function (jb) {
+            return '<button type="button" class="chip" data-job="' + jb.id + '" aria-pressed="' + !!on[jb.id] +
+              '" title="' + esc(jb.blurb) + '"><i aria-hidden="true"></i>' + esc(jb.label) + '</button>';
+          }).join('') +
+        '</div>' +
       '</div>';
     }).join('');
 
@@ -606,6 +618,7 @@
         }).join('') + '</div></div>' +
       '<p class="q-help room-note">' +
         LV.slice(1).map(function (l) { return '<b>' + esc(l.label) + '</b> — ' + esc(l.blurb); }).join('<br>') +
+        '<br>A preset is a starting point. Tick and untick under each room to say what is really happening in it.' +
       '</p></div>';
   }
 
@@ -1098,8 +1111,27 @@
     if (lvBtn) {
       var jr = job(route.typeId), row = lvBtn.closest('[data-room]');
       if (row && jr.rooms) {
-        jr.rooms[+row.getAttribute('data-room')].level = lvBtn.getAttribute('data-level');
+        var rr = jr.rooms[+row.getAttribute('data-room')];
+        rr.level = lvBtn.getAttribute('data-level');
+        delete rr.jobs;                           // a preset replaces the ticks
         jr.touched.rooms = true;
+        repaintRooms(); update();
+      }
+      return;
+    }
+    // one tick in one room
+    var jobBtn = t.closest ? t.closest('[data-job]') : null;
+    if (jobBtn) {
+      var jj = job(route.typeId), jrow = jobBtn.closest('[data-room]');
+      if (jrow && jj.rooms) {
+        var rm = jj.rooms[+jrow.getAttribute('data-room')];
+        var set = RB.ROOMS.roomJobs(rm);
+        set[jobBtn.getAttribute('data-job')] = !set[jobBtn.getAttribute('data-job')];
+        rm.jobs = set;
+        // if the ticks now equal a preset, say so; otherwise the room is custom
+        var lvMatch = RB.ROOMS.matchLevel(rm);
+        if (lvMatch) { rm.level = lvMatch; delete rm.jobs; }
+        jj.touched.rooms = true;
         repaintRooms(); update();
       }
       return;
@@ -1108,7 +1140,7 @@
     if (allBtn) {
       var ja = job(route.typeId), lvl = allBtn.getAttribute('data-all');
       if (ja.rooms) {
-        ja.rooms.forEach(function (r) { r.level = lvl; });
+        ja.rooms.forEach(function (r) { r.level = lvl; delete r.jobs; });
         ja.touched.rooms = true;
         repaintRooms(); update();
       }

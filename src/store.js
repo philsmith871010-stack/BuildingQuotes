@@ -20,7 +20,7 @@
      new question wording. A stored book from an older shape is rebuilt from the
      current defaults with the rates carried across, so nobody is left on a
      structure the app no longer understands. */
-  var SCHEMA = 4;
+  var SCHEMA = 5;
 
   function now() { return new Date().toISOString(); }
 

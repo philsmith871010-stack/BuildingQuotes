@@ -863,11 +863,38 @@ html { scroll-padding-top: 62px; }
 .room-note { line-height: 1.6; }
 .room-note b { color: var(--ink-2); font-weight: 600; }
 
+/* the ticks under each room: what is actually being done in it */
+.room-row { padding: .55rem 0 .6rem; }
+.room-row.is-idle .room-jobs { opacity: .55; }
+.room-custom {
+  font-family: var(--mono); font-size: .62rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent-ink); border: 1px solid var(--accent); border-radius: 2px; padding: .05rem .3rem;
+}
+.room-jobs { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .3rem; }
+.chip {
+  display: inline-flex; align-items: center; gap: .35rem;
+  font-size: .76rem; padding: .28rem .6rem .28rem .45rem; border-radius: 999px; cursor: pointer;
+  background: var(--surface); color: var(--ink-2); border: 1px solid var(--rule);
+}
+.chip i {
+  width: .8rem; height: .8rem; border-radius: 2px; border: 1.5px solid var(--ink-3); background: var(--surface);
+  display: inline-block; position: relative; flex: 0 0 auto;
+}
+.chip[aria-pressed="true"] { background: var(--accent-soft, rgba(21,76,124,.10)); color: var(--accent-ink); border-color: var(--accent); }
+.chip[aria-pressed="true"] i { background: var(--accent); border-color: var(--accent); }
+.chip[aria-pressed="true"] i::after {
+  content: ""; position: absolute; left: .22rem; top: .05rem; width: .22rem; height: .45rem;
+  border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.chip:hover { border-color: var(--accent); }
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
 /* On a phone the four levels need the full width, so the row wraps into two. */
 @media (max-width: 640px) {
   .room-row { grid-template-columns: 1fr auto 1.6rem; }
   .room-seg { grid-column: 1 / -1; order: 3; }
   .room-seg button { flex: 1 1 0; }
+  .room-jobs { order: 4; }
 }
 
 /* the button that opens the drawing tool */

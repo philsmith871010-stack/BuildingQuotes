@@ -1012,11 +1012,65 @@ select.cell:hover { border-color: var(--rule); }
   var ROOM_LEVELS = [
     { id: 'none',     label: 'Leave it',  short: 'Leave',    blurb: 'Not touched.' },
     { id: 'decorate', label: 'Decorate',  short: 'Decorate', blurb: 'Prep, two coats and a new floor covering.' },
-    { id: 'refit',    label: 'Refit',     short: 'Refit',    blurb: 'Plus a skim, lighting and sockets, a new door and a radiator.' },
-    { id: 'strip',    label: 'Strip out', short: 'Strip',    blurb: 'Plus back to brick and joists, first fix, a new ceiling and insulation.' }
+    { id: 'refit',    label: 'Refit',     short: 'Refit',    blurb: 'Plus a skim, lighting and sockets, a new door and a radiator — and the kitchen, bathroom or WC itself.' },
+    { id: 'strip',    label: 'Strip out', short: 'Strip',    blurb: 'Plus back to brick and joists, rewire and re-pipe, a new ceiling and insulation.' }
   ];
 
   var RANK = { none: 0, decorate: 1, refit: 2, strip: 3 };
+
+  /* The jobs a room can have done. A level is a preset that ticks a set of
+     these; the client can then tick and untick per room, and the ticks are
+     what the rates are driven by. `types` limits a job to the rooms it makes
+     sense in; `from` is the first level that includes it; `per` says whether
+     the job is priced on the room's area or once per room. */
+  var WET = ['kitchen', 'bathroom', 'wc'];
+  var ROOM_JOBS = [
+    { id: 'decorate',   label: 'Decorate',              from: 'decorate', per: 'area',  drive: 'decorArea',      blurb: 'Prep and two coats to walls, ceiling and woodwork' },
+    { id: 'flooring',   label: 'New floor',             from: 'decorate', per: 'area',  drive: 'floorFinishArea', blurb: 'Preparation and laying; the covering itself is yours to choose' },
+    { id: 'plaster',    label: 'Skim walls & ceiling',  from: 'refit',    per: 'area',  drive: 'plasterArea',    blurb: 'Overboarded or hacked off and re-skimmed' },
+    { id: 'electrics',  label: 'Sockets & lights',      from: 'refit',    per: 'area',  drive: 'secondFixArea',  blurb: 'Second fix: sockets, switches, lighting and testing' },
+    { id: 'door',       label: 'New door',              from: 'refit',    per: 'count', drive: 'doorsReplaced',  blurb: 'Door, frame, ironmongery and hanging' },
+    { id: 'radiator',   label: 'New radiator',          from: 'refit',    per: 'count', drive: 'radiators',      blurb: 'Radiator or towel rail, valves and connection' },
+    { id: 'kitchen',    label: 'New kitchen',           from: 'refit',    per: 'count', drive: 'kitchens',       types: ['kitchen'],  blurb: 'Fitting only. You buy the units and appliances' },
+    { id: 'bathroom',   label: 'New bathroom suite',    from: 'refit',    per: 'count', drive: 'bathrooms',      types: ['bathroom'], blurb: 'Fitting only. You buy the suite' },
+    { id: 'wc',         label: 'New WC & basin',        from: 'refit',    per: 'count', drive: 'wcs',            types: ['wc'],       blurb: 'Fitting only' },
+    { id: 'tiling',     label: 'Wall tiling',           from: 'refit',    per: 'tiled', drive: 'tiledArea',      types: WET,          blurb: 'Laying and grouting; tiles are yours to choose' },
+    { id: 'strip',      label: 'Strip to brick',        from: 'strip',    per: 'area',  drive: 'stripArea',      blurb: 'Finishes off, back to brick and joists, skips and protection' },
+    { id: 'firstfix',   label: 'Rewire & re-pipe',      from: 'strip',    per: 'area',  drive: 'firstFixArea',   blurb: 'Circuits and pipework back to the board and the boiler' },
+    { id: 'ceiling',    label: 'New ceiling',           from: 'strip',    per: 'area',  drive: 'ceilingArea',    blurb: 'Down, re-boarded and skimmed' },
+    { id: 'insulation', label: 'Insulate outside walls', from: 'strip',   per: 'area',  drive: 'insulationArea', blurb: 'Insulating the external walls while they are open' }
+  ];
+  /* tiled wall area from floor area: a bathroom is tiled most of the way
+     round, a kitchen gets a splashback */
+  var TILE_FACTOR = { bathroom: 2.5, wc: 1.8, kitchen: 0.6 };
+
+  function jobsFor(type) {
+    return ROOM_JOBS.filter(function (jb) { return !jb.types || jb.types.indexOf(type) >= 0; });
+  }
+  /** What a preset ticks for this room type. */
+  function presetJobs(type, level) {
+    var lv = RANK[level] || 0, out = {};
+    jobsFor(type).forEach(function (jb) { out[jb.id] = RANK[jb.from] <= lv; });
+    return out;
+  }
+  /** The room's effective ticks: its own if it has any, else its preset's. */
+  function roomJobs(r) {
+    var base = presetJobs(r.type, r.level || 'refit');
+    if (!r.jobs) return base;
+    var out = {};
+    Object.keys(base).forEach(function (k) { out[k] = !!r.jobs[k]; });
+    return out;
+  }
+  /** Which preset, if any, the room's ticks match. */
+  function matchLevel(r) {
+    var have = roomJobs(r), ids = Object.keys(have);
+    for (var i = 0; i < ROOM_LEVELS.length; i++) {
+      var want = presetJobs(r.type, ROOM_LEVELS[i].id), same = true;
+      ids.forEach(function (k) { if (!!want[k] !== !!have[k]) same = false; });
+      if (same) return ROOM_LEVELS[i].id;
+    }
+    return null;
+  }
 
   function roomType(id) {
     var found = ROOM_TYPES[6];
@@ -1040,26 +1094,20 @@ select.cell:hover { border-color: var(--rule); }
     });
   }
 
-  /** The quantities the rate lines are driven by, worked out from the rooms. */
+  /** The quantities the rate lines are driven by, worked out from the ticks. */
   function roomMeasurements(rooms, areas) {
-    var m = { workedArea: 0, refitArea: 0, stripArea: 0,
-              doorsReplaced: 0, radiators: 0, kitchens: 0, bathrooms: 0, wcs: 0 };
+    var m = {};
+    ROOM_JOBS.forEach(function (jb) { m[jb.drive] = 0; });
     rooms.forEach(function (r, i) {
-      var lv = RANK[r.level] || 0, a = areas[i] || 0;
-      if (lv >= 1) m.workedArea += a;
-      if (lv >= 2) {
-        m.refitArea += a;
-        m.doorsReplaced += 1;
-        m.radiators += 1;
-        if (r.type === 'kitchen') m.kitchens += 1;
-        if (r.type === 'bathroom') m.bathrooms += 1;
-        if (r.type === 'wc') m.wcs += 1;
-      }
-      if (lv >= 3) m.stripArea += a;
+      var on = roomJobs(r), a = areas[i] || 0;
+      ROOM_JOBS.forEach(function (jb) {
+        if (!on[jb.id]) return;
+        if (jb.per === 'count') m[jb.drive] += 1;
+        else if (jb.per === 'tiled') m[jb.drive] += a * (TILE_FACTOR[r.type] || 0);
+        else m[jb.drive] += a;
+      });
     });
-    ['workedArea', 'refitArea', 'stripArea'].forEach(function (k) {
-      m[k] = Math.round(m[k] * 10) / 10;
-    });
+    Object.keys(m).forEach(function (k) { m[k] = Math.round(m[k] * 10) / 10; });
     return m;
   }
 
@@ -1079,8 +1127,9 @@ select.cell:hover { border-color: var(--rule); }
   }
 
   var ROOMS = {
-    types: ROOM_TYPES, levels: ROOM_LEVELS, rank: RANK,
+    types: ROOM_TYPES, levels: ROOM_LEVELS, rank: RANK, jobs: ROOM_JOBS,
     typeOf: roomType, areas: roomAreas, measurements: roomMeasurements,
+    jobsFor: jobsFor, presetJobs: presetJobs, roomJobs: roomJobs, matchLevel: matchLevel,
     defaults: defaultRooms
   };
 
@@ -1160,15 +1209,21 @@ select.cell:hover { border-color: var(--rule); }
         { id: 'floorArea', label: 'Floor area', unit: 'm²',
           ask: { step: 'size', q: 'Total floor area', help: 'Every storey added together. Sketch the house and this is measured rather than guessed. A three-bed semi is usually 85 to 100 m².', input: 'area', min: 10, max: 500, by: 5, value: 90 } },
 
-        /* worked out from the room list — never asked directly */
-        { id: 'workedArea',    label: 'Area being worked on', unit: 'm²' },
-        { id: 'refitArea',     label: 'Area refitted',        unit: 'm²' },
-        { id: 'stripArea',     label: 'Area stripped out',    unit: 'm²' },
-        { id: 'doorsReplaced', label: 'Internal doors',       unit: 'no.' },
-        { id: 'radiators',     label: 'Radiators',            unit: 'no.' },
-        { id: 'kitchens',      label: 'Kitchens',             unit: 'no.' },
-        { id: 'bathrooms',     label: 'Bathrooms',            unit: 'no.' },
-        { id: 'wcs',           label: 'WCs',                  unit: 'no.' },
+        /* worked out from the room ticks — never asked directly */
+        { id: 'decorArea',       label: 'Area decorated',        unit: 'm²' },
+        { id: 'floorFinishArea', label: 'Area re-floored',       unit: 'm²' },
+        { id: 'plasterArea',     label: 'Area skimmed',          unit: 'm²' },
+        { id: 'secondFixArea',   label: 'Area second-fixed',     unit: 'm²' },
+        { id: 'stripArea',       label: 'Area stripped out',     unit: 'm²' },
+        { id: 'firstFixArea',    label: 'Area first-fixed',      unit: 'm²' },
+        { id: 'ceilingArea',     label: 'New ceilings',          unit: 'm²' },
+        { id: 'insulationArea',  label: 'Walls insulated',       unit: 'm²' },
+        { id: 'tiledArea',       label: 'Wall tiling',           unit: 'm²' },
+        { id: 'doorsReplaced',   label: 'Internal doors',        unit: 'no.' },
+        { id: 'radiators',       label: 'Radiators',             unit: 'no.' },
+        { id: 'kitchens',        label: 'Kitchens',              unit: 'no.' },
+        { id: 'bathrooms',       label: 'Bathrooms',             unit: 'no.' },
+        { id: 'wcs',             label: 'WCs',                   unit: 'no.' },
 
         /* the things that are not room by room */
         { id: 'wallRemoval', label: 'Wall removed', unit: 'm',
@@ -1186,22 +1241,23 @@ select.cell:hover { border-color: var(--rule); }
       ],
       steps: [
         { id: 'size',      view: 'plan',    short: 'Size',  title: 'How big is the house?', lede: 'One number drives everything else. Sketch the house or trace your floor plan and it is measured rather than estimated.' },
-        { id: 'work',      view: 'plan',    short: 'Rooms', title: 'How much work, room by room?', lede: 'One answer per room. Most refurbishments are a mix — the kitchen back to brick, the bedrooms skimmed and painted, the hall just decorated.', rooms: true },
+        { id: 'work',      view: 'plan',    short: 'Rooms', title: 'What is being done, room by room?', lede: 'Pick a preset for each room, then tick or untick what is actually happening in it. A kitchen has more to choose from than a hall. Each room shows its own price.', rooms: true },
         { id: 'house',     view: 'section', short: 'House', title: 'The things that are not room by room', lede: 'Six questions covering the work you buy once for the whole house, however many rooms are involved.' },
         { id: 'condition', view: 'section', short: 'Condition', title: 'What are we working with?', lede: 'Older fabric costs more to work into, and a family living upstairs costs time.', modifiers: ['age', 'occupied', 'access', 'spec'] }
       ],
       lines: [
         /* room by room — driven by how far each room is being taken */
         L('ren.strip',      'Strip out and clear',    'Finishes off, back to brick and joists. Removals, skips and protection', 'per_m2', 'stripArea', 85, 'placeholder'),
-        L('ren.firstfix',   'First fix',              'Electrical circuits and pipework back to the board and the boiler', 'per_m2', 'stripArea', 95, 'placeholder'),
-        L('ren.ceilings',   'New ceilings',           'Down, re-boarded and skimmed', 'per_m2', 'stripArea', 48, 'placeholder'),
-        L('ren.insulation', 'Insulation',             'Insulating the external walls while they are open', 'per_m2', 'stripArea', 26, 'placeholder'),
-        L('ren.plaster',    'Plastering',             'Walls and ceiling, overboarded or hacked off and re-skimmed', 'per_m2', 'refitArea', 62, 'placeholder'),
-        L('ren.secondfix',  'Second fix electrics',   'Sockets, switches, lighting and testing', 'per_m2', 'refitArea', 58, 'placeholder'),
+        L('ren.firstfix',   'First fix',              'Electrical circuits and pipework back to the board and the boiler', 'per_m2', 'firstFixArea', 95, 'placeholder'),
+        L('ren.ceilings',   'New ceilings',           'Down, re-boarded and skimmed', 'per_m2', 'ceilingArea', 48, 'placeholder'),
+        L('ren.insulation', 'Insulation',             'Insulating the external walls while they are open', 'per_m2', 'insulationArea', 26, 'placeholder'),
+        L('ren.plaster',    'Plastering',             'Walls and ceiling, overboarded or hacked off and re-skimmed', 'per_m2', 'plasterArea', 62, 'placeholder'),
+        L('ren.secondfix',  'Second fix electrics',   'Sockets, switches, lighting and testing', 'per_m2', 'secondFixArea', 58, 'placeholder'),
         L('ren.doors',      'Internal doors',         'Door, frame, ironmongery and hanging', 'per_unit', 'doorsReplaced', 220, 'placeholder'),
         L('ren.radiators',  'Radiators',              'Radiator or towel rail, valves and connection', 'per_unit', 'radiators', 420, 'placeholder'),
-        L('ren.flooring',   'Floor finishes',         'Preparation and laying, materials excluded', 'per_m2', 'workedArea', 65, 'placeholder'),
-        L('ren.decoration', 'Decoration',             'Preparation and two coats', 'per_m2', 'workedArea', 38, 'placeholder'),
+        L('ren.flooring',   'Floor finishes',         'Preparation and laying, materials excluded', 'per_m2', 'floorFinishArea', 65, 'placeholder'),
+        L('ren.decoration', 'Decoration',             'Preparation and two coats', 'per_m2', 'decorArea', 38, 'placeholder'),
+        L('ren.tiling',     'Wall tiling',            'Laying and grouting, per m² of wall; tiles excluded', 'per_m2', 'tiledArea', 75, 'placeholder'),
         L('ren.kitchen',    'Kitchen fitting',        'Labour only', 'per_unit', 'kitchens', 4500, 'lee'),
         L('ren.bathroom',   'Bathroom',               'Labour only', 'per_unit', 'bathrooms', 3000, 'lee'),
         L('ren.wc',         'Cloakroom WC',           'Labour only', 'per_unit', 'wcs', 1200, 'placeholder'),
@@ -2005,7 +2061,7 @@ select.cell:hover { border-color: var(--rule); }
      new question wording. A stored book from an older shape is rebuilt from the
      current defaults with the rates carried across, so nobody is left on a
      structure the app no longer understands. */
-  var SCHEMA = 4;
+  var SCHEMA = 5;
 
   function now() { return new Date().toISOString(); }
 

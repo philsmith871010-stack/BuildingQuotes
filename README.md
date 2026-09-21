@@ -126,10 +126,15 @@ intensity spread over a whole house — the kitchen goes back to brick, the
 bedrooms get a skim and a coat, the hall gets painted. Pricing that off a single
 "floor area treated" figure is wrong for almost every real job.
 
-So the renovation flow asks **one question per room**, with four answers: leave
-it, decorate, refit, or strip out. Each level switches a bundle of trade lines
-on for that room, and every row carries its own price, because a figure per room
-is what makes a client believe the total.
+So the renovation flow works **one room at a time**. Each room gets a preset
+(leave it, decorate, refit, or strip out) and under it a row of ticks for what
+is actually being done there: decorate, new floor, skim, sockets and lights, a
+door, a radiator, strip to brick, rewire, a new ceiling, insulation, and for a
+kitchen, bathroom or WC the fitting and the wall tiling. A preset ticks its
+usual set; the client unticks what they are keeping. Every tick is one rate
+line driven by that room's measured area or counted once, and every row carries
+its own price, because a figure per room is what makes a client believe the
+total.
 
 Room areas are never asked for. The total is measured from the sketch or the
 trace; each room takes a share of it weighted by what kind of room it is. An
