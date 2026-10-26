@@ -886,13 +886,37 @@
    * you only pay for one set of drawings, one engineer and one building control
    * application — because that is all the job actually needs.
    */
+  /* A second piece of the same kind of work, drawn separately — a second
+     extension on another side of the house. It is priced as its own job of
+     that type from its own size, with the first job's build choices and
+     ground; nothing asked about the first one (its kitchen, its opening into
+     the house) is assumed for it. */
+  function extraJob(jb, x) {
+    var m = {};
+    Object.keys(jb.measurements || {}).forEach(function (k) { m[k] = 0; });
+    m.width = x.width || 0;
+    m.depth = x.depth || 0;
+    m.floorArea = m.width * m.depth;
+    m.perimeter = 2 * (m.width + m.depth);
+    m.bifoldWidth = x.bifoldWidth || 0;
+    return { measurements: m, modifiers: jb.modifiers, ground: jb.ground, region: jb.region };
+  }
+  function singular(name) { return /s$/.test(name || '') ? name.slice(0, -1) : (name || ''); }
+
   function priceProject(book, typeIds, jobs) {
     var lines = [], trade = 0, openings = false, answered = 0;
     var ground = null, area = 0, byType = [];
 
     typeIds.forEach(function (id) {
       var jb = jobs[id] || {};
+      var extras = jb.extras || [];
+      var name = (typeById(book, id) || {}).name;
       var t = tradeLines(book, id, jb);
+      if (extras.length) {
+        // "Extension 1", "Extension 2" rather than one heading for both
+        name = singular(name) + ' 1';
+        t.lines.forEach(function (l) { l.typeName = name; });
+      }
       lines = lines.concat(t.lines);
       trade += t.trade;
       openings = openings || t.hasOpenings;
@@ -900,7 +924,19 @@
       answered += Object.keys(jb.seen || {}).length + Object.keys(jb.touched || {}).length;
       if (t.ground && (!ground || t.ground.depth > ground.depth)) ground = t.ground;
       area += t.area;
-      byType.push({ id: id, name: (typeById(book, id) || {}).name, trade: t.trade });
+      byType.push({ id: id, name: name, trade: t.trade });
+
+      extras.forEach(function (x, k) {
+        var xid = id + '#' + (k + 2), xname = singular((typeById(book, id) || {}).name) + ' ' + (k + 2);
+        var tx = tradeLines(book, id, extraJob(jb, x));
+        tx.lines.forEach(function (l) { l.type = xid; l.typeName = xname; });
+        lines = lines.concat(tx.lines);
+        trade += tx.trade;
+        openings = openings || tx.hasOpenings;
+        if (tx.ground && (!ground || tx.ground.depth > ground.depth)) ground = tx.ground;
+        area += tx.area;
+        byType.push({ id: xid, name: xname, trade: tx.trade });
+      });
     });
 
     var r = wrapUp(book, trade, lines, {
@@ -914,7 +950,11 @@
 
     // what the same work would cost bought as separate jobs, fees and all
     var separate = 0;
-    typeIds.forEach(function (id) { separate += priceJob(book, id, jobs[id] || {}).incVat; });
+    typeIds.forEach(function (id) {
+      var jb = jobs[id] || {};
+      separate += priceJob(book, id, jb).incVat;
+      (jb.extras || []).forEach(function (x) { separate += priceJob(book, id, extraJob(jb, x)).incVat; });
+    });
     r.separately = separate;
     r.saving = Math.max(0, separate - r.incVat);
     return r;

@@ -324,12 +324,7 @@
 
       <div class="flow-nav" style="margin-top:1.1rem">
         <a class="btn" id="start-go" href="#/start" hidden>Start →</a>
-        <a class="skip" href="#/">Back to the start</a>
       </div>
-      <p class="foot-note" style="margin-top:1.6rem">
-        Every figure is indicative and not a quotation. Rates are placeholders pending a
-        quantity surveyor's schedule.
-      </p>
     </div>
   </div>
 </div>
@@ -561,13 +556,13 @@
     <!-- Blank canvas, or their own plan to draw over. -->
     <div class="sk-choose" id="sk-choose">
       <h3>Your house, in a minute.</h3>
-      <p>Pick the shape nearest your house and drag it to fit, or draw over your own
-        plan. Say how wide it is across the front and everything else is measured from that.</p>
+      <p>Draw it on the grid, or draw over your own plan. Say how wide it is across the
+        front and everything else is measured from that.</p>
       <div class="sk-choice">
         <button type="button" class="sk-card sk-card-main" id="sk-blank">
           <span class="sk-card-ico" aria-hidden="true">&#9633;</span>
-          <b>Start with a shape</b>
-          <span>Pick the nearest shape and drag it to fit. About a minute.</span>
+          <b>Start with a blank canvas</b>
+          <span>Tap round the corners of your house on the grid. About a minute.</span>
         </button>
         <button type="button" class="sk-card" id="sk-upload">
           <span class="sk-card-ico" aria-hidden="true">&#8673;</span>
@@ -576,9 +571,7 @@
         </button>
       </div>
       <input type="file" id="sk-file" accept="image/*" hidden>
-      <p class="sk-priv">Nothing is uploaded anywhere. Your plan and your drawing stay in this browser.</p>
       <div class="sk-alts">
-        <button type="button" class="sk-alt" id="sk-example">Show me a finished example first</button>
         <button type="button" class="sk-alt sk-alt-quiet" id="sk-autotrace" hidden>Got a clean estate agent plan? We can find the rooms for you.</button>
         <button type="button" class="sk-alt sk-alt-quiet" id="sk-skip" hidden>Skip &mdash; I would rather type the measurements</button>
       </div>
@@ -621,7 +614,6 @@
               <button type="button" data-units="ft" aria-pressed="false">feet</button>
             </div>
             <button type="button" class="btn btn-ghost btn-sm" id="sk-pickwall" aria-pressed="false">Measure a different wall</button>
-            <span class="hint">A rough figure is fine. Most semis are 5 to 6 m across the front, detached 8 to 10. One big step is about a metre.</span>
           </div>
         </div>
 

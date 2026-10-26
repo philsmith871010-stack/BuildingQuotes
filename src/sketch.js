@@ -64,9 +64,9 @@
    */
   var STAGES = [
     { id: 'outline',   n: 1, label: 'Shape',
-      hint: 'Pick the shape closest to your house, or tap round the corners yourself.',
-      plan: 'Tap round the outside corners of your plan, finishing where you started. Or start with a shape and drag it to fit.',
-      done: 'Drag any corner to make it right. Tap a wall to add a corner, or a corner then × to remove it.' },
+      hint: 'Tap each outside corner of your house in turn, going round until you are back where you started.',
+      plan: 'Tap each outside corner on your plan in turn, going round until you are back where you started.',
+      done: 'Not quite right? Drag a corner or a wall. + adds a corner, × removes one.' },
     { id: 'internal',  n: 2, label: 'Inside walls',
       hint: 'Optional. Tap one end of a wall, then the other end — or drag from one to the other. Nothing moves while you are adding.',
       done: 'Tap or drag to add another wall. Choose "Move or remove" to change one.',
@@ -82,7 +82,7 @@
       done: 'Tap a label to pick it, then choose what it is, or × to remove it. Drag a label to move it.' },
     { id: 'extension', n: 5, label: 'Extension',
       hint: 'Optional. Add a rear extension and drag it to size, or draw your own against the house.',
-      done: 'Drag any corner to make it right. Tap a wall to add a corner, or a corner then × to remove it.' },
+      done: 'Drag a corner or a wall. + adds a corner, × removes one.' },
     { id: 'garden',    n: 6, label: 'Garden',
       hint: 'Optional. Add a typical plot and drag its corners to your fence line, or tap round it yourself.',
       done: 'Pick what is in the garden, then tap round it. Drag any corner. Tap a thing, then × to remove it.',
@@ -150,13 +150,16 @@
              image: null };
   }
 
+  function newExtension(storeys) { return { outline: [], closed: false, storeys: storeys || 1 }; }
+
   var S = {
     started: false,      // false while the blank-or-upload choice is up
     stage: 'outline',
     scale: null,         // metres per grid unit — null until one wall is measured
     floors: [newFloor(0)],
     active: 0,
-    extension: { outline: [], closed: false, storeys: 1 },
+    extensions: [newExtension()],   // one per piece of new building; a house can have several
+    extIdx: 0,                      // the one being drawn or edited
     garden: newGarden(),
     drawing: null,
     cursor: null,
@@ -168,6 +171,21 @@
     roomType: 'bedroom',
     onApply: null
   };
+
+  // "the extension" is the one being drawn or edited. Everything that fits
+  // one extension against the house keeps addressing it by that name; only
+  // what has to see every extension (the price, the frame, the rooms) looks
+  // at the list.
+  Object.defineProperty(S, 'extension', {
+    get: function () { return S.extensions[S.extIdx] || S.extensions[0]; },
+    set: function (v) { if (S.extIdx >= S.extensions.length) S.extIdx = S.extensions.length; S.extensions[S.extIdx] = v; }
+  });
+  /** Every finished extension. */
+  function builtExts() { return S.extensions.filter(function (x) { return x.closed; }); }
+  /** The finished extensions on a floor: all of them downstairs, the two-storey ones upstairs. */
+  function extsOn(fi) { return builtExts().filter(function (x) { return fi === 0 || (fi === 1 && x.storeys > 1); }); }
+  /** An extension's walls are 'xt', 'xt1', 'xt2'… so an opening knows which one it is in. */
+  function extKey(k) { return 'xt' + (k ? k : ''); }
 
   var SEQ = 0;
   var $ = function (id) { return doc.getElementById(id); };
@@ -234,9 +252,12 @@
     // the extension's walls take doors and windows too — the bi-folds go on
     // its garden wall, not the house's
     var fi = S.floors.indexOf(f);
-    if (fi >= 0 && extOn(fi)) {
-      var xo = S.extension.outline;
-      for (i = 0; i < xo.length; i++) out.push({ on: 'xt', idx: i, a: xo[i], b: xo[(i + 1) % xo.length] });
+    if (fi >= 0) {
+      S.extensions.forEach(function (x, k) {
+        if (!x.closed || !(fi === 0 || (fi === 1 && x.storeys > 1))) return;
+        var xo = x.outline, on = extKey(k);
+        for (var xi = 0; xi < xo.length; xi++) out.push({ on: on, idx: xi, a: xo[xi], b: xo[(xi + 1) % xo.length] });
+      });
     }
     for (i = 0; i < f.internals.length; i++) {
       out.push({ on: 'int', idx: i, a: f.internals[i][0], b: f.internals[i][1] });
@@ -247,7 +268,7 @@
   function wallAt(p, on) {
     var best = null;
     wallsOf(floor()).forEach(function (w) {
-      if (on && w.on !== on) return;
+      if (on && w.on !== on && !(on === 'xt' && w.on.indexOf('xt') === 0)) return;
       var pr = projectOnSeg(p, w.a, w.b);
       if (pr.d < Math.max(0.6, grabRadius() * 1.5) && (!best || pr.d < best.d)) best = { w: w, t: pr.t, d: pr.d };
     });
@@ -266,6 +287,7 @@
   function m(v) { return (S.scale || 0) * v; }
 
   function measure() {
+    var xts = {};        // openings on each extension's own walls, by wall key
     var areas = S.floors.map(function (f) { return f.closed ? shoelace(f.outline) : 0; });
     var footprint = m(areas[0]) * m(1);                 // area scales by the square
     var total = areas.reduce(function (t, a) { return t + m(a) * m(1); }, 0);
@@ -296,7 +318,11 @@
         // figure that reaches the price is the one that physically fits
         var wl = openingWall(f, o);
         var fits = wl ? Math.min(o.width, m(dist(wl.a, wl.b))) : o.width;
-        if (o.on === 'xt') {
+        if (o.on.indexOf('xt') === 0) {
+          var xk = xts[o.on] || (xts[o.on] = { bifold: 0, windows: 0, doors: 0 });
+          if (o.kind === 'bifold') xk.bifold += fits;
+          else if (o.kind === 'window') xk.windows++;
+          else xk.doors++;
           if (o.kind === 'bifold') xt.bifold += fits;
           else if (o.kind === 'window') xt.windows++;
           else xt.doors++;
@@ -316,18 +342,24 @@
 
     var plaster = Math.max(0, extWall - openArea) + intLen * CEILING * 2;
 
-    var ext = null;
-    if (S.extension.closed) {
-      var xs = S.extension.outline.map(function (p) { return p[0]; });
-      var ys = S.extension.outline.map(function (p) { return p[1]; });
-      ext = {
-        area: m(shoelace(S.extension.outline)) * m(1),
+    // every finished extension, in the order they were drawn; the first one
+    // is also reported on its own for anything that only knows about one
+    var extensions = [];
+    S.extensions.forEach(function (x, k) {
+      if (!x.closed) return;
+      var xs = x.outline.map(function (p) { return p[0]; });
+      var ys = x.outline.map(function (p) { return p[1]; });
+      var xk = xts[extKey(k)] || { bifold: 0, windows: 0, doors: 0 };
+      extensions.push({
+        n: extensions.length + 1,
+        area: m(shoelace(x.outline)) * m(1),
         width: m(Math.max.apply(null, xs) - Math.min.apply(null, xs)),
         depth: m(Math.max.apply(null, ys) - Math.min.apply(null, ys)),
-        storeys: S.extension.storeys,
-        bifold: xt.bifold, windows: xt.windows, doors: xt.doors
-      };
-    }
+        storeys: x.storeys,
+        bifold: xk.bifold, windows: xk.windows, doors: xk.doors
+      });
+    });
+    var ext = extensions[0] || null;
 
     var garden = null;
     if (S.garden.plot.closed) {
@@ -336,13 +368,16 @@
       S.garden.areas.forEach(function (a) { gA[a.kind] = (gA[a.kind] || 0) + m(shoelace(a.outline)) * m(1); });
       var plotArea = m(shoelace(S.garden.plot.outline)) * m(1);
       // the nearest tree to whatever is being built, for the foundations
-      var target = S.extension.closed ? S.extension.outline : ground().outline;
+      var targets = builtExts().map(function (x) { return x.outline; });
+      if (!targets.length) targets = [ground().outline];
       var nearest = null;
       S.garden.trees.forEach(function (t) {
-        for (var i = 0; i < target.length; i++) {
-          var d = m(projectOnSeg(t, target[i], target[(i + 1) % target.length]).d);
-          if (nearest === null || d < nearest) nearest = d;
-        }
+        targets.forEach(function (target) {
+          for (var i = 0; i < target.length; i++) {
+            var d = m(projectOnSeg(t, target[i], target[(i + 1) % target.length]).d);
+            if (nearest === null || d < nearest) nearest = d;
+          }
+        });
       });
       garden = {
         plot: plotArea,
@@ -360,7 +395,7 @@
       footprint: footprint, totalArea: total, perimeter: perim,
       internalWall: intLen, internalEstimated: estimated, wallRemoval: removed, plaster: plaster,
       windows: win, windowWidth: winW, extDoors: extDoor, intDoors: intDoor,
-      counts: counts, rooms: rooms, roomAreas: roomAreas, extension: ext, garden: garden
+      counts: counts, rooms: rooms, roomAreas: roomAreas, extension: ext, extensions: extensions, garden: garden
     };
   }
 
@@ -375,14 +410,16 @@
     var pts = f.outline.slice();
     f.internals.forEach(function (s) { pts.push(s[0], s[1]); });
     f.markers.forEach(function (mk) { pts.push([mk.x, mk.y]); });
-    if (S.stage === 'extension') pts = pts.concat(ground().outline, S.extension.outline);
+    if (S.stage === 'extension') {
+      pts = pts.concat(ground().outline, S.extension.outline);
+      builtExts().forEach(function (x) { pts = pts.concat(x.outline); });
+    }
     // a finished extension is part of the house on every later step, and a
     // frame that cuts it off looks like it has been lost
-    if (S.extension.closed && (S.active === 0 || (S.active === 1 && S.extension.storeys > 1))) {
-      pts = pts.concat(S.extension.outline);
-    }
+    extsOn(S.active).forEach(function (x) { pts = pts.concat(x.outline); });
     if (S.stage === 'garden') {
-      pts = pts.concat(ground().outline, S.extension.outline, S.garden.plot.outline, S.garden.trees);
+      pts = pts.concat(ground().outline, S.garden.plot.outline, S.garden.trees);
+      builtExts().forEach(function (x) { pts = pts.concat(x.outline); });
       S.garden.areas.forEach(function (a) { pts = pts.concat(a.outline); });
     }
     if (S.drawing) pts = pts.concat(S.drawing);
@@ -569,6 +606,16 @@
     if (f.image) out.push(photoSvg(f.image));
     out.push(gridSvg(v, px));
 
+    // an empty grid says what to do on the grid itself, where the eye is
+    if (S.stage === 'outline' && S.active === 0 && !f.closed && !f.outline.length &&
+        !(S.drawing && S.drawing.length) && !f.image && !S.calibrating) {
+      var cxp = (v.x0 + v.x1) / 2 * K, cyp = (v.y0 + v.y1) / 2 * K;
+      out.push('<text x="' + cxp + '" y="' + (cyp - 10 * RU) + '" text-anchor="middle" class="sk-prompt sk-prompt-big" font-size="' +
+        (16 * RU).toFixed(1) + '">Tap the first corner of your house</text>');
+      out.push('<text x="' + cxp + '" y="' + (cyp + 12 * RU) + '" text-anchor="middle" class="sk-prompt" font-size="' +
+        (12.5 * RU).toFixed(1) + '">anywhere on this grid, then the next corner, and so on</text>');
+    }
+
     // the floor below, faint, so an upper floor can be drawn over it
     if (S.active > 0 && S.floors[S.active - 1].closed) {
       out.push('<polygon points="' + poly(S.floors[S.active - 1].outline) + '" class="sk-under"/>');
@@ -600,11 +647,21 @@
       }
     });
 
-    if (S.extension.outline.length > 1 && (S.stage === 'extension' || !S.extension.closed || extOn(S.active))) {
-      if (S.extension.closed) out.push('<polygon points="' + poly(S.extension.outline) + '" class="sk-extension"/>');
-      out.push('<polyline points="' + poly(S.extension.closed ? S.extension.outline.concat([S.extension.outline[0]]) : S.extension.outline) +
-        '" class="sk-extline"/>');
-    }
+    var onStage = S.stage === 'extension', several = S.extensions.length > 1;
+    S.extensions.forEach(function (x, k) {
+      if (x.outline.length < 2) return;
+      if (!(onStage || (x.closed && extsOn(S.active).indexOf(x) >= 0))) return;
+      var other = onStage && several && k !== S.extIdx;
+      if (x.closed) out.push('<polygon points="' + poly(x.outline) + '" class="sk-extension' + (other ? ' other' : '') + '"/>');
+      out.push('<polyline points="' + poly(x.closed ? x.outline.concat([x.outline[0]]) : x.outline) +
+        '" class="sk-extline' + (other ? ' other' : '') + '"/>');
+      // with more than one, each carries its number so "Extension 2" means something
+      if (onStage && several && x.closed) {
+        var xc = centroid(x.outline);
+        out.push('<text x="' + (xc[0] * K) + '" y="' + (xc[1] * K + 5 * RU) + '" text-anchor="middle" class="sk-extnum" font-size="' +
+          (13 * RU).toFixed(1) + '">' + (k + 1) + '</text>');
+      }
+    });
 
     // what is being drawn right now, with a band to the snap target
     if (S.drawing && S.drawing.length) {
@@ -663,6 +720,20 @@
         (isTarget ? 15 * RU : (S.touch ? 11 : 9) * RU).toFixed(1) + '" class="sk-node' +
         (isTarget ? ' start' : '') + (picked ? ' on' : '') + '"/>');
     });
+
+    // a + in the middle of each wall of the shape being edited: the one way
+    // to add a corner, so no tap on a wall ever changes the shape by accident
+    if (!live.length && (editing === 'floor' || editing === 'ext') && !S.calibrating) {
+      var ringA = handles;
+      ringA.forEach(function (a, i) {
+        var b = ringA[(i + 1) % ringA.length];
+        if (dist(a, b) * px < 56) return;          // too short to fit one between the corners
+        var mx = (a[0] + b[0]) / 2 * K, my = (a[1] + b[1]) / 2 * K;
+        out.push('<g class="sk-add" data-addcorner="' + i + '"><circle cx="' + mx + '" cy="' + my + '" r="' +
+          (9 * RU).toFixed(1) + '"/><text x="' + mx + '" y="' + (my + 4 * RU) + '" text-anchor="middle" font-size="' +
+          (13 * RU).toFixed(1) + '">+</text></g>');
+      });
+    }
 
     // the selected corner or inside wall carries the control that removes it,
     // so a stray tap can never delete anything
@@ -792,7 +863,7 @@
     if (id === 'openings') return any(function (x) { return x.openings.some(function (o) { return o.kind !== 'intDoor'; }); });
     if (id === 'rooms') return any(function (x) { return x.markers.length > 0; });
     if (id === 'garden') return S.garden.plot.closed;
-    return S.extension.closed;
+    return builtExts().length > 0;
   }
 
   function ready() { return ground().closed && !!S.scale; }
@@ -850,7 +921,7 @@
     var f = floor();
     if (S.calibrating || S.askUp) return null;
     if (S.stage === 'outline') {
-      if (S.drawing && S.drawing.length > 2) return { id: 'sk-close-shape', label: 'Finish the outline' };
+      if (S.drawing && S.drawing.length > 2) return { id: 'sk-close-shape', label: 'Finish the shape' };
       if (!f.closed && !f.outline.length && S.active > 0 && S.floors[S.active - 1].closed) {
         return { id: 'sk-copy', label: 'Copy the ' + S.floors[S.active - 1].name.toLowerCase() };
       }
@@ -887,7 +958,7 @@
 
     var of = $('sk-of'), name = $('sk-stagename');
     if (of) of.textContent = 'Step ' + stage.n + ' of ' + ACTIVE.length;
-    if (name) name.textContent = S.calibrating ? 'How wide is it?' : S.askUp ? 'Upstairs?' : stage.label;
+    if (name) name.textContent = S.calibrating ? 'How long is the orange wall?' : S.askUp ? 'Upstairs?' : stage.label;
 
     var up = $('sk-upstairs');
     if (up) up.hidden = !S.askUp;
@@ -903,7 +974,7 @@
           ? 'Tap the wall you know the length of.'
           : S.preset
           ? 'Drag any corner until the shape looks right. Then, roughly how wide is it across the front — the orange line?'
-          : 'How long is the wall highlighted in orange? Drag any corner first if the shape is not right.')
+          : 'A rough guess is fine. Not sure? Pace it out: one big step is about a metre.')
         : S.askUp ? 'Does the house have an upstairs?'
         : (S.stage === 'internal' && S.wallMode === 'out') ? stage.out
         : (S.stage === 'internal' && S.wallMode === 'door') ? stage.door
@@ -912,8 +983,10 @@
         : (S.stage === 'garden' && !mid && S.garden.plot.closed && S.gardenMode === 'tree') ? stage.tree
         : (S.stage === 'garden' && !mid && S.garden.plot.closed && S.gardenMode === 'boundary') ? stage.fence
         : mid && S.stage === 'internal' ? 'Now tap the other end of the wall.'
-        : mid && S.drawing.length > 2 ? 'Keep going, or tap the first corner to finish. Or type the next wall below.'
-        : mid ? 'Keep tapping the corners, or type the next wall below.'
+        : mid && S.drawing.length > 2 ? 'Keep going round. Back at the first corner? Tap it to finish.'
+        : mid ? 'Now tap the next corner, going round the outside of the house.'
+        : (S.stage === 'extension' && !S.extension.closed && !mid && builtExts().length)
+            ? 'Draw the next one against the house: tap its corners, starting and finishing on a house wall.'
         : (S.stage === 'outline' && !f.closed && !mid && f.image)
             ? stage.plan
         : (S.stage === 'outline' && !f.closed && !f.outline.length && S.active > 0)
@@ -928,7 +1001,7 @@
       cal.hidden = !S.calibrating;
       var lenInput = $('sk-len'), lab = $('sk-len-label'), un = $('sk-unit');
       if (S.calibrating && lenInput && !lenInput.value) lenInput.value = S.units === 'ft' ? '26' : '8';
-      if (lab) lab.textContent = S.preset ? 'Width across the front' : 'Length of the orange wall';
+      if (lab) lab.textContent = 'Length';
       var pwb = $('sk-pickwall');
       if (pwb) {
         pwb.textContent = S.pickWall ? 'Tap a wall on the drawing…' : 'Measure a different wall';
@@ -992,14 +1065,17 @@
       row('Floor area', q.scaled && q.totalArea ? fmt(q.totalArea) + ' m²' : na, true) +
       row('Floors', q.floors || na) +
       row('Rooms', q.rooms.length ? q.rooms.length + ' <small>· ' + kb + '</small>' : na, q.rooms.length > 0) +
-      (q.extension ? row('Extension', fmt(q.extension.area * q.extension.storeys) + ' m²', true) : '') +
+      (q.extensions && q.extensions.length
+        ? row(q.extensions.length > 1 ? q.extensions.length + ' extensions' : 'Extension',
+              fmt(q.extensions.reduce(function (t, x) { return t + x.area * x.storeys; }, 0)) + ' m²', true)
+        : '') +
       (q.wallRemoval ? row('Walls coming out', fmt(q.wallRemoval) + ' m', true) : '') +
       (q.garden ? row('Garden', fmt(q.garden.garden, 0) + ' m² <small>· ' + fmt(q.garden.boundary, 0) + ' m of fence</small>', true) +
         GARDEN_KINDS.map(function (k) {
           return q.garden.areas[k.id] ? row(k.label, fmt(q.garden.areas[k.id], 0) + ' m²') : '';
         }).join('') +
         (q.garden.trees ? row('Trees', q.garden.trees + (q.garden.treeNearest !== null
-          ? ' <small>· nearest ' + fmt(q.garden.treeNearest, 1) + ' m from the ' + (S.extension.closed ? 'extension' : 'house') + '</small>' : '')) : '')
+          ? ' <small>· nearest ' + fmt(q.garden.treeNearest, 1) + ' m from the ' + (builtExts().length ? 'extension' : 'house') + '</small>' : '')) : '')
         : '') +
       '<button type="button" class="sk-more" id="sk-more" aria-expanded="' + !!S.more + '">' +
         (S.more ? 'Fewer details' : 'More details') + '</button>' +
@@ -1046,15 +1122,9 @@
 
     if (stage === 'outline') {
       var f = floor();
-      // an empty floor offers shapes before it offers a blank grid: picking the
-      // nearest one and dragging a corner is something anybody can do
+      // an empty floor: a blank grid (or their plan) and the tools for it
       if (!f.closed && !(S.drawing && S.drawing.length)) {
-        return '<div class="sk-tool"><label>Start with a shape</label><div class="sk-shapes">' +
-          '<button type="button" data-shape="rect" aria-label="Rectangle"><svg viewBox="0 0 40 32"><rect x="4" y="4" width="32" height="24"/></svg><span>Rectangle</span></button>' +
-          '<button type="button" data-shape="l" aria-label="L shape"><svg viewBox="0 0 40 32"><path d="M4 4h32v14H22v10H4z"/></svg><span>L shape</span></button>' +
-          '<button type="button" data-shape="t" aria-label="T shape"><svg viewBox="0 0 40 32"><path d="M4 4h32v12h-9v12H13V16H4z"/></svg><span>T shape</span></button>' +
-          '</div><p class="sk-tiny">' + (f.image ? 'Or tap round the corners on your plan.' : 'Or tap round the corners of the house on the grid.') + '</p></div>' +
-          planTools(f) +
+        return planTools(f) +
           (S.floors.length > 1
             ? '<button type="button" class="btn btn-ghost btn-sm' + (S.confirm === 'floor' ? ' sk-danger' : '') +
               '" id="sk-dropfloor">' + (S.confirm === 'floor' ? 'Tap again to remove it' : 'Remove this floor') + '</button>'
@@ -1063,17 +1133,19 @@
       // a finished shape: the small things you might still want, as a quiet
       // row after the big Next, not a stack of buttons in front of it
       if (f.closed) {
-        return '<div class="sk-quiet">' +
+        return (S.floors.length < 4 && ready()
+            ? '<button type="button" class="btn btn-ghost sk-addfloor-side" id="sk-addfloor2">Add a floor above</button>' : '') +
+          '<div class="sk-quiet">' +
           (S.scale ? '<button type="button" class="sk-alt" id="sk-recal">Change the measurement</button>' : '') +
           '<button type="button" class="sk-alt" id="sk-redraw">Draw this floor again</button>' +
-          (f.image ? '' : '<button type="button" class="sk-alt" id="sk-upload">Draw over a plan</button>') +
           (S.floors.length > 1
             ? '<button type="button" class="sk-alt' + (S.confirm === 'floor' ? ' sk-danger' : '') +
               '" id="sk-dropfloor">' + (S.confirm === 'floor' ? 'Tap again to remove it' : 'Remove this floor') + '</button>'
             : '') +
           '</div>' + (f.image ? planTools(f) : '');
       }
-      return planTools(f) +
+      // half way round the house: only the plan's own controls, if there is one
+      return (f.image ? planTools(f) : '') +
         (S.floors.length > 1
           ? '<button type="button" class="btn btn-ghost btn-sm' + (S.confirm === 'floor' ? ' sk-danger' : '') +
             '" id="sk-dropfloor">' + (S.confirm === 'floor' ? 'Tap again to remove it' : 'Remove this floor') + '</button>'
@@ -1108,13 +1180,26 @@
         seg(ROOM_TYPES.map(function (r) { return [r.id, r.label]; }), S.roomType, 'data-room') + '</div>';
     }
     if (stage === 'extension') {
-      return (!S.extension.closed && !(S.drawing && S.drawing.length)
-        ? '<button type="button" class="btn" id="sk-addext">Add a rear extension</button>' +
-          '<p class="sk-tiny">It goes on the back wall. Drag its corners to the size you want.</p>'
-        : '') +
+      var cur = S.extension, xn = S.extensions.length, xmid = !!(S.drawing && S.drawing.length);
+      var others = builtExts().length - (cur.closed ? 1 : 0);
+      return (xn > 1
+          ? '<div class="sk-tool"><label>Which one</label>' +
+            seg(S.extensions.map(function (x, k) { return [k, 'Extension ' + (k + 1) + (x.closed ? '' : ' (new)')]; }), S.extIdx, 'data-skext') +
+            '</div>'
+          : '') +
+        // the ready-made box only when there is nothing yet for it to land on
+        (!cur.closed && !xmid && !others
+          ? '<button type="button" class="btn" id="sk-addext">Add a rear extension</button>' +
+            '<p class="sk-tiny">It goes on the back wall. Drag its corners to the size you want.</p>'
+          : '') +
         '<div class="sk-tool"><label>How many storeys?</label>' +
-        seg([[1, 'Single storey'], [2, 'Two storey']], S.extension.storeys, 'data-storeys') + '</div>' +
-        (S.extension.closed ? '<button type="button" class="btn btn-ghost btn-sm" id="sk-dropext">Remove the extension</button>' : '');
+        seg([[1, 'Single storey'], [2, 'Two storey']], cur.storeys, 'data-storeys') + '</div>' +
+        (cur.closed && !xmid
+          ? '<button type="button" class="btn btn-ghost" id="sk-addext2">Add another extension</button>' : '') +
+        (cur.closed || xn > 1
+          ? '<button type="button" class="btn btn-ghost btn-sm" id="sk-dropext">' +
+            (xn > 1 ? 'Remove this extension' : 'Remove the extension') + '</button>'
+          : '');
     }
     if (stage === 'garden') {
       var gp = S.garden.plot;
@@ -1147,8 +1232,10 @@
   function typedTools() {
     if (!(S.drawing && S.drawing.length) || S.calibrating) return '';
     if (!drawingStage()) return '';
+    // tapping is the whole idea; the keyboard route stays one tap away
+    if (!S.typedOpen) return '<button type="button" class="sk-alt sk-alt-quiet" id="sk-typed-open">Rather type the wall lengths?</button>';
     var ft = S.units === 'ft';
-    return '<div class="sk-tool sk-typed"><label>Or type the next wall</label>' +
+    return '<div class="sk-tool sk-typed"><label>Type the next wall</label>' +
       '<div class="sk-typed-row"><input id="sk-typed" type="number" step="0.1" min="0.1" inputmode="decimal" placeholder="' + (ft ? '15' : '4.5') + '">' +
       '<span>' + (ft ? 'ft' : 'm') + '</span>' +
       '<div class="sk-arrows" role="group" aria-label="Which way it goes">' +
@@ -1226,7 +1313,8 @@
   function addTypicalPlot() {
     var g = ground();
     if (!g.closed) return;
-    var pts = g.outline.concat(S.extension.closed ? S.extension.outline : []);
+    var pts = g.outline.slice();
+    builtExts().forEach(function (x) { pts = pts.concat(x.outline); });
     var xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
     var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
     var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
@@ -1285,7 +1373,7 @@
     if (S.gardenMode === 'tree') {
       var t = snapFrom(null, w);
       if (!within(gd.plot.outline, t)) { say('Tap inside the plot.'); return; }
-      if (within(ground().outline, t) || (S.extension.closed && within(S.extension.outline, t))) {
+      if (within(ground().outline, t) || builtExts().some(function (x) { return within(x.outline, t); })) {
         say('That would put a tree inside the house.'); return;
       }
       snapshot();
@@ -1544,14 +1632,13 @@
    * a corner stops on the grid. No message, no argument.
    */
   /** Does the extension count as part of this floor? */
-  function extOn(fi) {
-    return S.extension.closed && (fi === 0 || (fi === 1 && S.extension.storeys > 1));
-  }
-  /** Inside the house, the extension included where it applies. */
+  function extOn(fi) { return extsOn(fi).length > 0; }
+  /** Inside the house, the extensions included where they apply. */
   function insideHouse(p, fi) {
-    var f = S.floors[fi === undefined ? S.active : fi];
+    var at = fi === undefined ? S.active : fi;
+    var f = S.floors[at];
     if (within(f.outline, p)) return true;
-    return extOn(fi === undefined ? S.active : fi) && within(S.extension.outline, p);
+    return extsOn(at).some(function (x) { return within(x.outline, p); });
   }
 
   function keepInside(p) {
@@ -1618,12 +1705,12 @@
   var REG = {};
   var LIVE = { key: null, v: null };
   function regionsOf(f) {
-    var fi = S.floors.indexOf(f), hasExt = extOn(fi);
+    var fi = S.floors.indexOf(f), xo = extsOn(fi).map(function (x) { return x.outline; }), hasExt = xo.length > 0;
     if (!f.closed || !S.scale || (!f.internals.length && !hasExt)) return null;
-    var key = JSON.stringify([f.outline, f.internals, hasExt ? S.extension.outline : null]);
+    var key = JSON.stringify([f.outline, f.internals, xo]);
     if (REG[fi] && REG[fi].key === key) return REG[fi].reg;
     var c = 0.25;
-    var all = f.outline.concat(hasExt ? S.extension.outline : []);
+    var all = f.outline.concat.apply(f.outline, xo);
     var xs = all.map(function (q) { return q[0]; }), ys = all.map(function (q) { return q[1]; });
     var x0 = Math.min.apply(null, xs), y0 = Math.min.apply(null, ys);
     var nx = Math.ceil((Math.max.apply(null, xs) - x0) / c), ny = Math.ceil((Math.max.apply(null, ys) - y0) / c);
@@ -1631,7 +1718,7 @@
     var open = new Uint8Array(nx * ny), lab = new Int32Array(nx * ny), i, j;
     for (j = 0; j < ny; j++) for (i = 0; i < nx; i++) {
       var cp = [x0 + (i + 0.5) * c, y0 + (j + 0.5) * c];
-      open[j * nx + i] = (insidePoly(f.outline, cp) || (hasExt && insidePoly(S.extension.outline, cp))) ? 1 : 0;
+      open[j * nx + i] = (insidePoly(f.outline, cp) || xo.some(function (o) { return insidePoly(o, cp); })) ? 1 : 0;
     }
     // the wall the extension shares with the house stays a wall for the
     // rooms' sake: the extension is its own room until someone says otherwise
@@ -1643,7 +1730,7 @@
         for (var hs = 0; hs <= hn; hs++) {
           var ht = hs / hn, hx = ha[0] + (hb[0] - ha[0]) * ht, hy = ha[1] + (hb[1] - ha[1]) * ht;
           [[hx + nxn * c / 2, hy + nyn * c / 2], [hx - nxn * c / 2, hy - nyn * c / 2]].forEach(function (q) {
-            if (!insidePoly(S.extension.outline, q) || insidePoly(f.outline, q)) return;
+            if (!xo.some(function (o) { return insidePoly(o, q); }) || insidePoly(f.outline, q)) return;
             var qi = Math.floor((q[0] - x0) / c), qj = Math.floor((q[1] - y0) / c);
             if (qi >= 0 && qi < nx && qj >= 0 && qj < ny) open[qj * nx + qi] = 0;
           });
@@ -1772,14 +1859,17 @@
       if (q.rooms.length && per > 45 && passed('rooms')) out.push('That is very few rooms for the floor area.');
       if (!q.rooms.length && passed('rooms')) out.push('No rooms marked yet, so kitchens and bathrooms are not counted.');
     }
-    if (S.extension.closed && ground().closed) {
-      var touches = S.extension.outline.some(function (p) {
-        for (var i = 0; i < ground().outline.length; i++) {
-          if (projectOnSeg(p, ground().outline[i], ground().outline[(i + 1) % ground().outline.length]).d < SNAP * 1.5) return true;
-        }
-        return false;
+    if (ground().closed) {
+      var xl = builtExts();
+      xl.forEach(function (x, k) {
+        var touches = x.outline.some(function (p) {
+          for (var i = 0; i < ground().outline.length; i++) {
+            if (projectOnSeg(p, ground().outline[i], ground().outline[(i + 1) % ground().outline.length]).d < SNAP * 1.5) return true;
+          }
+          return false;
+        });
+        if (!touches) out.push((xl.length > 1 ? 'Extension ' + (k + 1) : 'The extension') + ' is not touching the house.');
       });
-      if (!touches) out.push('The extension is not touching the house.');
     }
 
     if (S.garden.plot.closed) {
@@ -1794,7 +1884,7 @@
           out.push('The ' + k + ' runs into the house.');
         }
       });
-      if (q.garden && q.garden.treeNearest !== null && q.garden.treeNearest < 3 && S.extension.closed) {
+      if (q.garden && q.garden.treeNearest !== null && q.garden.treeNearest < 3 && builtExts().length) {
         out.push('A tree is within 3 m of the extension — the foundations will need to go deeper.');
       }
     }
@@ -1814,14 +1904,15 @@
 
   function stateNow() {
     return JSON.stringify({
-      floors: S.floors, extension: S.extension, garden: S.garden, scale: S.scale,
+      floors: S.floors, extensions: S.extensions, extIdx: S.extIdx, garden: S.garden, scale: S.scale,
       active: S.active, drawing: S.drawing, snap: SNAP
     });
   }
   function restore(json) {
     var o = JSON.parse(json);
     S.floors = o.floors;
-    S.extension = o.extension;
+    S.extensions = o.extensions || [o.extension || newExtension()];
+    S.extIdx = Math.min(o.extIdx || 0, S.extensions.length - 1);
     S.garden = o.garden || newGarden();
     S.scale = o.scale;
     S.active = Math.min(o.active, o.floors.length - 1);
@@ -1910,12 +2001,12 @@
     }
     f.internals.forEach(function (sg) { pts.push(sg[0], sg[1]); lines.push(sg); });
     if (S.stage === 'extension') {
-      for (i = 0; i < S.extension.outline.length; i++) pts.push(S.extension.outline[i]);
+      S.extensions.forEach(function (x) { for (var xi = 0; xi < x.outline.length; xi++) pts.push(x.outline[xi]); });
     }
     if (S.stage === 'garden') {
       // a lawn meets the patio and the patio meets the extension: every edge
       // out there is something the next shape wants to sit against
-      var rings = [S.garden.plot.outline, S.extension.closed ? S.extension.outline : []]
+      var rings = [S.garden.plot.outline].concat(builtExts().map(function (x) { return x.outline; }))
         .concat(S.garden.areas.map(function (a) { return a.outline; }));
       rings.forEach(function (ring) {
         for (var k = 0; k < ring.length; k++) {
@@ -2060,6 +2151,9 @@
     // finger has to be remembered from pointerdown or the × looks like canvas.
     press = { x: e.clientX, y: e.clientY, world: w, handle: null, moved: false, target: e.target };
     if (S.drawing && S.drawing.length) return;      // mid-run: taps only
+    // the × and + drawn on the canvas are buttons, not places on the plan: a
+    // wall running under one must not grab the press
+    if (e.target && e.target.closest && e.target.closest('[data-killpick],[data-addcorner]')) return;
     var h = handleAt(w);
     if (!h) return;
     press.handle = h;
@@ -2111,7 +2205,7 @@
     var ring = shapeOf(which).outline;
     ring.forEach(function (q, i) { if (skip.indexOf(i) < 0) pts.push(q); });
     if (which !== 'floor') pts = pts.concat(ground().outline);
-    if (which !== 'ext' && S.extension.closed) pts = pts.concat(S.extension.outline);
+    builtExts().forEach(function (x) { if (!(which === 'ext' && x === S.extension)) pts = pts.concat(x.outline); });
     var seenX = {}, seenY = {};
     pts.forEach(function (q) {
       if (Math.abs(q[0] - g[0]) < 1e-9 && !seenX[q[0]]) { seenX[q[0]] = 1; out.push({ axis: 'x', v: q[0] }); }
@@ -2325,7 +2419,7 @@
           var back = UNDO.pop();
           if (back) {
             var o = JSON.parse(back);
-            S.floors = o.floors; S.extension = o.extension;
+            S.floors = o.floors; S.extensions = o.extensions || [o.extension]; S.extIdx = Math.min(o.extIdx || 0, S.extensions.length - 1);
           }
           settled();
           return;
@@ -2377,7 +2471,7 @@
     if (p.rubber && S.drawing && S.drawing.length) { onTap(toWorld(e), e); return; }   // the other end of a dragged wall
     if (Math.abs(e.clientX - p.x) + Math.abs(e.clientY - p.y) > 8) return;   // a drag on nothing
     var tgt = p.target || e.target;
-    if (tgt && tgt.closest && tgt.closest('[data-killpick]')) return;       // the overlay handler removes it
+    if (tgt && tgt.closest && tgt.closest('[data-killpick],[data-addcorner]')) return;   // the overlay handler does it
     onTap(p.world, e);
   }
 
@@ -2389,6 +2483,13 @@
       var shape = shapeOf(which);
       var exact = e === 'typed';
 
+      // a tap inside one of the other extensions makes it the one being edited
+      if (which === 'ext' && !(S.drawing && S.drawing.length)) {
+        var otherX = -1;
+        S.extensions.forEach(function (x, k) { if (k !== S.extIdx && x.closed && within(x.outline, w)) otherX = k; });
+        if (otherX >= 0) { S.extIdx = otherX; S.pick = null; say(''); render(); return; }
+      }
+
       if (shape.closed) {
         // while measuring, "a different wall" means the next tap picks one
         if (S.calibrating && S.pickWall && which === 'floor') {
@@ -2399,9 +2500,8 @@
           render();
           return;
         }
-        // tapping a wall puts a corner in it; tapping nothing clears the selection
-        var hit = wallOfShape(shape, w);
-        if (hit) { splitWall(which, hit.i, hit.t); return; }
+        // a corner is added by the + on the wall, never by a stray tap;
+        // tapping anywhere else just clears the selection
         if (S.pick) { S.pick = null; render(); }
         return;
       }
@@ -2645,6 +2745,7 @@
     }
     S.drawing = null;
     S.cursor = null;
+    say('');
     if (S.stage === 'outline' && !S.scale) startCalibration();
     // typed lengths measured it already, so the next question is the upstairs
     else if (S.stage === 'outline' && S.floors.length === 1 && !S.askedUp) S.askUp = true;
@@ -2697,7 +2798,7 @@
       f.markers.forEach(function (mk) { var q = conv([mk.x, mk.y]); mk.x = q[0]; mk.y = q[1]; });
       if (f.image) { f.image.x *= k; f.image.y *= k; f.image.w *= k; f.image.h *= k; }
     });
-    S.extension.outline = S.extension.outline.map(conv);
+    S.extensions.forEach(function (x) { x.outline = x.outline.map(conv); });
     S.garden.plot.outline = S.garden.plot.outline.map(conv);
     S.garden.areas.forEach(function (a) { a.outline = a.outline.map(conv); });
     S.garden.trees = S.garden.trees.map(conv);
@@ -2985,7 +3086,7 @@
     S.confirm = null;
     S.started = false; S.stage = 'outline'; S.scale = null;
     S.floors = [newFloor(0)]; S.active = 0;
-    S.extension = { outline: [], closed: false, storeys: 1 };
+    S.extensions = [newExtension()]; S.extIdx = 0;
     S.garden = newGarden(); S.gardenMode = 'boundary';
     S.drawing = null; S.cursor = null; S.selected = null; S.pick = null;
     S.calibrating = false; S.pickWall = false; S.kind = null; S.wallMode = 'draw';
@@ -3045,6 +3146,12 @@
     if (id !== 'outline' && !ready()) return;
     if (!ACTIVE.some(function (st) { return st.id === id; })) return;
     if (S.stage === 'internal' && S.drawing) S.drawing = null;
+    // an "Add another extension" nobody drew is dropped on the way out
+    if (S.stage === 'extension' && id !== 'extension' && S.extensions.length > 1) {
+      S.extensions = S.extensions.filter(function (x) { return x.closed; });
+      if (!S.extensions.length) S.extensions = [newExtension()];
+      S.extIdx = Math.min(S.extIdx, S.extensions.length - 1);
+    }
     S.stage = id;
     if (id === 'extension' || id === 'garden') S.active = 0;     // both sit round the ground floor
     if (id === 'rooms' && !S.roomPicked) S.roomType = S.active === 0 ? 'kitchen' : 'bedroom';
@@ -3222,6 +3329,8 @@
       if (hit) { S.gardenMode = hit.getAttribute('data-gmode'); S.drawing = null; S.pick = null; say(''); render(); return; }
       hit = t.closest && t.closest('[data-storeys]');
       if (hit) { S.extension.storeys = +hit.getAttribute('data-storeys'); render(); return; }
+      hit = t.closest && t.closest('[data-skext]');
+      if (hit) { S.extIdx = +hit.getAttribute('data-skext'); S.pick = null; S.drawing = null; say(''); settled(); return; }
       hit = t.closest && t.closest('[data-width]');
       if (hit) {
         floor().openings.forEach(function (o) { if (o.id === S.selected) o.width = +hit.getAttribute('data-width'); });
@@ -3252,6 +3361,12 @@
       // a click lands on whatever is under the finger — often a <span> inside
       // the button — so resolve to the button before matching on id
       var btn = t.closest ? t.closest('button') : null;
+      hit = t.closest && t.closest('[data-addcorner]');
+      if (hit) {
+        var addTo = editable();
+        if (addTo) splitWall(addTo, +hit.getAttribute('data-addcorner'), 0.5);
+        return;
+      }
       hit = t.closest && t.closest('[data-killpick]');
       if (hit) {
         if (S.pick && S.pick.kind === 'corner') removeCorner(S.pick.which, S.pick.i);
@@ -3293,12 +3408,14 @@
         case 'sk-calib-go':  applyCalibration(); return;
         case 'sk-pickwall':  S.pickWall = !S.pickWall; S.pick = null; say(''); render(); return;
         case 'sk-recal':     startCalibration(); return;
+        case 'sk-typed-open': S.typedOpen = true; render(); try { $('sk-typed').focus(); } catch (e) {} return;
         case 'sk-redraw':
           snapshot();
           var f = floor();
           f.outline = []; f.closed = false; f.openings = []; f.internals = []; f.markers = [];
           S.drawing = null; FRAME = null; settled(); return;
         case 'sk-rect':      dropShape('rect'); return;
+        case 'sk-addfloor2':
         case 'sk-addfloor':
           snapshot();
           S.floors.push(newFloor(S.floors.length));
@@ -3314,9 +3431,18 @@
             FRAME = null; settled();
           }
           return;
+        case 'sk-addext2':
+          snapshot();
+          S.extensions.push(newExtension(1));
+          S.extIdx = S.extensions.length - 1;
+          S.pick = null; S.drawing = null; say('');
+          MANUAL = false; FRAME = null; refitTight(); inflate(1.35);
+          render(); persist(); return;
         case 'sk-dropext':
           snapshot();
-          S.extension = { outline: [], closed: false, storeys: S.extension.storeys };
+          if (S.extensions.length > 1) { S.extensions.splice(S.extIdx, 1); S.extIdx = Math.max(0, S.extIdx - 1); }
+          else S.extension = newExtension(S.extension.storeys);
+          S.pick = null; S.drawing = null;
           // leave room to draw the next one, the same as entering the stage
           // does — and after the state change, or settled() undoes it
           MANUAL = false; FRAME = null; refitTight(); inflate(1.35);
@@ -3389,7 +3515,7 @@
   function persist() {
     try {
       root.localStorage.setItem(SKEY, JSON.stringify({
-        v: 1, floors: S.floors, extension: S.extension, garden: S.garden, scale: S.scale,
+        v: 1, floors: S.floors, extensions: S.extensions, extIdx: S.extIdx, garden: S.garden, scale: S.scale,
         active: S.active, snap: SNAP, started: S.started, stage: S.stage
       }));
     } catch (e) {
@@ -3398,7 +3524,7 @@
         var lean = JSON.parse(JSON.stringify(S.floors));
         lean.forEach(function (f) { f.image = null; });
         root.localStorage.setItem(SKEY, JSON.stringify({
-          v: 1, floors: lean, extension: S.extension, garden: S.garden, scale: S.scale,
+          v: 1, floors: lean, extensions: S.extensions, extIdx: S.extIdx, garden: S.garden, scale: S.scale,
           active: S.active, snap: SNAP, started: S.started, stage: S.stage
         }));
       } catch (e2) { /* private mode, or full — carry on without saving */ }
@@ -3414,7 +3540,8 @@
       if (!o || o.v !== 1 || !o.floors || !o.floors.length) return false;
       if (!o.floors[0].closed) return false;        // nothing worth restoring
       S.floors = o.floors;
-      S.extension = o.extension || { outline: [], closed: false, storeys: 1 };
+      S.extensions = o.extensions || [o.extension || newExtension()];
+      S.extIdx = Math.min(o.extIdx || 0, S.extensions.length - 1);
       S.garden = o.garden || newGarden();
       S.gardenMode = S.garden.plot.closed ? 'patio' : 'boundary';
       S.scale = o.scale;
@@ -3442,22 +3569,21 @@
     if (!f || !f.closed || !S.scale) return '';
 
     // the extension sits on the ground floor, and upstairs too if it is two storey
-    var showExt = S.extension.closed && (at === 0 || S.extension.storeys > 1);
+    var xl = extsOn(at), showExt = xl.length > 0;
 
     var pts = f.outline.slice();
     f.internals.forEach(function (sg) { pts.push(sg[0], sg[1]); });
-    if (showExt) pts = pts.concat(S.extension.outline);
+    xl.forEach(function (x) { pts = pts.concat(x.outline); });
     var xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
     var pad = 1.6;
     var x0 = Math.min.apply(null, xs) - pad, x1 = Math.max.apply(null, xs) + pad;
     var y0 = Math.min.apply(null, ys) - pad * 1.4, y1 = Math.max.apply(null, ys) + pad;
 
     var out = ['<polygon points="' + poly(f.outline) + '" class="sk-floor"/>'];
-    if (showExt) {
-      out.push('<polygon points="' + poly(S.extension.outline) + '" class="sk-extension"/>');
-      out.push('<polyline points="' + poly(S.extension.outline.concat([S.extension.outline[0]])) +
-        '" class="sk-extline"/>');
-    }
+    xl.forEach(function (x) {
+      out.push('<polygon points="' + poly(x.outline) + '" class="sk-extension"/>');
+      out.push('<polyline points="' + poly(x.outline.concat([x.outline[0]])) + '" class="sk-extline"/>');
+    });
     out.push('<polyline points="' + poly(f.outline.concat([f.outline[0]])) + '" class="sk-ext"/>');
     f.internals.forEach(function (sg) {
       out.push('<line x1="' + P(sg[0])[0] + '" y1="' + P(sg[0])[1] + '" x2="' + P(sg[1])[0] +
@@ -3481,13 +3607,13 @@
     });
     out.push('<text x="' + ((x0 + 0.4) * K) + '" y="' + ((y0 + 1.1) * K) + '" class="sk-area">' +
       fmt(m(shoelace(f.outline)) * m(1)) + ' m² · ' + esc(f.name.toLowerCase()) + '</text>');
-    if (showExt) {
-      var ec = centroid(S.extension.outline);
+    xl.forEach(function (x) {
+      var ec = centroid(x.outline);
       out.push('<text x="' + (ec[0] * K) + '" y="' + (ec[1] * K) + '" text-anchor="middle" class="sk-extlab">' +
-        fmt(m(shoelace(S.extension.outline)) * m(1)) + ' m²</text>');
+        fmt(m(shoelace(x.outline)) * m(1)) + ' m²</text>');
       out.push('<text x="' + (ec[0] * K) + '" y="' + ((ec[1] + 0.55) * K) +
         '" text-anchor="middle" class="sk-roomlab">NEW</text>');
-    }
+    });
 
     return '<svg class="sk-plan" viewBox="' + [x0 * K, y0 * K, (x1 - x0) * K, (y1 - y0) * K].join(' ') +
       '" preserveAspectRatio="xMidYMid meet" aria-label="Your plan">' + out.join('') + '</svg>';

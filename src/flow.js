@@ -373,7 +373,7 @@
           money(combined.saving) + ' you do not spend.</span></div>';
       } else {
         note.innerHTML = sel.length
-          ? '<p class="q-help">Doing more than one? Tick them all — it is cheaper as a single project.</p>'
+          ? ''
           : '<p class="q-help">Tick everything you are thinking about. You can change your mind later.</p>';
       }
     }
@@ -501,6 +501,12 @@
       jx.fromDraw = jx.fromDraw || {};
       jx.fromDraw.width = true;
       jx.fromDraw.depth = true;
+      // the second extension onwards: each is priced as its own extension
+      // job, because foundations and walls follow each one's own perimeter
+      jx.extras = (m.extensions || []).slice(1).map(function (x) {
+        return { width: Math.round(x.width * 4) / 4, depth: Math.round(x.depth * 4) / 4,
+                 bifoldWidth: x.bifold > 0 ? Math.round(x.bifold * 10) / 10 : 0, storeys: x.storeys };
+      });
       refreshOutputs();
       if (project.types.indexOf('extension') < 0) {
         project.types.push('extension');
@@ -560,14 +566,16 @@
     var note = doc.querySelector('#flow-ask .trace-cta');
     if (!note) return;
     var baths = (m.counts.bathroom || 0) + (m.counts.wc || 0);
+    var xn = (m.extensions || []).length;
+    var xa = (m.extensions || []).reduce(function (t, x) { return t + x.area * x.storeys; }, 0);
     note.innerHTML = '<div><p class="q-title">Measured from your drawing.</p>' +
       '<p class="q-help">' + m.totalArea.toFixed(1) + ' m² over ' + m.floors +
       ' floor' + (m.floors === 1 ? '' : 's') +
       (m.rooms && m.rooms.length ? ', ' + m.rooms.length + ' rooms' : '') +
       ', ' + m.windows + ' window' + (m.windows === 1 ? '' : 's') +
       ' and ' + baths + ' bathroom' + (baths === 1 ? '' : 's') +
-      (m.extension ? ', plus a ' + (m.extension.area * m.extension.storeys).toFixed(1) +
-        ' m² extension which has been added to your project' : '') +
+      (xn ? ', plus ' + (xn > 1 ? xn + ' extensions totalling ' + xa.toFixed(1) + ' m²' : 'a ' + xa.toFixed(1) + ' m² extension') +
+        ' added to your project' : '') +
       '. Every figure it can set has been set.</p></div>' +
       '<div class="sk-cta"><button type="button" class="btn btn-ghost" id="do-sketch">Change the drawing</button></div>';
   }
@@ -970,11 +978,12 @@
 
     // building work, grouped by what it is
     var html = '';
+    var grouped = sel.length > 1 || (result.byType || []).length > 1;   // two extensions group too
     (result.byType || []).forEach(function (bt) {
-      if (sel.length > 1) html += '<tr class="grp"><td colspan="2">' + esc(bt.name) + '</td></tr>';
+      if (grouped) html += '<tr class="grp"><td colspan="2">' + esc(bt.name) + '</td></tr>';
       result.lines.filter(function (l) { return l.group === 'trade' && l.type === bt.id; })
         .forEach(function (l) { html += row('', l.label, l.detail, l.amount); });
-      if (sel.length > 1) html += row('sub', bt.name + ' subtotal', '', bt.trade);
+      if (grouped) html += row('sub', bt.name + ' subtotal', '', bt.trade);
     });
     html += row('sub', 'Building work', '', result.trade);
     result.lines.filter(function (l) { return l.group === 'fees'; })
