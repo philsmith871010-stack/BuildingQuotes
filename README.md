@@ -1,7 +1,12 @@
 # Datum
 
-Concept front end for an extension pricing and delivery platform, built for
-L Todd Construction.
+**Start with [`docs/PLATFORM.md`](docs/PLATFORM.md)** — what the platform does,
+the aims behind it, what is real and what is placeholder, the decisions taken
+so far and the roadmap. This README covers running it and the file layout.
+
+Front end for a quoting and delivery platform for building work, built with
+L Todd Construction. The homeowner draws their house, says what they want done,
+and gets an itemised, builder-backed price with the margin on the face of it.
 
 A homeowner drags out the extension they want, answers six questions, and gets an
 itemised range — foundations, drawings, fees, contingency, margin and VAT all on
@@ -117,9 +122,8 @@ of which 46 are still placeholders waiting on real rates — the admin counts
 them for you and stops calling a figure a placeholder the moment Lee types over
 it.
 
-**All five build types have a public flow.** Extensions, renovations, loft
-conversions, new builds, and patios and outdoor work — 18 question pages
-between them, all generated from the rate book.
+**All six build types have a public flow,** every page generated from the rate
+book, and every one of them starts with the drawing.
 
 **Renovations are priced a room at a time.** A refurbishment is never one
 intensity spread over a whole house — the kitchen goes back to brick, the
