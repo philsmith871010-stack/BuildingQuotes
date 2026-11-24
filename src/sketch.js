@@ -78,8 +78,8 @@
       hint: 'Pick a window or a door, then tap the outside wall it is in.',
       done: 'Drag one to move it along the wall. Tap it to change its width.' },
     { id: 'rooms',     n: 4, label: 'Rooms',
-      hint: 'Pick a room type, then tap where that room is. Tap a label to change or remove it.',
-      done: 'Tap a label to pick it, then choose what it is, or × to remove it. Drag a label to move it.' },
+      hint: 'Tap a room and choose what it is.',
+      done: 'Tap the next room to name it. Tap a name to change or remove it, or drag it to move it.' },
     { id: 'extension', n: 5, label: 'Extension',
       hint: 'Optional. Add an extension and drag it to where you want it, or tap its corners round yourself.',
       done: 'Put it where you want it, and make it the right size.' },
@@ -1011,6 +1011,7 @@
       rst.classList.toggle('sk-danger', S.confirm === 'restart');
     }
 
+    if (S.stage !== 'rooms' && ROOMMENU) closeRoomMenu();
     var floors = $('sk-floors');
     if (floors) {
       floors.hidden = S.stage === 'extension' || S.stage === 'garden';
@@ -1064,6 +1065,21 @@
       if (f.closed && ready() && after) return { id: 'sk-go-' + after.id, label: 'Next — ' + after.label.toLowerCase() };
       return null;
     }
+    // A step that is done floor by floor leads up the house before it leads on.
+    // It used to go straight to the next step, and the only way upstairs was a
+    // pair of small tabs in the corner that nobody was ever pointed at.
+    var perFloor = S.stage === 'internal' || S.stage === 'openings' || S.stage === 'rooms';
+    if (perFloor && !f.closed && !(S.drawing && S.drawing.length)) {
+      return { id: 'sk-shape-floor', label: 'Draw this floor’s shape first' };
+    }
+    if ((S.stage === 'internal' || S.stage === 'openings') && !(S.drawing && S.drawing.length)) {
+      var upN = -1;
+      for (var fi = S.active + 1; fi < S.floors.length; fi++) { if (S.floors[fi].closed) { upN = fi; break; } }
+      if (upN >= 0) {
+        return { id: 'sk-floor-' + upN, label: 'Next — ' + (S.stage === 'internal' ? 'walls' : 'doors & windows') +
+          ' on the ' + S.floors[upN].name.toLowerCase() };
+      }
+    }
     // upstairs rooms matter most — the bedrooms and the bathroom are up there —
     // so finishing the ground floor rooms leads to the upstairs, not past it
     if (S.stage === 'rooms' && f.markers.length) {
@@ -1093,7 +1109,8 @@
     var f = floor();
 
     var of = $('sk-of'), name = $('sk-stagename');
-    if (of) of.textContent = 'Step ' + stage.n + ' of ' + ACTIVE.length;
+    if (of) of.textContent = 'Step ' + stage.n + ' of ' + ACTIVE.length +
+      (S.floors.length > 1 && S.stage !== 'extension' && S.stage !== 'garden' ? ' · ' + f.name : '');
     if (name) name.textContent = S.calibrating ? 'How long is the orange wall?' : S.askUp ? 'Upstairs?' : stage.label;
 
     var up = $('sk-upstairs');
@@ -1112,6 +1129,8 @@
           ? 'Drag any corner until the shape looks right. Then, roughly how wide is it across the front — the orange line?'
           : 'A rough guess is fine. Not sure? Pace it out: one big step is about a metre.')
         : S.askUp ? 'Does the house have an upstairs?'
+        : ((S.stage === 'internal' || S.stage === 'openings' || S.stage === 'rooms') && !f.closed)
+            ? 'The ' + f.name.toLowerCase() + ' has no shape yet, so there is nothing to put walls or rooms in.'
         : (S.stage === 'outline' && S.block) ? 'Put it where it is on your house, and make it the right size.'
         : (S.stage === 'internal' && S.wallMode === 'out') ? stage.out
         : (S.stage === 'internal' && S.wallMode === 'door') ? stage.door
@@ -1131,7 +1150,7 @@
         : (S.stage === 'outline' && !f.closed && !f.outline.length && S.active > 0)
             ? 'Copy the floor below, or draw this one.'
         : (S.stage === 'rooms' && f.markers.length && floorWithoutRooms() >= 0)
-            ? 'Tap a label to change or remove it. When this floor is done, go up a floor.'
+            ? 'Tap the next room to name it. When this floor is done, press the blue button.'
         : (edited && stage.done ? stage.done : stage.hint);
     }
 
@@ -1142,6 +1161,8 @@
       if (kWhich && !S.scale) kWhich = null;
       var kRow = function (sym, cls, text) { return '<li><i class="' + cls + '">' + sym + '</i><span>' + text + '</span></li>'; };
       key.hidden = !kWhich;
+      var foldKey = $('sk-fold-key');
+      if (foldKey) foldKey.hidden = !kWhich;
       key.innerHTML = !kWhich ? '' :
         (movesWhole(kWhich) ? kRow('✥', 'k-move', 'Drag the middle to move it') : '') +
         kRow('↔', 'k-sym', kWhich === 'floor' ? 'Drag an arrow to move a wall' : kWhich === 'plot' ? 'Drag an arrow to move a fence'
@@ -1175,10 +1196,11 @@
       var typedEl = $('sk-typed');
       var keep = typedEl ? { v: typedEl.value, focus: doc.activeElement === typedEl } : null;
       var afterNext = S.stage === 'outline' && floor().closed && !(S.drawing && S.drawing.length);
-      var html = (S.calibrating || S.askUp) ? '' : toolsFor(S.stage) + typedTools() + cancelTool();
-      tools.innerHTML = afterNext ? ((S.calibrating || S.askUp) ? '' : blockTools()) : html;
-      var tools2 = $('sk-tools2');
-      if (tools2) tools2.innerHTML = afterNext ? html : '';
+      tools.innerHTML = (S.calibrating || S.askUp) ? ''
+        : (afterNext ? blockTools() : '') + toolsFor(S.stage) + typedTools() + cancelTool();
+      // the now-and-then things, behind their own row
+      var tools2 = $('sk-tools2'), foldMore = $('sk-fold-more'), opts = moreOptions();
+      if (tools2) tools2.innerHTML = opts;
       typedEl = $('sk-typed');
       if (keep && typedEl) { typedEl.value = keep.v; if (keep.focus) { try { typedEl.focus(); } catch (e) {} } }
     }
@@ -1206,8 +1228,9 @@
     if (liveEl) {
       liveEl.hidden = !live;
       if (live) {
-        liveEl.innerHTML = '<span class="sk-live-k">Estimate so far</span>' +
-          '<b>' + live.text + '</b><small>' + esc(live.note || '') + '</small>';
+        // one line, in the foot of the panel, where it never moves
+        liveEl.innerHTML = '<span class="sk-live-k">Estimate so far</span><b>' + live.text + '</b>';
+        liveEl.title = live.note || '';
       }
     }
     var row = function (k, v, strong) {
@@ -1232,26 +1255,23 @@
         (q.garden.trees ? row('Trees', q.garden.trees + (q.garden.treeNearest !== null
           ? ' <small>· nearest ' + fmt(q.garden.treeNearest, 1) + ' m from the ' + (builtExts().length ? 'extension' : 'house') + '</small>' : '')) : '')
         : '') +
-      '<button type="button" class="sk-more" id="sk-more" aria-expanded="' + !!S.more + '">' +
-        (S.more ? 'Fewer details' : 'More details') + '</button>' +
-      (S.more
-        ? row('Footprint', q.scaled && q.footprint ? fmt(q.footprint) + ' m²' : na) +
-          row('Outside walls', q.perimeter ? fmt(q.perimeter) + ' m' : na) +
-          row('Inside walls', q.internalWall ? fmt(q.internalWall) + ' m' + (q.internalEstimated ? ' <small>est.</small>' : '') : na) +
-          row('Wall area to plaster', q.plaster ? fmt(q.plaster, 0) + ' m²' : na) +
-          row('Windows', q.windows) +
-          row('Doors', q.extDoors + ' out · ' + q.intDoors + ' in')
-        : '');
+      row('Footprint', q.scaled && q.footprint ? fmt(q.footprint) + ' m²' : na) +
+      row('Outside walls', q.perimeter ? fmt(q.perimeter) + ' m' : na) +
+      row('Inside walls', q.internalWall ? fmt(q.internalWall) + ' m' + (q.internalEstimated ? ' <small>est.</small>' : '') : na) +
+      row('Wall area to plaster', q.plaster ? fmt(q.plaster, 0) + ' m²' : na) +
+      row('Windows', q.windows) +
+      row('Doors', q.extDoors + ' out · ' + q.intDoors + ' in');
+    // closed, the row still says the one number that matters
+    var sum = $('sk-figs-sum'), foldFigs = $('sk-fold-figs');
+    if (sum) sum.textContent = q.scaled && q.totalArea ? fmt(q.totalArea, 0) + ' m²' + (q.floors > 1 ? ' · ' + q.floors + ' floors' : '') : '';
+    if (foldFigs) foldFigs.hidden = !(q.scaled && q.totalArea);
 
-    var warn = $('sk-checks');
+    var warn = $('sk-checks'), foldWarn = $('sk-fold-checks'), warnSum = $('sk-checks-sum');
     if (warn) {
       var list = ready() ? checks() : [];
-      warn.hidden = !list.length;
-      warn.innerHTML = list.length
-        ? '<p class="sk-checks-head">' + list.length + (list.length === 1 ? ' thing' : ' things') +
-          ' worth a look</p><ul>' +
-          list.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>'
-        : '';
+      if (foldWarn) foldWarn.hidden = !list.length;
+      if (warnSum) warnSum.textContent = list.length + (list.length === 1 ? ' thing' : ' things') + ' worth a look';
+      warn.innerHTML = list.length ? '<ul>' + list.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' : '';
     }
 
     var apply = $('sk-apply');
@@ -1261,6 +1281,7 @@
       // step, so the early exit only shows before then, and quietly
       var n2 = nextAction();
       apply.hidden = !ready() || !n2 || n2.id === 'sk-finish';
+      if (foldMore) foldMore.hidden = !opts && apply.hidden;
     }
     var u = $('sk-undo'), r = $('sk-redo');
     if (u) u.disabled = !UNDO.length && !(S.drawing && S.drawing.length);
@@ -1277,35 +1298,12 @@
 
     if (stage === 'outline') {
       var f = floor();
-      // an empty floor: a blank grid (or their plan) and the tools for it
-      if (!f.closed && !(S.drawing && S.drawing.length)) {
-        return planTools(f) +
-          (S.floors.length > 1 && S.active > 0
-            ? '<button type="button" class="btn btn-ghost btn-sm' + (S.confirm === 'floor' ? ' sk-danger' : '') +
-              '" id="sk-dropfloor">' + (S.confirm === 'floor' ? 'Tap again to remove it' : 'Remove this floor') + '</button>'
-            : '');
+      // what is used all the time stays here; everything else is under "More options"
+      if (f.closed && !S.block && S.floors.length < 4 && ready()) {
+        return '<button type="button" class="btn btn-ghost sk-addfloor-side" id="sk-addfloor2">Add a floor above</button>' +
+          (f.image ? planTools(f) : '');
       }
-      // a finished shape: the small things you might still want, as a quiet
-      // row after the big Next, not a stack of buttons in front of it
-      if (f.closed) {
-        if (S.block) return '';
-        return (S.floors.length < 4 && ready()
-            ? '<button type="button" class="btn btn-ghost sk-addfloor-side" id="sk-addfloor2">Add a floor above</button>' : '') +
-          '<div class="sk-quiet">' +
-          (S.scale && (S.measured || f.image) ? '<button type="button" class="sk-alt" id="sk-recal">Change the measurement</button>' : '') +
-          '<button type="button" class="sk-alt" id="sk-redraw">Draw this floor again</button>' +
-          (S.floors.length > 1 && S.active > 0
-            ? '<button type="button" class="sk-alt' + (S.confirm === 'floor' ? ' sk-danger' : '') +
-              '" id="sk-dropfloor">' + (S.confirm === 'floor' ? 'Tap again to remove it' : 'Remove this floor') + '</button>'
-            : '') +
-          '</div>' + (f.image ? planTools(f) : '');
-      }
-      // half way round the house: only the plan's own controls, if there is one
-      return (f.image ? planTools(f) : '') +
-        (S.floors.length > 1 && S.active > 0
-          ? '<button type="button" class="btn btn-ghost btn-sm' + (S.confirm === 'floor' ? ' sk-danger' : '') +
-            '" id="sk-dropfloor">' + (S.confirm === 'floor' ? 'Tap again to remove it' : 'Remove this floor') + '</button>'
-          : '');
+      return f.image ? planTools(f) : '';
     }
 
     var sel = null;
@@ -1331,10 +1329,8 @@
         seg([['window', 'Window'], ['door', 'Front or back door'], ['bifold', 'Bi-fold or patio doors']],
             S.kind || 'window', 'data-kind') + '</div>' + widths();
     }
-    if (stage === 'rooms') {
-      return '<div class="sk-tool"><label>This room is a</label>' +
-        seg(ROOM_TYPES.map(function (r) { return [r.id, r.label]; }), S.roomType, 'data-room') + '</div>';
-    }
+    // rooms are named where they are tapped: the list opens on the drawing
+    if (stage === 'rooms') return '';
     if (stage === 'extension') {
       var cur = S.extension, xn = S.extensions.length, xmid = !!(S.drawing && S.drawing.length);
       var others = builtExts().length - (cur.closed ? 1 : 0);
@@ -1351,10 +1347,7 @@
         seg([[1, 'Single storey'], [2, 'Two storey']], cur.storeys, 'data-storeys') + '</div>' +
         (cur.closed && !xmid
           ? '<button type="button" class="btn btn-ghost" id="sk-addext2">Add another extension</button>' : '') +
-        (cur.closed || xn > 1
-          ? '<button type="button" class="btn btn-ghost btn-sm" id="sk-dropext">' +
-            (xn > 1 ? 'Remove this extension' : 'Remove the extension') + '</button>'
-          : '');
+        '';
     }
     if (stage === 'garden') {
       var gp = S.garden.plot;
@@ -1374,10 +1367,7 @@
         '</div></div>' +
         (gpick ? '<button type="button" class="btn btn-ghost btn-sm" id="sk-droparea">Remove this ' +
           esc(gardenKind(gpick.kind).label.toLowerCase()) + '</button>' : '') +
-        '<div class="sk-quiet">' +
-        (gtt === 'plot' ? '' : '<button type="button" class="sk-alt" data-gmode="boundary">Move the fence</button>') +
-        '<button type="button" class="sk-alt' + (S.confirm === 'plot' ? ' sk-danger' : '') +
-        '" id="sk-dropplot">' + (S.confirm === 'plot' ? 'Tap again to remove it all' : 'Remove the garden') + '</button></div>';
+        '';
     }
     return '';
   }
@@ -1444,11 +1434,36 @@
   }
 
   /** Upload a plan for this floor, or turn, strengthen or drop the one here. */
-  function planTools(f) {
-    if (!f.image) {
-      return '<button type="button" class="sk-alt" id="sk-upload">' +
-        (S.active > 0 ? 'Draw over a plan of this floor' : 'Draw over my own floor plan') + '</button>';
+  /**
+   * The things that are wanted now and then, not every time: kept behind one
+   * "More options" row so the panel holds only what the step is about.
+   */
+  function moreOptions() {
+    if (!S.started || S.calibrating || S.askUp) return '';
+    var f = floor(), out = [];
+    var link = function (id, text, danger) {
+      return '<button type="button" class="sk-alt' + (danger ? ' sk-danger' : '') + '" id="' + id + '">' + text + '</button>';
+    };
+    if (S.stage === 'outline') {
+      if (f.closed && S.scale && (S.measured || f.image)) out.push(link('sk-recal', 'Change the measurement'));
+      if (f.closed) out.push(link('sk-redraw', 'Draw this floor again'));
+      if (!f.image) out.push(link('sk-upload', S.active > 0 ? 'Draw over a plan of this floor' : 'Draw over my own floor plan'));
+      if (S.floors.length > 1 && S.active > 0) {
+        out.push(link('sk-dropfloor', S.confirm === 'floor' ? 'Tap again to remove it' : 'Remove this floor', S.confirm === 'floor'));
+      }
     }
+    if (S.stage === 'extension' && (S.extension.closed || S.extensions.length > 1)) {
+      out.push(link('sk-dropext', S.extensions.length > 1 ? 'Remove this extension' : 'Remove the extension'));
+    }
+    if (S.stage === 'garden' && S.garden.plot.closed) {
+      if (gardenTarget() !== 'plot') out.push('<button type="button" class="sk-alt" data-gmode="boundary">Move the fence</button>');
+      out.push(link('sk-dropplot', S.confirm === 'plot' ? 'Tap again to remove it all' : 'Remove the garden', S.confirm === 'plot'));
+    }
+    return out.join('');
+  }
+
+  function planTools(f) {
+    if (!f.image) return '';       // the way in to a plan is under "More options"
     return '<div class="sk-tool sk-plantools"><label>Your plan</label><div class="seg seg-wrap">' +
       '<button type="button" id="sk-rotplan">Turn it</button>' +
       '<button type="button" id="sk-planstrength" aria-pressed="' + !!f.image.strong + '">' + (f.image.strong ? 'Fainter' : 'Clearer') + '</button>' +
@@ -1470,11 +1485,17 @@
    */
   var VIS = { key: null, v: [] };
   function visibleAreas() {
-    var areas = S.garden.areas, key = JSON.stringify([areas.map(function (a) { return a.outline; }), S.scale]);
+    var areas = S.garden.areas, key = JSON.stringify([areas.map(function (a) { return a.outline; }), S.scale,
+      ground().outline, builtExts().map(function (x) { return x.outline; })]);
     if (VIS.key === key) return VIS.v;
     var out = areas.map(function (a, i) {
       var full = m(shoelace(a.outline)) * m(1);
-      var above = areas.slice(i + 1).filter(function (o) { return ringsOverlap(a.outline, o.outline); });
+      // the house lies on top of everything: go back and add a part to it over
+      // the patio, and that much patio is no longer there to be laid
+      var built = [{ outline: ground().outline }].concat(builtExts());
+      var above = areas.slice(i + 1).concat(built).filter(function (o) {
+        return o.outline && o.outline.length > 2 && ringsOverlap(a.outline, o.outline);
+      });
       if (!above.length || !full) return full;
       var xs = a.outline.map(function (p) { return p[0]; }), ys = a.outline.map(function (p) { return p[1]; });
       var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
@@ -2192,7 +2213,7 @@
     }
     S.pick = null; S.selected = null; S.cursor = null; S.pickWall = false; S.confirm = null;
     S.ghost = null; S.hotWall = -1; S.guides = null;
-    closeLenEdit();
+    closeLenEdit(); closeRoomMenu();
     FRAME = null; MANUAL = false;
     sane();
   }
@@ -2213,7 +2234,8 @@
     if (!(g.closed && S.scale)) {
       S.stage = 'outline';
       S.askUp = false;
-      if (!g.closed) { S.calibrating = false; S.active = 0; }
+      // no ground floor yet: whichever floor is open stays open. The big button says "Draw the ground floor first".
+      if (!g.closed) { S.calibrating = false; }
       else if (!S.calibrating) {
         S.active = 0;
         var best = 0, bl = 0;
@@ -2268,8 +2290,10 @@
 
   function redo() {
     var cur = stateNow(), curD = drawingOf(cur), next = REDO.pop();
-    while (next && drawingOf(next) === curD) next = REDO.pop();
     if (!next) return;
+    // step over entries that would bring nothing back — but never the last one:
+    // that is where you were when you started undoing, down to which floor you had open
+    while (drawingOf(next) === curD && REDO.length) next = REDO.pop();
     var was = S.stage;
     UNDO.push(cur);
     restore(next);
@@ -2866,7 +2890,7 @@
     if (S.drawing && S.drawing.length) return;      // mid-run: taps only
     // the × and + drawn on the canvas are buttons, not places on the plan: a
     // wall running under one must not grab the press
-    closeLenEdit();
+    closeLenEdit(); closeRoomMenu();
     if (e.target && e.target.closest && e.target.closest('[data-killpick],[data-addcorner],[data-len]')) return;
     var h = handleAt(w);
     if (!h) return;
@@ -3202,6 +3226,8 @@
         if (S.pick) { S.roomType = floor().markers[hh.i].type; S.roomPicked = true; }
         say('');
         render();
+        if (S.pick) openRoomMenu([floor().markers[hh.i].x, floor().markers[hh.i].y], hh.i);
+        else closeRoomMenu();
         return;
       }
       if (hh.kind === 'tree') { S.garden.trees.splice(hh.i, 1); settled(); return; }
@@ -3338,28 +3364,21 @@
     }
 
     if (S.stage === 'rooms') {
-      if (S.pick && S.pick.kind === 'pin') S.pick = null;
       var g = snapFrom(null, w);
-      if (!insideHouse(g)) { say('Tap inside the house.'); return; }
-      snapshot();
-      // one label per enclosed space: tapping a room that already has one
-      // moves and relabels it rather than adding a second
-      var already = sameSpaceAs(f, g);
-      if (already >= 0) {
-        var wasType = f.markers[already].type;
-        f.markers[already].x = g[0];
-        f.markers[already].y = g[1];
-        f.markers[already].type = S.roomType;
-        if (wasType !== S.roomType) {
-          var lab = function (id) { return (ROOM_TYPES.filter(function (r) { return r.id === id; })[0] || {}).label || id; };
-          say('That ' + lab(wasType).toLowerCase() + ' is now a ' + lab(S.roomType).toLowerCase() +
-              '. For a separate room, tap a bit further away.');
-        }
-      } else {
-        f.markers.push({ x: g[0], y: g[1], type: S.roomType });
-        say('');
+      if (!insideHouse(g)) {
+        closeRoomMenu();
+        if (S.pick) { S.pick = null; render(); }
+        say('Tap inside the house.');
+        return;
       }
-      changed();
+      // A tap on a room asks what it is, there and then — the list opens under
+      // the finger rather than over on the side panel. One name per enclosed
+      // space: tapping a room that has one already offers to change that one.
+      var already = sameSpaceAs(f, g);
+      S.pick = already >= 0 ? { kind: 'pin', i: already } : null;
+      say('');
+      render();
+      openRoomMenu(g, already);
       return;
     }
 
@@ -3475,7 +3494,7 @@
       : cornersBetween(ring, pA, pB).reverse();
 
     var ring2 = S.drawing.concat([endPoint], mids);
-    var bad = badShape(ring2);
+    var bad = badShape(ring2) || blockTrouble('ext', ring2);
     if (bad) { say(bad); return false; }
     snapshot();
     S.extension.outline = ring2;
@@ -3491,6 +3510,9 @@
     var bad = badShape(S.drawing || []);
     if (bad) { say(bad); return; }
     if (S.stage === 'extension') {
+      // tapped round by hand, it can still end up over the house: the buttons and drags cannot
+      var over = blockTrouble('ext', S.drawing);
+      if (over) { say(over + ' Tap its corners outside the house, or press Undo.'); return; }
       S.extension.outline = S.drawing.slice();
       S.extension.closed = true;
     } else if (S.stage === 'garden') {
@@ -3675,6 +3697,62 @@
       b.setAttribute('aria-pressed', String(b.getAttribute('data-boxunits') === u1));
     });
     Array.prototype.forEach.call(doc.querySelectorAll('.sk-box-unit'), function (el) { el.textContent = u1 === 'ft' ? 'ft' : 'm'; });
+  }
+
+  /* ---- naming a room where it is tapped --------------------------------------
+   * A small list that opens on the drawing, at the tap. It used to be a row of
+   * buttons on the side panel that had to be set first, which meant looking
+   * away from the room, choosing, and coming back to tap it. */
+  var ROOMMENU = null;
+  function toClient(p) {
+    var svg = $('sk-svg'), ctm = svg && svg.getScreenCTM();
+    return ctm ? [p[0] * K * ctm.a + ctm.e, p[1] * K * ctm.d + ctm.f] : [0, 0];
+  }
+  function openRoomMenu(at, pin) {
+    var box = $('sk-roommenu');
+    if (!box) return;
+    var mk = pin >= 0 ? floor().markers[pin] : null, cur = mk ? mk.type : null;
+    ROOMMENU = { at: at, pin: mk ? pin : -1 };
+    box.innerHTML = '<p>' + (cur ? 'Change it to' : 'This room is a') + '</p><div class="sk-roommenu-grid">' +
+      ROOM_TYPES.map(function (r) {
+        return '<button type="button" data-pickroom="' + r.id + '" aria-pressed="' + (r.id === cur) + '">' + esc(r.label) + '</button>';
+      }).join('') + '</div>' +
+      (cur ? '<button type="button" class="sk-alt" id="sk-roommenu-remove">Remove this name</button>' : '');
+    box.hidden = false;
+    // beside the tap, and always wholly inside the drawing
+    var c = box.parentNode.getBoundingClientRect(), p = toClient(at), bw = box.offsetWidth, bh = box.offsetHeight;
+    var x = p[0] - c.left + 16, y = p[1] - c.top + 16;
+    if (x + bw > c.width - 6) x = p[0] - c.left - bw - 16;
+    if (y + bh > c.height - 6) y = c.height - bh - 6;
+    box.style.left = Math.max(6, x) + 'px';
+    box.style.top = Math.max(50, y) + 'px';
+  }
+  function closeRoomMenu() {
+    var box = $('sk-roommenu');
+    if (box) box.hidden = true;
+    ROOMMENU = null;
+  }
+  function pickRoom(type) {
+    var rm = ROOMMENU, f = floor();
+    if (!rm) return;
+    closeRoomMenu();
+    S.roomType = type; S.roomPicked = true;
+    snapshot();
+    if (rm.pin >= 0 && f.markers[rm.pin]) f.markers[rm.pin].type = type;       // a name that is there keeps its place
+    else f.markers.push({ x: rm.at[0], y: rm.at[1], type: type });
+    S.pick = null;
+    say('');
+    changed();
+  }
+  function unnameRoom() {
+    var rm = ROOMMENU, f = floor();
+    closeRoomMenu();
+    if (!rm || rm.pin < 0 || !f.markers[rm.pin]) return;
+    snapshot();
+    f.markers.splice(rm.pin, 1);
+    S.pick = null;
+    say('');
+    settled();
   }
 
   /* ---- typing a length on to a wall ---------------------------------------- */
@@ -3908,7 +3986,7 @@
     wrap.classList.remove('on');
     wrap.setAttribute('aria-hidden', 'true');
     S.confirm = null;
-    closeLenEdit();
+    closeLenEdit(); closeRoomMenu();
     if (!going && S.onClose) S.onClose();
   }
   function reset() {
@@ -3981,14 +4059,17 @@
     if (S.stage === 'internal' && S.drawing) S.drawing = null;
     S.block = null;
     S.askUp = false; S.afterUp = null;       // moving on is an answer of its own
-    closeLenEdit();
+    closeLenEdit(); closeRoomMenu();
     // an "Add another extension" nobody drew is dropped on the way out
     if (S.stage === 'extension' && id !== 'extension' && S.extensions.length > 1) {
       S.extensions = S.extensions.filter(function (x) { return x.closed; });
       if (!S.extensions.length) S.extensions = [newExtension()];
       S.extIdx = Math.min(S.extIdx, S.extensions.length - 1);
     }
+    var from = S.stage;
     S.stage = id;
+    // every step but the shape starts on the ground floor and is walked upwards from there
+    if (id !== 'outline' && from !== id) S.active = 0;
     if (id === 'extension' || id === 'garden') S.active = 0;     // both sit round the ground floor
     if (id === 'rooms' && !S.roomPicked) S.roomType = S.active === 0 ? 'kitchen' : 'bedroom';
     if (id === 'garden') S.gardenMode = S.garden.plot.closed ? 'idle' : 'boundary';
@@ -4128,7 +4209,7 @@
       hit = t.closest && t.closest('[data-skfloor]');
       if (hit) {
         S.active = +hit.getAttribute('data-skfloor');
-        S.block = null; closeLenEdit();
+        S.block = null; closeLenEdit(); closeRoomMenu();
         S.drawing = null; S.selected = null; FRAME = null; settled();
         return;
       }
@@ -4202,6 +4283,7 @@
         var act = hit.getAttribute('data-act');
         if (act === 'sk-hint-ext') return;
         if (act === 'sk-finish') { var ap = $('sk-apply'); if (ap) ap.click(); return; }
+        if (act === 'sk-shape-floor') { goStage('outline'); return; }
         if (act.indexOf('sk-floor-') === 0) {
           if (S.stage === 'rooms' && !S.roomPicked) S.roomType = +act.slice(9) === 0 ? 'kitchen' : 'bedroom';
           S.active = +act.slice(9); S.drawing = null; S.selected = null; S.pick = null;
@@ -4224,6 +4306,9 @@
       // a click lands on whatever is under the finger — often a <span> inside
       // the button — so resolve to the button before matching on id
       var btn = t.closest ? t.closest('button') : null;
+      hit = t.closest && t.closest('[data-pickroom]');
+      if (hit) { pickRoom(hit.getAttribute('data-pickroom')); return; }
+      if (t.id === 'sk-roommenu-remove') { unnameRoom(); return; }
       hit = t.closest && t.closest('[data-len]');
       if (hit) {
         var lk = hit.getAttribute('data-len').split(':');
@@ -4383,6 +4468,7 @@
       }
       if (e.key === 'Escape') {
         if (LENEDIT) { closeLenEdit(); return; }
+        if (ROOMMENU) { closeRoomMenu(); if (S.pick) { S.pick = null; render(); } return; }
         if (S.block) { S.block = null; say(''); FRAME = null; settled(); return; }
         if (S.drawing) { S.drawing = null; S.cursor = null; render(); }
         else if (S.pick || S.selected) { S.pick = null; S.selected = null; render(); }

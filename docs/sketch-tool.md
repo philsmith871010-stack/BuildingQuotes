@@ -114,6 +114,30 @@ on it, and they are right to. So a surface is counted only where nothing put
 down after it covers it (`visibleAreas()`): otherwise the turf under the shed is
 paid for as turf. A surface cannot be dragged on to the house.
 
+### The side panel does not move
+
+Three parts, each always in the same place:
+
+- **Top** — the step, its name and one sentence. Two lines are kept for the
+  sentence so a short one does not pull everything below it up.
+- **Middle** — only what this step is about. Everything wanted now and then is
+  folded behind a row: *How to move and resize*, *Your figures* (which still
+  shows the floor area when closed), *N things worth a look* and *More
+  options* (change the measurement, draw the floor again, remove things,
+  finish early). A fold stays as it was left.
+- **Foot** — the price so far and the one big button, pinned. It is in exactly
+  the same place on every step, and on a phone it is always on screen.
+
+What the tool has to say ("That would put it inside the house") is a note on
+the drawing itself, where the eye is, so a message never pushes the panel about.
+
+Steps that are done floor by floor lead **up the house before they lead on**:
+*Next — walls on the first floor*, then *Next — doors & windows*. The step line
+names the floor. A floor with no shape yet offers *Draw this floor's shape first*.
+
+A room is named **where it is tapped**: the list of room types opens beside the
+tap, and tapping a name opens the same list to change or remove it.
+
 ### Undo, and going back
 
 Undo and Redo walk a history of snapshots. A snapshot is **where you were, not

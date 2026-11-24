@@ -700,7 +700,8 @@ html { scroll-padding-top: 62px; }
   background: var(--surface);
 }
 .sk-floors button {
-  font-family: var(--mono); font-size: .66rem; letter-spacing: .07em; text-transform: uppercase;
+  font-family: var(--mono); font-size: .74rem; letter-spacing: .07em; text-transform: uppercase;
+  min-height: 2rem;
   background: var(--surface); color: var(--ink-2); border: 1px solid var(--rule);
   border-radius: 2px; padding: .28rem .5rem; cursor: pointer;
 }
@@ -959,6 +960,23 @@ html { scroll-padding-top: 62px; }
 }
 .sk-lenedit span { font-family: var(--mono); font-size: .8rem; color: var(--ink-3); }
 .sk-addblock { width: 100%; }
+.sk-roommenu {
+  position: absolute; z-index: 6; width: 12.5rem; max-width: calc(100% - 12px);
+  display: grid; gap: .45rem; padding: .6rem;
+  background: var(--surface); border: 2px solid var(--accent); border-radius: 6px;
+  box-shadow: 0 10px 28px rgba(0,0,0,.22);
+}
+.sk-roommenu[hidden] { display: none; }
+.sk-roommenu p { margin: 0; font-family: var(--mono); font-size: .66rem; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+.sk-roommenu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .3rem; }
+.sk-roommenu-grid button {
+  padding: .6rem .4rem; cursor: pointer; text-align: center;
+  background: var(--paper); color: var(--ink); border: 1px solid var(--rule); border-radius: 3px;
+  font: 600 .9rem/1.1 var(--sans);
+}
+.sk-roommenu-grid button:hover { border-color: var(--accent); background: var(--accent-soft); }
+.sk-roommenu-grid button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.sk-roommenu .sk-alt { justify-self: center; }
 .closing { text-align: center; display: grid; gap: .9rem; justify-items: center; }
 .closing p { color: var(--ink-2); max-width: 30rem; }
 .sk-size { display: flex; flex-wrap: wrap; gap: 1rem 1.6rem; justify-content: center; margin-top: .5rem; }
@@ -1244,8 +1262,6 @@ html { scroll-padding-top: 62px; }
 }
 @media (prefers-reduced-motion: reduce) { .guide-halo { animation: none; } }
 
-/* room under the Help button, so it never sits on the last thing in a column */
-.sk-side { padding-bottom: 4.4rem; }
 @media (max-width: 699px) {
   .guide-panel { left: 0; right: 0; bottom: 0; width: auto; max-height: 72svh; border-radius: 12px 12px 0 0; border-left: 0; border-right: 0; padding-bottom: 4.6rem; }
   /* on a phone every button is the full width of the screen, so Help is as small as it can be */
@@ -1254,4 +1270,80 @@ html { scroll-padding-top: 62px; }
   .guide-btn i { width: 2.1rem; height: 2.1rem; font-size: 1.2rem; }
   .guide-tip { right: 8px; bottom: 58px; }
   .flow-ask { padding-bottom: 4.4rem; }
+}
+
+
+/* ==========================================================================
+   The side panel, laid out so nothing in it moves.
+   Top: where you are and what to do. Middle: this step's tools, then the
+   now-and-then things folded away. Foot: the price so far and the one big
+   button — pinned, so it is in the same place on every step.
+   ========================================================================== */
+.sk-side { padding: 0; overflow: hidden; display: flex; flex-direction: column; gap: 0; }
+.sk-top {
+  flex: 0 0 auto; display: grid; gap: .4rem; padding: .85rem 1rem .7rem;
+  border-bottom: 1px solid var(--rule-soft, var(--rule));
+}
+/* two lines kept for the sentence, so a short one does not pull everything up */
+.sk-top .sk-hint { margin: 0; min-height: 2.9em; }
+.sk-mid {
+  flex: 1 1 auto; min-height: 0; overflow: auto; padding: .8rem 1rem .9rem;
+  display: grid; gap: .65rem; align-content: start; grid-template-columns: minmax(0, 1fr);
+}
+.sk-foot {
+  flex: 0 0 auto; display: grid; gap: .45rem; align-content: end;
+  padding: .55rem 1rem .8rem; min-height: 5.9rem;
+  border-top: 1px solid var(--rule); background: var(--surface);
+}
+.sk-foot .sk-live {
+  display: flex; align-items: baseline; justify-content: space-between; gap: .6rem;
+  padding: 0; margin: 0; background: none; border: 0;
+}
+.sk-foot .sk-live b { font-size: 1.02rem; white-space: nowrap; }
+.sk-fold { border-top: 1px solid var(--rule-soft, var(--rule)); }
+.sk-fold[hidden] { display: none; }
+.sk-fold > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: .6rem;
+  padding: .55rem 0; font-size: .84rem; color: var(--ink-2);
+}
+.sk-fold > summary::-webkit-details-marker { display: none; }
+.sk-fold > summary > span { flex: 1 1 auto; }
+.sk-fold > summary > b { font-family: var(--mono); font-weight: 500; font-size: .78rem; color: var(--ink); }
+.sk-fold > summary::after { content: '+'; font-family: var(--mono); font-size: 1rem; color: var(--ink-3); width: 1rem; text-align: center; }
+.sk-fold[open] > summary::after { content: '−'; }
+.sk-fold > summary:hover { color: var(--ink); }
+.sk-fold-warn > summary { color: var(--warn); font-weight: 600; }
+.sk-fold .sk-read { border-top: 0; margin-bottom: .5rem; }
+.sk-fold .sk-key { padding-bottom: .6rem; }
+.sk-fold .sk-checks { padding: 0 0 .6rem; border: 0; background: none; }
+.sk-moreopts { display: grid; gap: .45rem; justify-items: start; padding-bottom: .6rem; }
+.sk-moreopts-in { display: grid; gap: .45rem; justify-items: start; }
+.sk-moreopts-in:empty { display: none; }
+.sk-moreopts .sk-alt { font-size: .84rem; }
+.sk-moreopts .sk-alt[hidden] { display: none; }
+
+/* What the tool says is a note on the drawing, so it never pushes the panel about. */
+.sk-canvas .sk-say {
+  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 5;
+  width: max-content; max-width: min(92%, 30rem); margin: 0; padding: .5rem .85rem; border-radius: 4px;
+  background: var(--warn, #B4432B); color: #fff; font-size: .86rem; line-height: 1.35; text-align: center;
+  pointer-events: none; box-shadow: 0 6px 18px rgba(0,0,0,.2);
+}
+.sk-canvas .sk-say.is-note { background: var(--ink); color: var(--paper); }
+.sk-canvas .sk-say:empty { display: none; }
+
+/* Help sits just above the pinned foot while the drawing tool is open. */
+.sk-overlay.on ~ .guide-btn { bottom: 6.6rem; }
+.sk-overlay.on ~ .guide-tip { bottom: 9.8rem; }
+@media (min-width: 700px) { .sk-overlay.on ~ .guide-panel { bottom: 9.8rem; max-height: min(34rem, calc(100svh - 11rem)); } }
+@media (max-width: 899px) {
+  /* a little less drawing, so the pinned foot and a line or two above it always fit */
+  .sk-body { grid-template-rows: 47svh minmax(0, 1fr); }
+  .sk-top { padding: .6rem .9rem .5rem; gap: .25rem; }
+  .sk-top .sk-hint { min-height: 0; }
+  .sk-mid { padding: .6rem .9rem; }
+  .sk-foot { padding: .45rem .9rem .6rem; min-height: 0; }
+  /* Help in the bottom corner of the drawing, clear of the panel's own rows and its foot */
+  .sk-overlay.on ~ .guide-btn { bottom: calc(53svh - 50px); }
+  .sk-overlay.on ~ .guide-tip { bottom: calc(53svh); }
 }

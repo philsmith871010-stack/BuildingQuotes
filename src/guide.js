@@ -147,9 +147,15 @@
       }
       return out;
     }
+    var upper = S.floors.length > 1 ? ' on the ' + f.name.toLowerCase() : '';
+    if ((S.stage === 'internal' || S.stage === 'openings' || S.stage === 'rooms') && !f.closed) {
+      out.now = 'This floor has no shape yet. Press “' + nextTxt + '”.';
+      out.target = next;
+      return out;
+    }
     if (S.stage === 'internal') {
       out.now = run ? 'Now tap where that wall ends.'
-        : 'This step is optional. To add an inside wall, tap where it starts, then where it ends. When you have finished, press “' + nextTxt + '”.';
+        : 'This step is optional. To add an inside wall' + upper + ', tap where it starts, then where it ends. When you have finished, press “' + nextTxt + '”.';
       out.target = run ? $('sk-svg') : next;
       return out;
     }
@@ -159,8 +165,9 @@
       return out;
     }
     if (S.stage === 'rooms') {
-      out.now = 'Choose a room on the right, then tap that room on the drawing. When every room is named, press “' + nextTxt + '”.';
-      out.target = next;
+      var menu = $('sk-roommenu');
+      if (shown(menu)) { out.now = 'Press what this room is.'; out.target = menu; }
+      else { out.now = 'Tap a room on the drawing and choose what it is. When every room is named, press “' + nextTxt + '”.'; out.target = next; }
       return out;
     }
     out.now = 'Press “' + (nextTxt || 'Next') + '” to carry on.';

@@ -12,8 +12,8 @@
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap"></noscript>
-<link rel="stylesheet" href="assets/styles.css?v=202611241114">
-<link rel="stylesheet" href="assets/app.css?v=202611241114">
+<link rel="stylesheet" href="assets/styles.css?v=202611241154">
+<link rel="stylesheet" href="assets/app.css?v=202611241154">
 </head>
 <body>
 
@@ -603,6 +603,10 @@
       <div class="sk-canvas">
         <div class="sk-floors" id="sk-floors" role="group" aria-label="Floor"></div>
         <svg id="sk-svg" preserveAspectRatio="xMidYMid meet" aria-label="Your plan"></svg>
+        <!-- What the tool has to say: a note on the drawing, where the eye is. -->
+        <p class="sk-say" id="sk-say" role="status" aria-live="polite"></p>
+        <!-- Tap a room on the drawing and this list opens beside the tap. -->
+        <div class="sk-roommenu" id="sk-roommenu" role="group" aria-label="What this room is" hidden></div>
         <!-- Tap a length on the drawing and it becomes this box. -->
         <div class="sk-lenedit" id="sk-lenedit" hidden>
           <input id="sk-lenedit-in" type="number" step="0.05" min="0.3" inputmode="decimal" aria-label="Length of this wall">
@@ -621,12 +625,15 @@
       </div>
 
       <aside class="sk-side">
-        <p class="sk-of" id="sk-of"></p>
-        <h3 class="sk-stagename" id="sk-stagename"></h3>
-        <p class="sk-hint" id="sk-hint"></p>
-        <ul class="sk-key" id="sk-key" hidden></ul>
-        <p class="sk-say" id="sk-say"></p>
+        <!-- Where you are and what to do: always in the same place. -->
+        <div class="sk-top">
+          <p class="sk-of" id="sk-of"></p>
+          <h3 class="sk-stagename" id="sk-stagename"></h3>
+          <p class="sk-hint" id="sk-hint"></p>
+        </div>
 
+        <!-- What this step is about, then everything else folded away. -->
+        <div class="sk-mid">
         <!-- The one number the whole drawing is scaled by. -->
         <div class="sk-calib" id="sk-calib" hidden>
           <label for="sk-len" id="sk-len-label">Width across the front</label>
@@ -654,32 +661,53 @@
         </div>
 
         <div class="sk-tools" id="sk-tools"></div>
-        <button type="button" class="btn sk-nextbtn" id="sk-next" data-act="" hidden></button>
-        <div class="sk-tools sk-tools-after" id="sk-tools2"></div>
-        <div class="sk-live" id="sk-live" hidden></div>
-        <div class="sk-read" id="sk-read"></div>
-        <div class="sk-checks" id="sk-checks" hidden></div>
-        <button type="button" class="sk-alt sk-alt-quiet" id="sk-apply" disabled>Finish now and use what I have &rarr;</button>
+
+        <details class="sk-fold" id="sk-fold-key" hidden>
+          <summary><span>How to move and resize</span></summary>
+          <ul class="sk-key" id="sk-key"></ul>
+        </details>
+        <details class="sk-fold" id="sk-fold-figs" hidden>
+          <summary><span>Your figures</span><b id="sk-figs-sum"></b></summary>
+          <div class="sk-read" id="sk-read"></div>
+        </details>
+        <details class="sk-fold sk-fold-warn" id="sk-fold-checks" hidden>
+          <summary><span id="sk-checks-sum"></span></summary>
+          <div class="sk-checks" id="sk-checks"></div>
+        </details>
+        <details class="sk-fold" id="sk-fold-more" hidden>
+          <summary><span>More options</span></summary>
+          <div class="sk-moreopts">
+            <div class="sk-moreopts-in" id="sk-tools2"></div>
+            <button type="button" class="sk-alt" id="sk-apply" disabled>Finish now and use what I have &rarr;</button>
+          </div>
+        </details>
+        </div>
+
+        <!-- The price so far and the one big button: pinned, so they never move. -->
+        <div class="sk-foot">
+          <div class="sk-live" id="sk-live" hidden></div>
+          <button type="button" class="btn sk-nextbtn" id="sk-next" data-act="" hidden></button>
+        </div>
       </aside>
     </div>
   </div>
 </div>
 
-<script src="vendor/opentakeoff/geom.js?v=202611241114"></script>
-<script src="vendor/gsap.min.js?v=202611241114"></script>
-<script src="vendor/ScrollTrigger.min.js?v=202611241114"></script>
-<script src="src/ratebook.js?v=202611241114"></script>
-<script src="src/trees.js?v=202611241114"></script>
-<script src="src/store.js?v=202611241114"></script>
-<script src="src/rates.js?v=202611241114"></script>
-<script src="src/engine.js?v=202611241114"></script>
-<script src="src/draw2d.js?v=202611241114"></script>
-<script src="src/plan-sample.js?v=202611241114"></script>
-<script src="src/trace.js?v=202611241114"></script>
-<script src="src/sketch.js?v=202611241114"></script>
-<script src="src/router.js?v=202611241114"></script>
-<script src="src/hero.js?v=202611241114"></script>
-<script src="src/flow.js?v=202611241114"></script>
-<script src="src/guide.js?v=202611241114"></script>
+<script src="vendor/opentakeoff/geom.js?v=202611241154"></script>
+<script src="vendor/gsap.min.js?v=202611241154"></script>
+<script src="vendor/ScrollTrigger.min.js?v=202611241154"></script>
+<script src="src/ratebook.js?v=202611241154"></script>
+<script src="src/trees.js?v=202611241154"></script>
+<script src="src/store.js?v=202611241154"></script>
+<script src="src/rates.js?v=202611241154"></script>
+<script src="src/engine.js?v=202611241154"></script>
+<script src="src/draw2d.js?v=202611241154"></script>
+<script src="src/plan-sample.js?v=202611241154"></script>
+<script src="src/trace.js?v=202611241154"></script>
+<script src="src/sketch.js?v=202611241154"></script>
+<script src="src/router.js?v=202611241154"></script>
+<script src="src/hero.js?v=202611241154"></script>
+<script src="src/flow.js?v=202611241154"></script>
+<script src="src/guide.js?v=202611241154"></script>
 </body>
 </html>

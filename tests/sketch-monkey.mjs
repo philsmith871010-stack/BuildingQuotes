@@ -148,6 +148,9 @@ function check(S, SK, errors) {
   if (!!S.block !== blockDrawn) fail('part-drawn-out-of-step', 'state ' + !!S.block + ', drawn ' + blockDrawn);
   if (S.block && shown(next) && !/join/i.test(next.textContent)) fail('part-without-join-button', next.textContent);
 
+  // the list of room names only ever opens on the Rooms step
+  if (shown($('sk-roommenu')) && S.stage !== 'rooms') fail('room-menu-on-another-step', S.stage);
+
   // the panel belongs to the step
   const side = (document.querySelector('.sk-side') || {}).innerText || '';
   if (S.stage === 'extension' && !S.calibrating && !S.askUp && !/storey/i.test(side)) fail('extension-step-without-its-tools');
@@ -167,9 +170,18 @@ function check(S, SK, errors) {
         deepIn(ground.outline, mid(x.outline));
       if (on) fail('extension-on-the-house', 'extension ' + (k + 1));
     });
-    S.garden.areas.forEach((a, k) => {
-      if (deepIn(ground.outline, mid(a.outline))) fail('surface-on-the-house', a.kind + ' ' + k);
-    });
+    // The house may come to lie over a patio (a part added to it later): that is
+    // allowed, but then that much patio must not be priced. A surface wholly
+    // under the house is worth nothing.
+    try {
+      const g = SK.measure().garden;
+      S.garden.areas.forEach((a) => {
+        const under = a.outline.every((p) => inside(ground.outline, p) || nearEdge(ground.outline, p, 0.02));
+        if (under && g && g.areas[a.kind] > 0.6 && S.garden.areas.filter((o) => o.kind === a.kind).length === 1) {
+          fail('surface-under-the-house-still-priced', a.kind + ' ' + g.areas[a.kind]);
+        }
+      });
+    } catch (e) { /* measure() is checked on its own below */ }
   }
 
   // the numbers the price is built from are numbers
@@ -279,9 +291,21 @@ function actions(S, R) {
     [4, clickOne('#sk-calib-go')],
     [2, clickOne('[data-wallmode]')],
     [2, clickOne('[data-kind]')],
-    [2, clickOne('[data-room]')],
+    [7, clickOne('#sk-roommenu [data-pickroom], #sk-roommenu-remove')],
+    // name a room the way a person does: tap in the house, then press what it is
+    [6, async () => {
+      const fl = document.querySelector('#sk-svg polygon.sk-floor');
+      if (S.stage !== 'rooms' || !fl) return null;
+      const b = fl.getBoundingClientRect();
+      await tap(b.left + b.width * (0.15 + R() * 0.7), b.top + b.height * (0.15 + R() * 0.7), touchy());
+      const opts = all('#sk-roommenu [data-pickroom], #sk-roommenu-remove').filter(shown);
+      if (!opts.length) return 'tap a room (no list)';
+      const o = pick(opts);
+      o.click();
+      return 'name a room ' + (o.textContent || '').trim();
+    }],
     [1, clickOne('#sk-typed-open')],
-    [1, clickOne('#sk-more')],
+    [4, clickOne('.sk-fold > summary')],
     // hands on the drawing
     [8, async () => {
       const b = svgBox();
