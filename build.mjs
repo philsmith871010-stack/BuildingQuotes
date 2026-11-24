@@ -22,7 +22,7 @@ const PAGES = [
     js: ['vendor/opentakeoff/geom.js', 'vendor/gsap.min.js', 'vendor/ScrollTrigger.min.js',
          'src/ratebook.js', 'src/trees.js', 'src/store.js', 'src/rates.js',
          'src/engine.js', 'src/draw2d.js', 'src/plan-sample.js', 'src/trace.js', 'src/sketch.js',
-         'src/router.js', 'src/hero.js', 'src/flow.js'],
+         'src/router.js', 'src/hero.js', 'src/flow.js', 'src/guide.js'],
   },
   {
     src: 'admin.html',
@@ -157,7 +157,7 @@ const demoCss = [read('./assets/styles.css'), read('./assets/app.css'),
 const demoJs = ['vendor/opentakeoff/geom.js', 'vendor/gsap.min.js', 'vendor/ScrollTrigger.min.js',
                 'src/ratebook.js', 'src/trees.js', 'src/store.js', 'src/rates.js',
                 'src/engine.js', 'src/draw2d.js', 'src/plan-sample.js', 'src/trace.js', 'src/sketch.js',
-                'src/router.js', 'src/hero.js', 'src/flow.js', 'src/admin.js']
+                'src/router.js', 'src/hero.js', 'src/flow.js', 'src/guide.js', 'src/admin.js']
   .map((n) => read(`./${n}`))
   .join('\n;\n');
 

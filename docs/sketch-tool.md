@@ -114,6 +114,28 @@ on it, and they are right to. So a surface is counted only where nothing put
 down after it covers it (`visibleAreas()`): otherwise the turf under the shed is
 paid for as turf. A surface cannot be dragged on to the house.
 
+### Undo, and going back
+
+Undo and Redo walk a history of snapshots. A snapshot is **where you were, not
+only what was drawn**: the step, the floor, and whichever question was up. So:
+
+- Undoing something done on an earlier step takes you back to that step, and
+  says so in a line. The side panel and the drawing are always on the same step.
+- Undoing the answer to "upstairs?" puts the question back up. Undoing the
+  measurement puts the measuring question back up, with the loose grid.
+- One press always takes something back. A press that moved nothing, or a drag
+  that was stopped at the house, leaves no entry behind.
+
+After any restore — Undo, Redo or a saved drawing — `sane()` makes sure the
+tool is somewhere it can be used from: on a step that exists, with a question
+up if one is owed, and nothing half-placed on the wrong step.
+
+The ground floor is what everything stands on. Going back and moving a house
+wall carries any extension standing on that wall with it, and the wall stops
+rather than go over an extension. Drawing the ground floor again takes away the
+extensions that stood on the old one; the ground floor can be redrawn but not
+removed.
+
 ## The idea the whole thing rests on
 
 *(This is the tapped route: the odd-shape and uploaded-plan way in.)*

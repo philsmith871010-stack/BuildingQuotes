@@ -1018,7 +1018,7 @@
         return '<button type="button" data-skfloor="' + i + '" aria-pressed="' + (i === S.active) + '">' +
           esc(f.name.replace(' floor', '')) + '</button>';
       }).join('') +
-      (S.floors.length < 4 && ready()
+      (S.floors.length < 4 && ready() && !S.askUp && !S.calibrating
         ? '<button type="button" id="sk-addfloor" class="sk-addfloor">+ floor</button>' : '');
     }
 
@@ -1051,6 +1051,10 @@
     var f = floor();
     if (S.calibrating || S.askUp) return null;
     if (S.stage === 'outline') {
+      // upstairs is in view but there is no ground floor to stand it on: the way on is back down
+      if (S.active > 0 && !ground().closed && !(S.drawing && S.drawing.length)) {
+        return { id: 'sk-floor-0', label: 'Draw the ground floor first' };
+      }
       if (S.block) return { id: 'sk-joinblock', label: 'Join it to the house' };
       if (S.drawing && S.drawing.length > 2) return { id: 'sk-close-shape', label: 'Finish the shape' };
       if (!f.closed && !f.outline.length && S.active > 0 && S.floors[S.active - 1].closed) {
@@ -1276,7 +1280,7 @@
       // an empty floor: a blank grid (or their plan) and the tools for it
       if (!f.closed && !(S.drawing && S.drawing.length)) {
         return planTools(f) +
-          (S.floors.length > 1
+          (S.floors.length > 1 && S.active > 0
             ? '<button type="button" class="btn btn-ghost btn-sm' + (S.confirm === 'floor' ? ' sk-danger' : '') +
               '" id="sk-dropfloor">' + (S.confirm === 'floor' ? 'Tap again to remove it' : 'Remove this floor') + '</button>'
             : '');
@@ -1290,7 +1294,7 @@
           '<div class="sk-quiet">' +
           (S.scale && (S.measured || f.image) ? '<button type="button" class="sk-alt" id="sk-recal">Change the measurement</button>' : '') +
           '<button type="button" class="sk-alt" id="sk-redraw">Draw this floor again</button>' +
-          (S.floors.length > 1
+          (S.floors.length > 1 && S.active > 0
             ? '<button type="button" class="sk-alt' + (S.confirm === 'floor' ? ' sk-danger' : '') +
               '" id="sk-dropfloor">' + (S.confirm === 'floor' ? 'Tap again to remove it' : 'Remove this floor') + '</button>'
             : '') +
@@ -1298,7 +1302,7 @@
       }
       // half way round the house: only the plan's own controls, if there is one
       return (f.image ? planTools(f) : '') +
-        (S.floors.length > 1
+        (S.floors.length > 1 && S.active > 0
           ? '<button type="button" class="btn btn-ghost btn-sm' + (S.confirm === 'floor' ? ' sk-danger' : '') +
             '" id="sk-dropfloor">' + (S.confirm === 'floor' ? 'Tap again to remove it' : 'Remove this floor') + '</button>'
           : '');
@@ -1802,6 +1806,12 @@
   function removeCorner(which, i) {
     var f = floor(), shape = shapeOf(which);
     if (shape.outline.length <= 3) { say('A shape needs at least three corners.'); return; }
+    var after = shape.outline.filter(function (q, k) { return k !== i; });
+    if (which === 'floor' && S.active === 0 &&
+        builtExts().some(function (x) { return ringsOverlap(after, x.outline); })) {
+      say('That would put the house on top of the extension.'); return;
+    }
+    if (movesWhole(which) && blockTrouble(which, after)) { say(blockTrouble(which, after)); return; }
     var pts = (which === 'floor' || which === 'ext') ? openingPoints(f) : null;
     snapshot();
     if (which === 'floor' && S.active === 0) reindexWalls('remove', i, shape.outline.length);
@@ -2147,10 +2157,18 @@
    */
   var UNDO = [], REDO = [];
 
+  /* A snapshot is where you were, not only what was drawn: the step, the
+     question that was up, which floor. Undo used to put the shapes back and
+     leave the panel on whatever step it was on — the drawing showing one thing
+     and the side of the screen another, and, after undoing the measurement, a
+     house with no scale and no Next button to get out with. */
   function stateNow() {
     return JSON.stringify({
       floors: S.floors, extensions: S.extensions, extIdx: S.extIdx, garden: S.garden, scale: S.scale,
-      active: S.active, drawing: S.drawing, snap: SNAP, block: S.block, front: S.frontIdx
+      active: S.active, drawing: S.drawing, snap: SNAP, block: S.block, front: S.frontIdx,
+      stage: S.stage, calibrating: !!S.calibrating, calibIdx: S.calibIdx, preset: !!S.preset,
+      askUp: !!S.askUp, askedUp: !!S.askedUp, afterUp: S.afterUp || null,
+      gardenMode: S.gardenMode, measured: !!S.measured, wallMode: S.wallMode
     });
   }
   function restore(json) {
@@ -2165,8 +2183,59 @@
     S.block = o.block || null;
     if (o.front !== undefined) S.frontIdx = o.front;
     SNAP = o.snap || LOOSE;       // undoing the measurement returns the loose grid
-    S.pick = null; S.selected = null; S.cursor = null;
-    FRAME = null;
+    if (o.stage !== undefined) {
+      S.stage = o.stage;
+      S.calibrating = !!o.calibrating; S.calibIdx = o.calibIdx || 0; S.preset = !!o.preset;
+      S.askUp = !!o.askUp; S.askedUp = !!o.askedUp; S.afterUp = o.afterUp || null;
+      S.gardenMode = o.gardenMode || 'idle'; S.measured = !!o.measured;
+      if (o.wallMode) S.wallMode = o.wallMode;
+    }
+    S.pick = null; S.selected = null; S.cursor = null; S.pickWall = false; S.confirm = null;
+    S.ghost = null; S.hotWall = -1; S.guides = null;
+    closeLenEdit();
+    FRAME = null; MANUAL = false;
+    sane();
+  }
+
+  /**
+   * Whatever has just been put back — by Undo, Redo or a saved drawing — the
+   * tool must be somewhere it can be used from: on a step that exists, with a
+   * question up if one is owed, and nothing half-placed on the wrong step.
+   */
+  function sane() {
+    if (!S.floors || !S.floors.length) S.floors = [newFloor(0)];
+    S.active = Math.max(0, Math.min(S.active || 0, S.floors.length - 1));
+    if (!S.extensions || !S.extensions.length) S.extensions = [newExtension()];
+    S.extIdx = Math.max(0, Math.min(S.extIdx || 0, S.extensions.length - 1));
+    if (!ACTIVE.some(function (st) { return st.id === S.stage; })) S.stage = 'outline';
+    var g = ground();
+    // a house with no scale can only be on the Shape step, and is owed the measuring question
+    if (!(g.closed && S.scale)) {
+      S.stage = 'outline';
+      S.askUp = false;
+      if (!g.closed) { S.calibrating = false; S.active = 0; }
+      else if (!S.calibrating) {
+        S.active = 0;
+        var best = 0, bl = 0;
+        for (var i = 0; i < g.outline.length; i++) {
+          var L = dist(g.outline[i], g.outline[(i + 1) % g.outline.length]);
+          if (L > bl) { bl = L; best = i; }
+        }
+        S.calibIdx = best; S.preset = false; S.calibrating = true;
+      }
+    } else {
+      S.calibrating = false;
+    }
+    if (S.calibrating && S.calibIdx >= g.outline.length) S.calibIdx = 0;
+    if (S.stage !== 'outline') { S.block = null; S.askUp = false; }
+    if (S.stage === 'extension' || S.stage === 'garden') S.active = 0;
+    if (S.block && !(floor().closed && S.block.outline && S.block.outline.length === 4)) S.block = null;
+    if (S.askUp && (S.floors.length > 1 || S.askedUp)) S.askUp = false;
+    if (S.stage === 'garden') {
+      if (!S.garden.plot.closed) S.gardenMode = 'boundary';
+      else if (['idle', 'boundary', 'tree'].indexOf(S.gardenMode) < 0) S.gardenMode = 'idle';
+    }
+    if (S.drawing && !S.drawing.length) S.drawing = null;
   }
 
   function snapshot() {
@@ -2184,21 +2253,41 @@
       changed();
       return;
     }
-    var prev = UNDO.pop();
+    // A press that moved nothing, or a drag that was stopped at the house,
+    // leaves an entry that would undo nothing. Step over those: one press of
+    // Undo always takes something back, or says there is nothing left.
+    var cur = stateNow(), curD = drawingOf(cur), prev = UNDO.pop();
+    while (prev && drawingOf(prev) === curD) prev = UNDO.pop();
     if (!prev) { say('Nothing left to undo.'); return; }
-    REDO.push(stateNow());
+    var was = S.stage;
+    REDO.push(cur);
     restore(prev);
-    say('');
-    render();
+    stepNote(was);
+    settled();
   }
 
   function redo() {
-    var next = REDO.pop();
+    var cur = stateNow(), curD = drawingOf(cur), next = REDO.pop();
+    while (next && drawingOf(next) === curD) next = REDO.pop();
     if (!next) return;
-    UNDO.push(stateNow());
+    var was = S.stage;
+    UNDO.push(cur);
     restore(next);
-    say('');
-    render();
+    stepNote(was);
+    settled();
+  }
+
+  /** The part of a snapshot that is the drawing, as against where you were looking at it from. */
+  function drawingOf(json) {
+    var o = JSON.parse(json);
+    return JSON.stringify([o.floors, o.extensions, o.garden, o.scale, o.block, o.drawing, !!o.askUp, !!o.calibrating]);
+  }
+
+  /** Undo can reach back into an earlier step. When it does, say where you now are. */
+  function stepNote(was) {
+    if (S.stage === was) { say(''); return; }
+    var st = ACTIVE.filter(function (x) { return x.id === S.stage; })[0];
+    say('That was on the ' + (st ? st.label : 'Shape') + ' step, so you are back there.', 'note');
   }
 
   /* ---- input ------------------------------------------------------------------ */
@@ -2425,6 +2514,42 @@
     return false;
   }
 
+  /** For each extension, where it stands on the ground floor if it is a plain block. */
+  function extSeats() {
+    var host = ground().outline;
+    return S.extensions.map(function (x) { return x.closed ? blockOn(host, x.outline) : null; });
+  }
+
+  /**
+   * The ground floor is about to become `host`. A block standing on one of its
+   * walls goes with that wall; anything else stays where it is. Returns the
+   * extensions' new outlines — or null if the house would end up on top of one
+   * of them, in which case the house does not move.
+   */
+  function reseat(host, seats) {
+    var rings = S.extensions.map(function (x, k) {
+      var at = seats && seats[k];
+      if (!x.closed) return x.outline;
+      if (!at || at.i >= host.length) return x.outline;
+      var L = dist(host[at.i], host[(at.i + 1) % host.length]);
+      if (L < 0.5) return x.outline;
+      var w = Math.min(at.w, L);
+      return blockRing(host, at.i, Math.max(0, Math.min(L - w, at.off)), w, at.d);
+    });
+    for (var k = 0; k < rings.length; k++) {
+      if (!S.extensions[k].closed) continue;
+      if (ringsOverlap(rings[k], host)) return null;
+      for (var j = k + 1; j < rings.length; j++) {
+        if (S.extensions[j].closed && ringsOverlap(rings[k], rings[j])) return null;
+      }
+    }
+    return rings;
+  }
+  function applySeats(rings) {
+    if (!rings) return;
+    S.extensions.forEach(function (x, k) { if (x.closed && rings[k]) x.outline = rings[k]; });
+  }
+
   /** What a block or an extension stands against. */
   function hostOf(which) { return which === 'block' ? floor().outline : ground().outline; }
 
@@ -2446,6 +2571,9 @@
       }
     }
     if (which === 'block' && !blockOn(host, ring)) return 'Keep it against one wall of the house.';
+    // a new part of the house cannot go where an extension already is
+    if (which === 'block' && S.active === 0 &&
+        builtExts().some(function (x) { return ringsOverlap(ring, x.outline); })) return 'There is an extension there. Move that first.';
     return null;
   }
 
@@ -2584,12 +2712,15 @@
     if (!(L >= 0.3) || L > 60) { say('That is not the length of a wall on a house.'); return false; }
     if (!cur || Math.abs(L - cur) < 0.004) { say(''); return true; }
     var u = [(b[0] - a[0]) / cur, (b[1] - a[1]) / cur], dl = L - cur;
+    var seats = which === 'floor' && S.active === 0 && builtExts().length ? extSeats() : null;
     var attempt = function (idxs, vec) {
       var cand = ring.map(function (p) { return p.slice(); });
       idxs.forEach(function (j) { cand[j] = mm([cand[j][0] + vec[0], cand[j][1] + vec[1]]); });
       if (badShape(cand)) return null;
-      if ((which === 'block' || which === 'ext') && blockTrouble(which, cand)) return null;
-      return { ring: cand, idxs: idxs, vec: vec };
+      if (movesWhole(which) && blockTrouble(which, cand)) return null;
+      var seated = seats ? reseat(cand, seats) : null;
+      if (seats && !seated) return null;
+      return { ring: cand, idxs: idxs, vec: vec, seated: seated };
     };
     var got = attempt([(i + 1) % n, (i + 2) % n], [u[0] * dl, u[1] * dl]) ||
               attempt([i, (i - 1 + n) % n], [-u[0] * dl, -u[1] * dl]);
@@ -2606,6 +2737,7 @@
       });
     }
     shape.outline = got.ring;
+    applySeats(got.seated);
     if (pts) reassignOpenings(f, pts);
     say('');
     FRAME = null; MANUAL = false;
@@ -2749,6 +2881,9 @@
     if (h.kind === 'wall' || h.kind === 'iwallmid') {
       press.origInt = floor().internals.map(function (sg) { return [sg[0].slice(), sg[1].slice()]; });
     }
+    if (h.which === 'floor' && S.active === 0 && builtExts().length && (h.kind === 'corner' || h.kind === 'wall')) {
+      press.seats = extSeats();
+    }
     if (movesWhole(h.which)) {
       var ringB = shapeOf(h.which).outline;
       press.wasBad = !!blockTrouble(h.which, ringB);     // already wrong: let it be dragged right
@@ -2856,8 +2991,20 @@
       // a garden surface stays picked while it is dragged about
       var keepPick = isArea(h.which) ? { kind: 'garea', i: +h.which.slice(1) } : null;
       var allowed = function (i1, q1, i2, q2) {
+        var cand;
+        if (press.seats) {
+          // the house itself is moving: any extension on that wall moves with it,
+          // and the house stops rather than go over one
+          cand = shapeOf(h.which).outline.map(function (q) { return q.slice(); });
+          cand[i1] = q1; if (i2 !== undefined) cand[i2] = q2;
+          if (selfIntersects(cand) || hasZeroWall(cand)) return true;    // refused on release, as before
+          var seated = reseat(cand, press.seats);
+          if (!seated) return false;
+          applySeats(seated);
+          return true;
+        }
         if (!guarded2) return true;
-        var cand = shapeOf(h.which).outline.map(function (q) { return q.slice(); });
+        cand = shapeOf(h.which).outline.map(function (q) { return q.slice(); });
         cand[i1] = q1; if (i2 !== undefined) cand[i2] = q2;
         return !blockTrouble(h.which, cand) && !selfIntersects(cand) && !hasZeroWall(cand);
       };
@@ -3459,17 +3606,18 @@
   }
 
   function answerUpstairs(how) {
+    if (!S.askUp) return;                    // a stale button: there is no question up
+    // taken with the question still up, so undoing the answer asks it again
+    if (how === 'same' || how === 'diff') snapshot();
     S.askUp = false; S.askedUp = true;
     if (how === 'same') {
-      snapshot();
       S.floors.push(newFloor(S.floors.length));
       var was = S.active;
       S.active = S.floors.length - 1;
-      copyFloorBelow();
+      copyFloorBelow(true);
       S.active = was;
       say('Upstairs added — same shape. You can change it later.');
     } else if (how === 'diff') {
-      snapshot();
       S.floors.push(newFloor(S.floors.length));
       S.active = S.floors.length - 1;
     }
@@ -3644,10 +3792,11 @@
     settled();
   }
 
-  function copyFloorBelow() {
+  function copyFloorBelow(quiet) {
     var src = S.floors[S.active - 1];
     if (!src || !src.closed) return;
-    snapshot();
+    if (!quiet) snapshot();                  // quiet: part of a step that has already been snapshotted
+    S.drawing = null; S.cursor = null;       // a run of corners half tapped out is given up for the copy
     var f = floor();
     f.outline = src.outline.map(function (p) { return p.slice(); });
     f.closed = true;
@@ -3831,6 +3980,7 @@
     if (!ACTIVE.some(function (st) { return st.id === id; })) return;
     if (S.stage === 'internal' && S.drawing) S.drawing = null;
     S.block = null;
+    S.askUp = false; S.afterUp = null;       // moving on is an answer of its own
     closeLenEdit();
     // an "Add another extension" nobody drew is dropped on the way out
     if (S.stage === 'extension' && id !== 'extension' && S.extensions.length > 1) {
@@ -4149,15 +4299,21 @@
           snapshot();
           var f = floor();
           f.outline = []; f.closed = false; f.openings = []; f.internals = []; f.markers = [];
+          if (S.active === 0) { S.extensions = [newExtension()]; S.extIdx = 0; }   // they stood on the old house
+          S.block = null; S.pick = null; S.askUp = false;
           S.drawing = null; FRAME = null; settled(); return;
         case 'sk-rect':      dropShape('rect'); return;
         case 'sk-addfloor2':
         case 'sk-addfloor':
+          if (S.floors.length >= 4 || !ready()) return;
           snapshot();
+          // adding a floor is the answer to "does it have an upstairs?"
+          S.askUp = false; S.askedUp = true; S.afterUp = null; S.block = null;
           S.floors.push(newFloor(S.floors.length));
           S.active = S.floors.length - 1;
           S.stage = 'outline'; S.drawing = null; FRAME = null; settled(); return;
         case 'sk-dropfloor':
+          if (S.active === 0 || S.floors.length < 2) return;       // the ground floor stays
           if (!S.confirm) { S.confirm = 'floor'; render(); return; }
           S.confirm = null;
           if (S.floors.length > 1) {
@@ -4257,7 +4413,7 @@
     try {
       root.localStorage.setItem(SKEY, JSON.stringify({
         v: 1, floors: S.floors, extensions: S.extensions, extIdx: S.extIdx, garden: S.garden, scale: S.scale,
-        active: S.active, snap: SNAP, started: S.started, stage: S.stage
+        active: S.active, snap: SNAP, started: S.started, stage: S.stage, askedUp: !!S.askedUp
       }));
     } catch (e) {
       // an uploaded plan can be megabytes; the drawing matters more than the backdrop
@@ -4266,7 +4422,7 @@
         lean.forEach(function (f) { f.image = null; });
         root.localStorage.setItem(SKEY, JSON.stringify({
           v: 1, floors: lean, extensions: S.extensions, extIdx: S.extIdx, garden: S.garden, scale: S.scale,
-          active: S.active, snap: SNAP, started: S.started, stage: S.stage
+          active: S.active, snap: SNAP, started: S.started, stage: S.stage, askedUp: !!S.askedUp
         }));
       } catch (e2) { /* private mode, or full — carry on without saving */ }
     }
@@ -4290,7 +4446,10 @@
       SNAP = o.snap || LOOSE;
       S.started = true;
       S.stage = ACTIVE.some(function (st) { return st.id === o.stage; }) ? o.stage : 'outline';
-      S.askedUp = true;             // a saved house has whatever floors it has
+      // a house saved before the upstairs question was asked is still owed it
+      S.askedUp = o.askedUp === undefined ? true : !!o.askedUp;
+      S.askUp = false; S.calibrating = false; S.block = null; S.drawing = null; S.pick = null;
+      sane();
       return true;
     } catch (e) { return false; }
   }
@@ -4363,5 +4522,7 @@
   root.DATUM = root.DATUM || {};
   root.DATUM.SKETCH = { open: open, close: close, wire: wire, reset: reset, measure: measure,
     snap: function () { return SNAP; }, planSvg: planSvg, example: exampleHouse,
-    floors: function () { return S.floors.map(function (f) { return f.name; }); }, _S: S };
+    floors: function () { return S.floors.map(function (f) { return f.name; }); }, _S: S,
+    // for tests/sketch-monkey.mjs: how much there is to undo and redo
+    _depth: function () { return [UNDO.length, REDO.length]; } };
 })(window, document);

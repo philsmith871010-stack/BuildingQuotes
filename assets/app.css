@@ -1159,3 +1159,99 @@ html { scroll-padding-top: 62px; }
 .sk-quiet .sk-alt.sk-danger { color: var(--warn); }
 .sk-tools-after:empty { display: none; }
 .sk-int.hot { stroke: var(--warn, #B4432B); stroke-dasharray: 9 6; opacity: .85; }
+
+
+/* ==========================================================================
+   The guide — src/guide.js
+   A Help button on every step, a short panel that says where you are and what
+   to do, and a glow on the one thing to press next.
+   ========================================================================== */
+.guide-btn {
+  position: fixed; right: 14px; bottom: 14px; z-index: 205;
+  display: inline-flex; align-items: center; gap: .45rem;
+  padding: .5rem .85rem .5rem .5rem; border-radius: 999px; cursor: pointer;
+  background: var(--ink); color: var(--paper); border: 2px solid var(--surface);
+  font: 600 .9rem/1 var(--sans); box-shadow: 0 6px 20px rgba(0,0,0,.25);
+}
+.guide-btn[hidden] { display: none; }
+.guide-btn i {
+  font-style: normal; display: inline-grid; place-items: center;
+  width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  background: var(--accent); color: #fff; font-weight: 700; font-size: 1rem;
+}
+.guide-btn:hover, .guide-btn.on { background: var(--accent-ink); }
+.guide-btn:focus-visible, .guide-tip:focus-visible, .guide-x:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.guide-panel {
+  position: fixed; right: 14px; bottom: 66px; z-index: 210;
+  width: min(22rem, calc(100vw - 28px)); max-height: min(34rem, calc(100svh - 90px)); overflow: auto;
+  display: grid; gap: .55rem; padding: 1rem 1.05rem 1.05rem;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--rule); border-top: 4px solid var(--accent); border-radius: 6px;
+  box-shadow: 0 16px 44px rgba(0,0,0,.28);
+}
+.guide-panel[hidden] { display: none; }
+.guide-head { display: flex; align-items: center; justify-content: space-between; }
+.guide-head b { font-family: var(--disp); font-size: 1.15rem; letter-spacing: -.01em; }
+.guide-x { background: none; border: 0; font-size: 1.5rem; line-height: 1; cursor: pointer; color: var(--ink-2); padding: 0 .2rem; }
+.guide-lab { font-family: var(--mono); font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin: .35rem 0 0; }
+.guide-journey { list-style: none; margin: 0; padding: 0; display: grid; gap: .28rem; }
+.guide-journey li { display: flex; align-items: flex-start; gap: .55rem; font-size: .88rem; color: var(--ink-3); }
+.guide-journey li i {
+  flex: 0 0 auto; font-style: normal; display: inline-grid; place-items: center;
+  width: 1.35rem; height: 1.35rem; border-radius: 50%; font-size: .72rem; font-weight: 700;
+  border: 1.5px solid var(--rule); color: var(--ink-3); background: var(--paper);
+}
+.guide-journey li span { display: grid; line-height: 1.3; padding-top: .08rem; }
+.guide-journey li small { font-size: .78rem; color: var(--ink-2); font-weight: 400; }
+.guide-journey li.done { color: var(--ink-2); }
+.guide-journey li.done i { background: var(--accent-soft); border-color: var(--accent-soft); color: var(--accent-ink); }
+.guide-journey li.here { color: var(--ink); font-weight: 600; }
+.guide-journey li.here i { background: var(--accent); border-color: var(--accent); color: #fff; }
+.guide-now { font-size: 1rem; line-height: 1.45; color: var(--ink); margin: 0; }
+.guide-show { justify-self: start; }
+.guide-show[hidden] { display: none; }
+.guide-then, .guide-sofar { font-size: .84rem; line-height: 1.4; color: var(--ink-2); margin: 0; }
+.guide-then[hidden], .guide-sofar[hidden] { display: none; }
+.guide-sofar { padding-top: .5rem; border-top: 1px solid var(--rule-soft, var(--rule)); }
+.guide-toggle { display: flex; align-items: center; gap: .5rem; font-size: .82rem; color: var(--ink-2); cursor: pointer; padding-top: .2rem; }
+.guide-toggle input { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); }
+
+.guide-tip {
+  position: fixed; right: 14px; bottom: 66px; z-index: 204; max-width: min(17rem, calc(100vw - 28px));
+  padding: .6rem .8rem; border-radius: 6px; cursor: pointer; text-align: left;
+  background: var(--ink); color: var(--paper); border: 0;
+  font: 500 .86rem/1.35 var(--sans); box-shadow: 0 8px 24px rgba(0,0,0,.25);
+}
+.guide-tip[hidden] { display: none; }
+.guide-tip::after {
+  content: ''; position: absolute; right: 26px; bottom: -6px; width: 12px; height: 12px;
+  background: var(--ink); transform: rotate(45deg);
+}
+
+/* The glow. Its own element, laid over whatever is next, so it keeps its rhythm
+   while the panels underneath are redrawn. It never takes a press. */
+.guide-halo {
+  position: fixed; z-index: 150; pointer-events: none; border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--accent), 0 0 0 6px rgba(21,76,124,.22);
+  animation: guide-pulse 1.7s ease-in-out infinite;
+}
+.guide-halo[hidden] { display: none; }
+.guide-halo.strong { box-shadow: 0 0 0 3px #E4572E, 0 0 0 9px rgba(228,87,46,.28); animation-duration: .9s; }
+@keyframes guide-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--accent), 0 0 0 4px rgba(21,76,124,.28); opacity: .95; }
+  50%      { box-shadow: 0 0 0 2px var(--accent), 0 0 0 13px rgba(21,76,124,0); opacity: .55; }
+}
+@media (prefers-reduced-motion: reduce) { .guide-halo { animation: none; } }
+
+/* room under the Help button, so it never sits on the last thing in a column */
+.sk-side { padding-bottom: 4.4rem; }
+@media (max-width: 699px) {
+  .guide-panel { left: 0; right: 0; bottom: 0; width: auto; max-height: 72svh; border-radius: 12px 12px 0 0; border-left: 0; border-right: 0; padding-bottom: 4.6rem; }
+  /* on a phone every button is the full width of the screen, so Help is as small as it can be */
+  .guide-btn { right: 8px; bottom: 8px; z-index: 215; padding: .28rem; gap: 0; }
+  .guide-btn span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .guide-btn i { width: 2.1rem; height: 2.1rem; font-size: 1.2rem; }
+  .guide-tip { right: 8px; bottom: 58px; }
+  .flow-ask { padding-bottom: 4.4rem; }
+}

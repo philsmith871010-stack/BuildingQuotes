@@ -194,6 +194,28 @@ the SVG's screen matrix, and read state from `window.DATUM.SKETCH._S` and
 `npm install --no-save playwright` and the browsers with
 `npx playwright install chromium webkit`.
 
+### Testing it
+
+Two scripts in `tests/` drive the real site in a real browser. Neither is a
+unit test: they do what a careless person does, a great many times, and check
+after every action that the site is still somewhere a person could carry on
+from. Serve the folder, open the site, and in the browser console:
+
+```js
+// the drawing tool: random taps, drags, typed sizes, every button, and a lot of Undo
+const m = await import('/tests/sketch-monkey.mjs');      // from the drawing step, #/draw
+console.table((await m.run({ seed: 1, steps: 300 })).failures);
+
+// the whole journey: every kind of project, random answers, through to the price
+const f = await import('/tests/flow-walk.mjs');
+console.table((await f.run({ seed: 1 })).failures);
+```
+
+A failure carries its seed, the step and the last few actions, so the same
+seed reproduces it. Run both before anything goes live, with a few different
+seeds: they found seven real faults the first time, none of which a person
+clicking through carefully had seen.
+
 ## 8. Decisions already taken, and why
 
 - **Build the drawing tool ourselves** rather than adopt a floor-plan library.
@@ -231,6 +253,17 @@ the SVG's screen matrix, and read state from `window.DATUM.SKETCH._S` and
   shapes only. See `docs/sketch-tool.md`.
 - **Questions are in the customer's words.** No trade terms, no notes to
   ourselves, and "Not sure" wherever nobody could be expected to know.
+- **Nobody should ever be lost.** `src/guide.js` is one function, `where()`,
+  that reads the page as it is and says where somebody is, what to do now and
+  what comes after. A Help button, a glow on the one thing to press next and a
+  nudge for anyone who has stopped are three faces of that one answer, so the
+  guide cannot disagree with the screen. It is optional: the glow switches
+  off and stays off, and the panel opens only when asked.
+- **Undo takes you back to where you were.** A snapshot holds the step and any
+  question that was up, not only the shapes. Undoing across a step takes you
+  to that step and says so; one press always takes something back.
+- **The house cannot be moved on to an extension**, and an extension standing
+  on a wall goes with that wall when the wall is moved.
 - **No 3D or renders.** Partner, don't build.
 - **Margin on the invoice.** Nobody else prints it; it is our sharpest
   sentence in a market whose problem is trust.
