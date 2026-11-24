@@ -66,7 +66,7 @@
     { id: 'outline',   n: 1, label: 'Shape',
       hint: 'Tap each outside corner of your house in turn, going round until you are back where you started.',
       plan: 'Tap each outside corner on your plan in turn, going round until you are back where you started.',
-      done: 'Not quite right? Drag a corner or a wall. + adds a corner, × removes one.' },
+      done: 'Check the sizes, then add any part that sticks out.' },
     { id: 'internal',  n: 2, label: 'Inside walls',
       hint: 'Optional. Tap one end of a wall, then the other end — or drag from one to the other. Nothing moves while you are adding.',
       done: 'Tap or drag to add another wall. Choose "Move or remove" to change one.',
@@ -81,8 +81,8 @@
       hint: 'Pick a room type, then tap where that room is. Tap a label to change or remove it.',
       done: 'Tap a label to pick it, then choose what it is, or × to remove it. Drag a label to move it.' },
     { id: 'extension', n: 5, label: 'Extension',
-      hint: 'Optional. Add a rear extension and drag it to size, or draw your own against the house.',
-      done: 'Drag a corner or a wall. + adds a corner, × removes one.' },
+      hint: 'Optional. Add an extension and drag it to where you want it, or tap its corners round yourself.',
+      done: 'Put it where you want it, and make it the right size.' },
     { id: 'garden',    n: 6, label: 'Garden',
       hint: 'Optional. Add a typical plot and drag its corners to your fence line, or tap round it yourself.',
       done: 'Pick what is in the garden, then tap round it. Drag any corner. Tap a thing, then × to remove it.',
@@ -350,11 +350,17 @@
       var xs = x.outline.map(function (p) { return p[0]; });
       var ys = x.outline.map(function (p) { return p[1]; });
       var xk = xts[extKey(k)] || { bifold: 0, windows: 0, doors: 0 };
+      var xa = ground().closed ? blockOn(ground().outline, x.outline) : null;
+      var xArea = m(shoelace(x.outline)) * m(1);
+      // a block is as wide and as deep as it is. Anything else is priced on the
+      // floor it really has: its width across, and the depth that gives that area —
+      // the box round a triangle is twice the triangle
+      var xW = xa ? m(xa.w) : m(Math.max.apply(null, xs) - Math.min.apply(null, xs));
       extensions.push({
         n: extensions.length + 1,
-        area: m(shoelace(x.outline)) * m(1),
-        width: m(Math.max.apply(null, xs) - Math.min.apply(null, xs)),
-        depth: m(Math.max.apply(null, ys) - Math.min.apply(null, ys)),
+        area: xArea,
+        width: xW,
+        depth: xa ? m(xa.d) : (xW ? xArea / xW : 0),
         storeys: x.storeys,
         bifold: xk.bifold, windows: xk.windows, doors: xk.doors
       });
@@ -410,6 +416,7 @@
     var pts = f.outline.slice();
     f.internals.forEach(function (s) { pts.push(s[0], s[1]); });
     f.markers.forEach(function (mk) { pts.push([mk.x, mk.y]); });
+    if (S.stage === 'outline' && S.block) pts = pts.concat(S.block.outline);   // room round a part being placed
     if (S.stage === 'extension') {
       pts = pts.concat(ground().outline, S.extension.outline);
       builtExts().forEach(function (x) { pts = pts.concat(x.outline); });
@@ -552,14 +559,40 @@
 
   /* A dimension is only shown once there is a scale to show it in. Before that
      the numbers would be grid units, which mean nothing to anybody. */
-  function lengthTag(a, b, cls, off, at) {
+  /* A label is the same size on screen however far out the view is: at the
+     garden's zoom a label drawn in plan units is four pixels high. `key` makes
+     it a button — tap it and type the length. */
+  var TAGS = 1;
+  function lengthTag(a, b, cls, off, at, key) {
     if (!S.scale) return '';
     var o = off || [0, 0], fr = at === undefined ? 0.5 : at;
-    var mx = (a[0] + (b[0] - a[0]) * fr + o[0]) * K, my = (a[1] + (b[1] - a[1]) * fr + o[1]) * K;
-    var w = 48, h = 19;
-    return '<g class="sk-tag ' + (cls || '') + '">' +
-      '<rect x="' + (mx - w / 2) + '" y="' + (my - h / 2) + '" width="' + w + '" height="' + h + '" rx="3"/>' +
-      '<text x="' + mx + '" y="' + (my + 4.5) + '" text-anchor="middle">' + fmt(m(dist(a, b)), 2) + '</text></g>';
+    var mx = (a[0] + (b[0] - a[0]) * fr + o[0] * TAGS) * K, my = (a[1] + (b[1] - a[1]) * fr + o[1] * TAGS) * K;
+    var w = 48 * TAGS, h = 19 * TAGS;
+    return '<g class="sk-tag ' + (cls || '') + (key ? ' tap' : '') + '"' + (key ? ' data-len="' + key + '"' : '') + '>' +
+      (key ? '<title>Tap to type this length</title>' : '') +
+      '<rect x="' + (mx - w / 2) + '" y="' + (my - h / 2) + '" width="' + w + '" height="' + h + '" rx="' + (3 * TAGS) + '"/>' +
+      '<text x="' + mx + '" y="' + (my + 4.5 * TAGS) + '" text-anchor="middle" style="font-size:' + (12 * TAGS).toFixed(1) + 'px">' +
+      fmt(m(dist(a, b)), 2) + '</text></g>';
+  }
+
+  /** Sizes on a part being placed and on the extensions. */
+  function blockTags() {
+    var out = [];
+    var tag = function (which, ring, live) {
+      var att = blockOn(hostOf(which), ring), c0 = centroid(ring), sideDone = false;
+      for (var i = 0; i < ring.length; i++) {
+        var a = ring[i], b = ring[(i + 1) % ring.length];
+        if (onHost(which, a, b)) continue;
+        // a block is as deep on one side as on the other: say it once
+        if (att && (i === att.k || i === (att.k + 2) % 4)) { if (sideDone) continue; sideDone = true; }
+        out.push(lengthTag(a, b, live ? 'live' : '', outward(a, b, c0), undefined, live ? which + ':' + i : null));
+      }
+    };
+    if (S.stage === 'outline' && S.block && S.block.outline.length > 2) tag('block', S.block.outline, true);
+    if (S.stage === 'extension') {
+      S.extensions.forEach(function (x, k) { if (x.closed) tag('ext', x.outline, k === S.extIdx); });
+    }
+    return out.join('');
   }
 
   function normal(a, b) {
@@ -603,8 +636,19 @@
     var RU = K / Math.max(px, 1);   // SVG user units per screen pixel
     var f = floor(), out = [];
 
+    TAGS = Math.max(1, Math.min(2.6, RU * 0.92));
     if (f.image) out.push(photoSvg(f.image));
     out.push(gridSvg(v, px));
+
+    // which way round the house is drawn: nothing else on screen says, and
+    // "rear extension" means nothing until it does. Not over somebody's own
+    // plan, which is whichever way up they photographed it.
+    if ((S.stage === 'outline' || S.stage === 'extension') && !S.calibrating && !ground().image) {
+      // down the right-hand edge: the middle is where the sizes are
+      var cxo = (v.x1 * K - 12 * RU).toFixed(1), fso = (10.5 * RU).toFixed(1);
+      out.push('<text x="' + cxo + '" y="' + (v.y0 * K + 64 * RU).toFixed(1) + '" text-anchor="end" class="sk-compass" font-size="' + fso + '">BACK GARDEN ↑</text>');
+      out.push('<text x="' + cxo + '" y="' + (v.y1 * K - 14 * RU).toFixed(1) + '" text-anchor="end" class="sk-compass" font-size="' + fso + '">STREET ↓</text>');
+    }
 
     // an empty grid says what to do on the grid itself, where the eye is
     if (S.stage === 'outline' && S.active === 0 && !f.closed && !f.outline.length &&
@@ -687,7 +731,14 @@
         '" x2="' + (S.cursor[0] * K) + '" y2="' + ((S.cursor[1] + 0.34) * K) + '"/></g>');
     }
 
+    // a part being placed on the house: its own colour until it is joined on
+    if (S.stage === 'outline' && S.block && S.block.outline.length > 2) {
+      var bo = S.block.outline;
+      out.push('<polygon points="' + poly(bo) + '" class="sk-block"/>');
+    }
+
     out.push(openingsAndTags(f));
+    out.push(blockTags());
     if (S.ghost && !press) {
       var gw = openingWall(f, S.ghost);
       if (gw) {
@@ -710,6 +761,7 @@
     var handles = live.length ? live
       : editing === 'ext' ? S.extension.outline
       : editing === 'plot' ? S.garden.plot.outline
+      : editing === 'block' ? []
       : editing === 'floor' ? f.outline
       : (f.closed ? f.outline : []);
     handles.forEach(function (p, i) {
@@ -723,16 +775,43 @@
 
     // a + in the middle of each wall of the shape being edited: the one way
     // to add a corner, so no tap on a wall ever changes the shape by accident
-    if (!live.length && (editing === 'floor' || editing === 'ext') && !S.calibrating) {
-      var ringA = handles;
-      ringA.forEach(function (a, i) {
-        var b = ringA[(i + 1) % ringA.length];
-        if (dist(a, b) * px < 56) return;          // too short to fit one between the corners
-        var mx = (a[0] + b[0]) / 2 * K, my = (a[1] + b[1]) / 2 * K;
-        out.push('<g class="sk-add" data-addcorner="' + i + '"><circle cx="' + mx + '" cy="' + my + '" r="' +
-          (9 * RU).toFixed(1) + '"/><text x="' + mx + '" y="' + (my + 4 * RU) + '" text-anchor="middle" font-size="' +
-          (13 * RU).toFixed(1) + '">+</text></g>');
+    /* What can be done to a shape is drawn on it, because a hover cursor is no
+       use on a phone and a wall gives no sign that it drags:
+         an arrow in the middle of every wall that can be dragged in or out,
+         a + a quarter of the way along to add a corner (not on a part being placed),
+         a four-way arrow in the middle of a part or extension, which moves whole. */
+    var editRing = editing === 'block' ? S.block.outline : (editing === 'floor' || editing === 'ext') ? shapeOf(editing).outline : null;
+    if (!live.length && editRing && editRing.length > 2 && !S.calibrating && !S.askUp) {
+      var movable = editing === 'block' || editing === 'ext';
+      var ru = RU.toFixed(3);
+      editRing.forEach(function (a, i) {
+        var b = editRing[(i + 1) % editRing.length], Lpx = dist(a, b) * px;
+        if (movable && onHost(editing, a, b)) return;        // that wall is the house's
+        var L = dist(a, b) || 1;
+        if (Lpx >= 58) {
+          // points across the wall: the way it will go
+          var deg = (Math.atan2((b[0] - a[0]) / L, -(b[1] - a[1]) / L) * 180 / Math.PI).toFixed(1);
+          out.push('<g class="sk-arrow" transform="translate(' + ((a[0] + b[0]) / 2 * K).toFixed(1) + ' ' + ((a[1] + b[1]) / 2 * K).toFixed(1) +
+            ') rotate(' + deg + ') scale(' + ru + ')"><title>Drag to move this wall in or out</title><circle r="11"/>' +
+            '<path d="M-6.5 0H6.5M-6.5 0l3.4-3.4M-6.5 0l3.4 3.4M6.5 0l-3.4-3.4M6.5 0l-3.4 3.4"/></g>');
+        }
+        if (editing !== 'block' && Lpx >= 128) {
+          var at = 0.25, qx = (a[0] + (b[0] - a[0]) * at) * K, qy = (a[1] + (b[1] - a[1]) * at) * K;
+          out.push('<g class="sk-add" data-addcorner="' + i + '" data-addt="' + at + '"><title>Add a corner here</title><circle cx="' + qx +
+            '" cy="' + qy + '" r="' + (8 * RU).toFixed(1) + '"/><text x="' + qx + '" y="' + (qy + 3.8 * RU) +
+            '" text-anchor="middle" font-size="' + (12 * RU).toFixed(1) + '">+</text></g>');
+        }
       });
+      if (movable) {
+        var xsM = editRing.map(function (q) { return q[0]; }), ysM = editRing.map(function (q) { return q[1]; });
+        var wM = (Math.max.apply(null, xsM) - Math.min.apply(null, xsM)) * px, hM = (Math.max.apply(null, ysM) - Math.min.apply(null, ysM)) * px;
+        if (wM >= 70 && hM >= 70) {
+          var cM = centroid(editRing);
+          out.push('<g class="sk-moveh" transform="translate(' + (cM[0] * K).toFixed(1) + ' ' + (cM[1] * K).toFixed(1) + ') scale(' + ru +
+            ')"><title>Drag to move it</title><circle r="15"/>' +
+            '<path d="M-9 0H9M0-9V9M-9 0l3-3M-9 0l3 3M9 0l-3-3M9 0l-3 3M0-9l-3 3M0-9l3 3M0 9l-3-3M0 9l3-3"/></g>');
+        }
+      }
     }
 
     // the selected corner or inside wall carries the control that removes it,
@@ -762,7 +841,7 @@
       });
     }
     if (kill) {
-      out.push('<g class="sk-kill" data-killpick="1"><circle cx="' + (kill[0] * K) + '" cy="' +
+      out.push('<g class="sk-kill" data-killpick="1"><title>Remove this</title><circle cx="' + (kill[0] * K) + '" cy="' +
         (kill[1] * K) + '" r="' + (13 * RU).toFixed(1) + '"/><text x="' + (kill[0] * K) + '" y="' +
         (kill[1] * K + 5 * RU) + '" text-anchor="middle" font-size="' + (17 * RU).toFixed(1) +
         '">\u00d7</text></g>');
@@ -821,14 +900,20 @@
     // dimensions go over the openings, never under them
     if (f.closed) {
       var c0 = centroid(f.outline);
+      // on the Shape step a wall's length is a button: tap it and type the real one
+      var tappable = S.stage === 'outline' && f === floor() && !S.block && !S.calibrating && !S.askUp &&
+        !!S.scale && !(S.drawing && S.drawing.length);
+      var under = S.stage === 'outline' && S.block && f === floor() ? blockOn(f.outline, S.block.outline)
+        : (S.stage === 'extension' && S.extension.closed && f === ground()) ? blockOn(f.outline, S.extension.outline) : null;
       for (var i = 0; i < f.outline.length; i++) {
+        if (under && under.i === i) continue;        // its label would sit inside the part
         var a = f.outline[i], b = f.outline[(i + 1) % f.outline.length];
         var cls = S.calibrating && !S.preset && i === S.calibIdx ? 'calib' : '';
         if (cls) {
           out.push('<line x1="' + P(a)[0] + '" y1="' + P(a)[1] + '" x2="' + P(b)[0] + '" y2="' + P(b)[1] +
             '" class="sk-pick on"/>');
         }
-        out.push(lengthTag(a, b, cls, outward(a, b, c0)));
+        out.push(lengthTag(a, b, cls, outward(a, b, c0), undefined, tappable ? 'floor:' + i : null));
       }
       // a preset is measured across the whole front, whatever has been done
       // to its corners, so the band spans the width rather than one wall
@@ -872,7 +957,14 @@
     var chooser = $('sk-choose'), work = $('sk-work');
     if (chooser) chooser.hidden = S.started;
     if (work) work.hidden = !S.started;
-    if (!S.started) return;
+    // nothing drawn yet: no steps to show, and nothing for "Start again" to lose
+    if (!S.started) {
+      var tabs0 = $('sk-stages'), rst0 = $('sk-restart');
+      if (tabs0) tabs0.innerHTML = '';
+      if (rst0) { rst0.textContent = 'Start again'; rst0.classList.remove('sk-danger'); rst0.hidden = true; }
+      return;
+    }
+    if ($('sk-restart')) $('sk-restart').hidden = false;
 
     /* A rail, not a row of tabs. Tabs say "go anywhere"; this is a sequence,
        and the whole point is that you always know where you are in it. */
@@ -921,6 +1013,7 @@
     var f = floor();
     if (S.calibrating || S.askUp) return null;
     if (S.stage === 'outline') {
+      if (S.block) return { id: 'sk-joinblock', label: 'Join it to the house' };
       if (S.drawing && S.drawing.length > 2) return { id: 'sk-close-shape', label: 'Finish the shape' };
       if (!f.closed && !f.outline.length && S.active > 0 && S.floors[S.active - 1].closed) {
         return { id: 'sk-copy', label: 'Copy the ' + S.floors[S.active - 1].name.toLowerCase() };
@@ -976,6 +1069,7 @@
           ? 'Drag any corner until the shape looks right. Then, roughly how wide is it across the front — the orange line?'
           : 'A rough guess is fine. Not sure? Pace it out: one big step is about a metre.')
         : S.askUp ? 'Does the house have an upstairs?'
+        : (S.stage === 'outline' && S.block) ? 'Put it where it is on your house, and make it the right size.'
         : (S.stage === 'internal' && S.wallMode === 'out') ? stage.out
         : (S.stage === 'internal' && S.wallMode === 'door') ? stage.door
         : (S.stage === 'internal' && S.wallMode === 'move' && S.pick && S.pick.kind === 'iwall') ? stage.picked
@@ -994,6 +1088,20 @@
         : (S.stage === 'rooms' && f.markers.length && floorWithoutRooms() >= 0)
             ? 'Tap a label to change or remove it. When this floor is done, go up a floor.'
         : (edited && stage.done ? stage.done : stage.hint);
+    }
+
+    // what each mark on the drawing does, in its own symbol
+    var key = $('sk-key');
+    if (key) {
+      var kWhich = (S.calibrating || S.askUp || (S.drawing && S.drawing.length)) ? null : editable();
+      if (kWhich === 'plot' || (kWhich && !S.scale)) kWhich = null;
+      var kRow = function (sym, cls, text) { return '<li><i class="' + cls + '">' + sym + '</i><span>' + text + '</span></li>'; };
+      key.hidden = !kWhich;
+      key.innerHTML = !kWhich ? '' :
+        (kWhich !== 'floor' ? kRow('✥', 'k-move', 'Drag the middle to move it') : '') +
+        kRow('↔', 'k-sym', kWhich === 'floor' ? 'Drag an arrow to move a wall' : 'Drag an arrow to make it bigger or smaller') +
+        kRow('3.00', 'k-num', 'Tap a number to type the size') +
+        (kWhich !== 'block' ? kRow('+', 'k-plus', 'Adds a corner. Tap a corner, then × removes it') : '');
     }
 
     var cal = $('sk-calib');
@@ -1022,7 +1130,7 @@
       var keep = typedEl ? { v: typedEl.value, focus: doc.activeElement === typedEl } : null;
       var afterNext = S.stage === 'outline' && floor().closed && !(S.drawing && S.drawing.length);
       var html = (S.calibrating || S.askUp) ? '' : toolsFor(S.stage) + typedTools() + cancelTool();
-      tools.innerHTML = afterNext ? '' : html;
+      tools.innerHTML = afterNext ? ((S.calibrating || S.askUp) ? '' : blockTools()) : html;
       var tools2 = $('sk-tools2');
       if (tools2) tools2.innerHTML = afterNext ? html : '';
       typedEl = $('sk-typed');
@@ -1133,10 +1241,11 @@
       // a finished shape: the small things you might still want, as a quiet
       // row after the big Next, not a stack of buttons in front of it
       if (f.closed) {
+        if (S.block) return '';
         return (S.floors.length < 4 && ready()
             ? '<button type="button" class="btn btn-ghost sk-addfloor-side" id="sk-addfloor2">Add a floor above</button>' : '') +
           '<div class="sk-quiet">' +
-          (S.scale ? '<button type="button" class="sk-alt" id="sk-recal">Change the measurement</button>' : '') +
+          (S.scale && (S.measured || f.image) ? '<button type="button" class="sk-alt" id="sk-recal">Change the measurement</button>' : '') +
           '<button type="button" class="sk-alt" id="sk-redraw">Draw this floor again</button>' +
           (S.floors.length > 1
             ? '<button type="button" class="sk-alt' + (S.confirm === 'floor' ? ' sk-danger' : '') +
@@ -1187,10 +1296,9 @@
             seg(S.extensions.map(function (x, k) { return [k, 'Extension ' + (k + 1) + (x.closed ? '' : ' (new)')]; }), S.extIdx, 'data-skext') +
             '</div>'
           : '') +
-        // the ready-made box only when there is nothing yet for it to land on
-        (!cur.closed && !xmid && !others
-          ? '<button type="button" class="btn" id="sk-addext">Add a rear extension</button>' +
-            '<p class="sk-tiny">It goes on the back wall. Drag its corners to the size you want.</p>'
+        (!cur.closed && !xmid
+          ? '<button type="button" class="btn" id="sk-addext">Add an extension</button>' +
+            '<p class="sk-tiny">It starts on ' + (others ? 'a free wall' : 'the back wall') + '. Drag it to where you want it.</p>'
           : '') +
         '<div class="sk-tool"><label>How many storeys?</label>' +
         seg([[1, 'Single storey'], [2, 'Two storey']], cur.storeys, 'data-storeys') + '</div>' +
@@ -1223,6 +1331,14 @@
    * and the corner lands exactly there. Typing before the house is measured
    * makes the grid metres on the spot, so the measuring question never comes.
    */
+  /** Above the big Next on a finished floor: the one thing most houses still need. */
+  function blockTools() {
+    if (S.stage !== 'outline' || !ready()) return '';
+    if (S.block) return '<button type="button" class="sk-alt sk-alt-quiet" id="sk-cancelblock">Cancel this part</button>';
+    return '<button type="button" class="btn btn-ghost sk-addblock" id="sk-addblock">Add a part that sticks out</button>' +
+      '<p class="sk-tiny">A back addition, a porch, a bay. It joins on to the house.</p>';
+  }
+
   var DIRS = { up: [0, -1], right: [1, 0], down: [0, 1], left: [-1, 0] };
   function cancelTool() {
     if (!(S.drawing && S.drawing.length) || S.calibrating) return '';
@@ -1384,7 +1500,7 @@
       return;
     }
     if (S.drawing && S.drawing.length) {
-      var p = S.typedTap ? snapFrom(null, w) : snapTarget(w).p;
+      var p = S.typedTap ? snapFrom(null, w) : aim(w).p;
       if (S.drawing.length > 2 && dist(p, S.drawing[0]) < CLOSE_UNITS) { closeShape(); return; }
       S.drawing.push(p);
       changed();
@@ -1542,6 +1658,7 @@
   }
 
   function shapeOf(which) {
+    if (which === 'block') return S.block;
     if (which === 'ext') return S.extension;
     if (which === 'plot') return S.garden.plot;
     if (which && which.charAt(0) === 'a') return S.garden.areas[+which.slice(1)];
@@ -1862,6 +1979,12 @@
     if (ground().closed) {
       var xl = builtExts();
       xl.forEach(function (x, k) {
+        var named = xl.length > 1 ? 'Extension ' + (k + 1) : 'The extension';
+        // on top of the house is the opposite of not touching it, and it is priced twice
+        if (ringsOverlap(x.outline, ground().outline)) {
+          out.push(named + ' is partly on top of the house, so that part is being priced twice. Drag it clear.');
+          return;
+        }
         var touches = x.outline.some(function (p) {
           for (var i = 0; i < ground().outline.length; i++) {
             if (projectOnSeg(p, ground().outline[i], ground().outline[(i + 1) % ground().outline.length]).d < SNAP * 1.5) return true;
@@ -1905,7 +2028,7 @@
   function stateNow() {
     return JSON.stringify({
       floors: S.floors, extensions: S.extensions, extIdx: S.extIdx, garden: S.garden, scale: S.scale,
-      active: S.active, drawing: S.drawing, snap: SNAP
+      active: S.active, drawing: S.drawing, snap: SNAP, block: S.block, front: S.frontIdx
     });
   }
   function restore(json) {
@@ -1917,6 +2040,8 @@
     S.scale = o.scale;
     S.active = Math.min(o.active, o.floors.length - 1);
     S.drawing = o.drawing;
+    S.block = o.block || null;
+    if (o.front !== undefined) S.frontIdx = o.front;
     SNAP = o.snap || LOOSE;       // undoing the measurement returns the loose grid
     S.pick = null; S.selected = null; S.cursor = null;
     FRAME = null;
@@ -2000,6 +2125,14 @@
       }
     }
     f.internals.forEach(function (sg) { pts.push(sg[0], sg[1]); lines.push(sg); });
+    // an upstairs being drawn sits on the walls below it, so it catches them
+    if (S.stage === 'outline' && !f.closed && S.active > 0 && S.floors[S.active - 1].closed) {
+      var below = S.floors[S.active - 1].outline;
+      for (i = 0; i < below.length; i++) {
+        pts.push(below[i]);
+        lines.push([below[i], below[(i + 1) % below.length]]);
+      }
+    }
     if (S.stage === 'extension') {
       S.extensions.forEach(function (x) { for (var xi = 0; xi < x.outline.length; xi++) pts.push(x.outline[xi]); });
     }
@@ -2046,12 +2179,316 @@
     return { p: g, kind: 'grid' };
   }
 
+  /**
+   * Where a tap would put the next corner of a run.
+   *
+   * Houses are square, and fingers are not: two taps meant to be level land a
+   * grid line apart and the wall between them leans. So a corner within a
+   * fingertip of level or plumb with the last corner is made level or plumb
+   * with it — and with the first corner too, so the wall that closes the shape
+   * comes home square. A wall drawn well off square is left alone: a bay is
+   * still a bay.
+   */
+  function aim(w) {
+    var tg = snapTarget(w), run = S.drawing;
+    if (!run || !run.length || tg.kind === 'corner') return tg;
+    // a fingertip, in plan units: a miss and the grid's own rounding can add up to most of one
+    var tol = Math.max(SNAP, Math.min(2, 30 / pxPerUnit()));
+    var last = run[run.length - 1], first = run[0], sx = null, sy = null;
+    [last, first].forEach(function (q) {
+      if (sx === null && Math.abs(w[0] - q[0]) <= tol) sx = q[0];
+      if (sy === null && Math.abs(w[1] - q[1]) <= tol) sy = q[1];
+    });
+    if (sx === null && sy === null) return tg;
+    var c = [sx === null ? tg.p[0] : sx, sy === null ? tg.p[1] : sy];
+    if (dist(c, last) < 1e-6) return tg;                // squaring it would put it on the last corner
+    if (tg.kind === 'wall') {
+      // caught by a wall: square it only if that leaves it on a wall
+      var lines = snapCandidates().lines;
+      if (!lines.some(function (l) { return projectOnSeg(c, l[0], l[1]).d < 1e-6; })) return tg;
+    }
+    return { p: c, kind: tg.kind, squared: true };
+  }
+
   function drawingStage() { return S.stage === 'outline' || S.stage === 'extension' || S.stage === 'internal' || S.stage === 'garden'; }
   /** Stages where the next tap puts something down at a grid point. */
   function placingStage() { return drawingStage() || S.stage === 'rooms'; }
 
+
+  /* ---- blocks ---------------------------------------------------------------
+   * A block is a rectangle standing on one wall of the house: a back addition,
+   * a porch, a bay — or an extension. It is the way most houses are actually
+   * put together, and it is the one thing a finger can place accurately: it
+   * slides along the wall it stands on and cannot leave it.
+   *
+   * Nothing here is stored. Whether a ring "is a block" is read off its shape
+   * every time, so a block that has had a corner dragged just stops being one
+   * and carries on as an ordinary outline.
+   */
+
+  /** Wall i of a ring: its ends, length, direction, and the normal pointing out of the ring. */
+  function wallFrame(ring, i) {
+    var a = ring[i], b = ring[(i + 1) % ring.length];
+    var L = dist(a, b) || 1;
+    var u = [(b[0] - a[0]) / L, (b[1] - a[1]) / L];
+    var n = [u[1], -u[0]];
+    if (insidePoly(ring, [(a[0] + b[0]) / 2 + n[0] * 0.02, (a[1] + b[1]) / 2 + n[1] * 0.02])) n = [-n[0], -n[1]];
+    return { a: a, b: b, L: L, u: u, n: n };
+  }
+
+  /** The four corners of a block: `off` along wall i from its start, `w` wide, `d` out. */
+  function blockRing(host, i, off, w, d) {
+    var fr = wallFrame(host, i);
+    var p1 = [fr.a[0] + fr.u[0] * off, fr.a[1] + fr.u[1] * off];
+    var p4 = [p1[0] + fr.u[0] * w, p1[1] + fr.u[1] * w];
+    return [mm(p1), mm([p1[0] + fr.n[0] * d, p1[1] + fr.n[1] * d]),
+            mm([p4[0] + fr.n[0] * d, p4[1] + fr.n[1] * d]), mm(p4)];
+  }
+
+  /** If `ring` is a rectangle standing on one wall of `host`: which wall, where
+      along it, how wide and how deep. ring[k] and ring[k+3] are the two corners
+      on the wall. */
+  function blockOn(host, ring) {
+    if (!ring || ring.length !== 4 || !host || host.length < 3) return null;
+    for (var k = 0; k < 4; k++) {
+      var p1 = ring[k], p2 = ring[(k + 1) % 4], p3 = ring[(k + 2) % 4], p4 = ring[(k + 3) % 4];
+      var w = dist(p1, p4), d = dist(p1, p2);
+      if (w < 0.05 || d < 0.05) continue;
+      for (var i = 0; i < host.length; i++) {
+        var fr = wallFrame(host, i);
+        var t1 = projectOnSeg(p1, fr.a, fr.b), t4 = projectOnSeg(p4, fr.a, fr.b);
+        if (t1.d > 0.02 || t4.d > 0.02) continue;
+        if (dist([p1[0] + fr.n[0] * d, p1[1] + fr.n[1] * d], p2) > 0.03) continue;
+        if (dist([p4[0] + fr.n[0] * d, p4[1] + fr.n[1] * d], p3) > 0.03) continue;
+        var o1 = t1.t * fr.L, o4 = t4.t * fr.L;
+        return { i: i, off: Math.min(o1, o4), w: w, d: d, L: fr.L, k: k, flip: o1 > o4 };
+      }
+    }
+    return null;
+  }
+
+  function properCross(a, b, c, d) {
+    var e = 1e-7;
+    var d1 = cross(c, d, a), d2 = cross(c, d, b), d3 = cross(a, b, c), d4 = cross(a, b, d);
+    return ((d1 > e && d2 < -e) || (d1 < -e && d2 > e)) && ((d3 > e && d4 < -e) || (d3 < -e && d4 > e));
+  }
+
+  /** Do two rings share any floor? Standing against a wall is touching, not overlapping. */
+  function ringsOverlap(A, B) {
+    if (!A || !B || A.length < 3 || B.length < 3) return false;
+    var deepIn = function (p, ring) {
+      if (!insidePoly(ring, p)) return false;
+      for (var k = 0; k < ring.length; k++) {
+        if (projectOnSeg(p, ring[k], ring[(k + 1) % ring.length]).d < 0.01) return false;
+      }
+      return true;
+    };
+    var probes = function (R) {
+      var out = R.slice();
+      for (var k = 0; k < R.length; k++) {
+        var q = R[(k + 1) % R.length];
+        out.push([(R[k][0] + q[0]) / 2, (R[k][1] + q[1]) / 2]);
+      }
+      out.push(centroid(R));
+      return out;
+    };
+    var i, j, pa = probes(A), pb = probes(B);
+    for (i = 0; i < pa.length; i++) if (deepIn(pa[i], B)) return true;
+    for (i = 0; i < pb.length; i++) if (deepIn(pb[i], A)) return true;
+    for (i = 0; i < A.length; i++) {
+      for (j = 0; j < B.length; j++) {
+        if (properCross(A[i], A[(i + 1) % A.length], B[j], B[(j + 1) % B.length])) return true;
+      }
+    }
+    return false;
+  }
+
+  /** What a block or an extension stands against. */
+  function hostOf(which) { return which === 'block' ? floor().outline : ground().outline; }
+
+  /** Why a block or an extension cannot be where `ring` puts it — or null. */
+  function blockTrouble(which, ring) {
+    var host = hostOf(which);
+    if (ringsOverlap(ring, host)) {
+      return which === 'block' ? 'That would put it inside the house.' : 'An extension cannot sit on top of the house.';
+    }
+    if (which === 'ext') {
+      var cur = S.extension;
+      if (S.extensions.some(function (x) { return x !== cur && x.closed && ringsOverlap(ring, x.outline); })) {
+        return 'That would put one extension on top of another.';
+      }
+    }
+    if (which === 'block' && !blockOn(host, ring)) return 'Keep it against one wall of the house.';
+    return null;
+  }
+
+  /** Is the wall a→b of a block or extension the one it shares with the house? */
+  function onHost(which, a, b) {
+    var host = hostOf(which), mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    return [a, b, mid].every(function (p) {
+      for (var k = 0; k < host.length; k++) {
+        if (projectOnSeg(p, host[k], host[(k + 1) % host.length]).d < 0.02) return true;
+      }
+      return false;
+    });
+  }
+
+  /** The wall farthest from the street: where things get built on. */
+  function backWallIndex(ring) {
+    var front = frontWallIndex(ring);
+    var fa = ring[front], fb = ring[(front + 1) % ring.length];
+    var fm = [(fa[0] + fb[0]) / 2, (fa[1] + fb[1]) / 2];
+    var best = -1, bd = -1;
+    for (var i = 0; i < ring.length; i++) {
+      if (i === front) continue;
+      var a = ring[i], b = ring[(i + 1) % ring.length];
+      var d = dist(fm, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]) + dist(a, b) * 0.01;
+      if (d > bd) { bd = d; best = i; }
+    }
+    return best < 0 ? 0 : best;
+  }
+
+  /** Somewhere a w × d block can stand on `host` without sitting on anything:
+      the back wall first, then the longest walls. */
+  function placeBlock(which, w0, d0) {
+    var host = hostOf(which), order = [], i;
+    var back = backWallIndex(host);
+    for (i = 0; i < host.length; i++) if (i !== back) order.push(i);
+    order.sort(function (p, q) {
+      return dist(host[q], host[(q + 1) % host.length]) - dist(host[p], host[(p + 1) % host.length]);
+    });
+    order.unshift(back);
+    for (var o = 0; o < order.length; o++) {
+      var fr = wallFrame(host, order[o]);
+      if (fr.L < 1) continue;
+      var w = Math.min(w0, Math.max(1, Math.floor(fr.L * 0.8 / SNAP) * SNAP));
+      var mid = Math.round((fr.L - w) / 2 / SNAP) * SNAP, tries = [mid];
+      for (var s = 0; s <= fr.L - w + 1e-9; s += SNAP * 2) tries.push(s);
+      for (var t = 0; t < tries.length; t++) {
+        var ring = blockRing(host, order[o], Math.max(0, Math.min(fr.L - w, tries[t])), w, d0);
+        if (!blockTrouble(which, ring)) return ring;
+      }
+    }
+    return null;
+  }
+
+  /** Where a block or extension goes when it is dragged by its middle. A block
+      slides along the wall it stands on and steps onto another wall when the
+      pointer is plainly nearer that one; anything else just moves. */
+  function moveBlock(which, pr, w2) {
+    var host = hostOf(which), att = pr.att, cand;
+    if (att) {
+      var best = att.i, bd = Infinity, bt = 0;
+      for (var i = 0; i < host.length; i++) {
+        var pj = projectOnSeg(w2, host[i], host[(i + 1) % host.length]);
+        var score = pj.d - (i === att.i ? 0.75 : 0);     // it stays put unless another wall is clearly nearer
+        if (score < bd) { bd = score; best = i; bt = pj.t; }
+      }
+      var fr = wallFrame(host, best);
+      var w = Math.min(att.w, fr.L), off;
+      if (best === att.i) off = att.off + (w2[0] - pr.world[0]) * fr.u[0] + (w2[1] - pr.world[1]) * fr.u[1];
+      else off = bt * fr.L - w / 2;
+      off = Math.max(0, Math.min(fr.L - w, Math.round(off / SNAP) * SNAP));
+      cand = blockRing(host, best, off, w, att.d);
+    } else {
+      var dx = Math.round((w2[0] - pr.world[0]) / SNAP) * SNAP, dy = Math.round((w2[1] - pr.world[1]) / SNAP) * SNAP;
+      cand = pr.orig.map(function (p) { return [p[0] + dx, p[1] + dy]; });
+    }
+    return (!pr.wasBad && blockTrouble(which, cand)) ? null : cand;
+  }
+
+  /** Drop out the corners a join leaves behind: doubles, and ones in the middle of a straight wall. */
+  function tidyRing(ring) {
+    var out = ring.map(function (p) { return p.slice(); }), again = true;
+    while (again && out.length > 3) {
+      again = false;
+      for (var i = 0; i < out.length; i++) {
+        var a = out[(i - 1 + out.length) % out.length], b = out[i], c = out[(i + 1) % out.length];
+        var straight = Math.abs(cross(a, b, c)) < 1e-6 &&
+          ((b[0] - a[0]) * (c[0] - b[0]) + (b[1] - a[1]) * (c[1] - b[1])) > 0;
+        if (dist(a, b) < 1e-6 || straight) { out.splice(i, 1); again = true; break; }
+      }
+    }
+    return out;
+  }
+
+  /** A new part of the house, standing on the back wall until it is dragged somewhere. */
+  function addBlock() {
+    var f = floor();
+    if (!f.closed || !ready()) return;
+    snapshot();
+    S.block = { outline: [], closed: true };
+    var ring = placeBlock('block', 3, 2.5);
+    if (!ring) { S.block = null; UNDO.pop(); say('There is no wall with room for one. Add a corner with + instead.'); return; }
+    S.block.outline = ring;
+    S.pick = null; S.drawing = null;
+    say('');
+    FRAME = null; MANUAL = false;
+    settled();
+  }
+
+  /** The block becomes part of the house: its three walls replace the stretch of wall it stood on. */
+  function joinBlock() {
+    var f = floor(), b = S.block;
+    if (!b) return;
+    var att = blockOn(f.outline, b.outline);
+    var why = att ? blockTrouble('block', b.outline) : 'Keep it against one wall of the house.';
+    if (why) { say(why); return; }
+    snapshot();
+    var pts = openingPoints(f), r = b.outline, k = att.k;
+    var seq = [r[k], r[(k + 1) % 4], r[(k + 2) % 4], r[(k + 3) % 4]];
+    if (att.flip) seq.reverse();
+    f.outline = tidyRing(f.outline.slice(0, att.i + 1).concat(seq, f.outline.slice(att.i + 1)));
+    reassignOpenings(f, pts);
+    if (S.active === 0) { S.frontIdx = frontWallIndex(f.outline); S.calibIdx = 0; }
+    S.block = null; S.pick = null;
+    say('');
+    FRAME = null; MANUAL = false;
+    settled();
+  }
+
+  /** Make one wall a typed length. The wall beyond its far end moves to suit;
+      if that cannot be done, the wall before its near end does. */
+  function setWallLength(which, i, L) {
+    var shape = shapeOf(which);
+    if (!shape || !shape.outline || !shape.outline[i]) return false;
+    var ring = shape.outline, n = ring.length;
+    var a = ring[i], b = ring[(i + 1) % n], cur = dist(a, b);
+    if (!(L >= 0.3) || L > 60) { say('That is not the length of a wall on a house.'); return false; }
+    if (!cur || Math.abs(L - cur) < 0.004) { say(''); return true; }
+    var u = [(b[0] - a[0]) / cur, (b[1] - a[1]) / cur], dl = L - cur;
+    var attempt = function (idxs, vec) {
+      var cand = ring.map(function (p) { return p.slice(); });
+      idxs.forEach(function (j) { cand[j] = mm([cand[j][0] + vec[0], cand[j][1] + vec[1]]); });
+      if (badShape(cand)) return null;
+      if ((which === 'block' || which === 'ext') && blockTrouble(which, cand)) return null;
+      return { ring: cand, idxs: idxs, vec: vec };
+    };
+    var got = attempt([(i + 1) % n, (i + 2) % n], [u[0] * dl, u[1] * dl]) ||
+              attempt([i, (i - 1 + n) % n], [-u[0] * dl, -u[1] * dl]);
+    if (!got) { say('There is no room to make that ' + fmt(L, 2) + ' m.'); return false; }
+    snapshot();
+    var f = floor(), pts = which === 'block' ? null : openingPoints(f);
+    if (which === 'floor') {
+      // inside walls that ended on the wall that moved go with it
+      var o0 = ring[got.idxs[0]], o1 = ring[got.idxs[1]];
+      f.internals.forEach(function (sg) {
+        [0, 1].forEach(function (e) {
+          if (projectOnSeg(sg[e], o0, o1).d < 1e-6) sg[e] = mm([sg[e][0] + got.vec[0], sg[e][1] + got.vec[1]]);
+        });
+      });
+    }
+    shape.outline = got.ring;
+    if (pts) reassignOpenings(f, pts);
+    say('');
+    FRAME = null; MANUAL = false;
+    settled();
+    return true;
+  }
+
   /** Which shape is being edited in this stage, if any. */
   function editable() {
+    if (S.stage === 'outline' && S.block) return 'block';
     if (S.stage === 'outline' && floor().closed) return 'floor';
     if (S.stage === 'extension' && S.extension.closed) return 'ext';
     if (S.stage === 'garden' && S.garden.plot.closed) return 'plot';
@@ -2070,6 +2507,7 @@
 
   function draggable() {
     if (drawingWalls()) return null;
+    if (S.stage === 'outline' && S.block) return 'block';     // a part being placed has the canvas to itself
     if (S.stage === 'extension') return S.extension.closed ? 'ext' : null;
     if (S.stage === 'garden') return S.garden.plot.closed ? 'plot' : null;
     return floor().closed ? 'floor' : null;
@@ -2079,7 +2517,8 @@
   function handleAt(p) {
     var r = grabRadius(), best = null;
     var which = draggable();
-    if (which) {
+    var blockish = which === 'block' || which === 'ext';
+    if (which && which !== 'block') {
       shapeOf(which).outline.forEach(function (q, i) {
         var d = dist(p, q);
         if (d < r && (!best || d < best.d)) best = { kind: 'corner', which: which, i: i, d: d };
@@ -2101,9 +2540,13 @@
       var ring = shapeOf(which).outline;
       for (var wi = 0; wi < ring.length; wi++) {
         var pr = projectOnSeg(p, ring[wi], ring[(wi + 1) % ring.length]);
+        // the wall it shares with the house is the house's: sliding it would push it inside
+        if (blockish && onHost(which, ring[wi], ring[(wi + 1) % ring.length])) continue;
         if (pr.d < r && pr.t > 0.12 && pr.t < 0.88 && (!best || pr.d < best.d)) best = { kind: 'wall', which: which, i: wi, d: pr.d };
       }
     }
+    // grab a block or an extension by its middle and it moves, rather than the page
+    if (!best && blockish && within(shapeOf(which).outline, p)) best = { kind: 'body', which: which, d: 0 };
     if (!best && movingWalls()) {
       floor().internals.forEach(function (seg, i) {
         var pr = projectOnSeg(p, seg[0], seg[1]);
@@ -2153,7 +2596,8 @@
     if (S.drawing && S.drawing.length) return;      // mid-run: taps only
     // the × and + drawn on the canvas are buttons, not places on the plan: a
     // wall running under one must not grab the press
-    if (e.target && e.target.closest && e.target.closest('[data-killpick],[data-addcorner]')) return;
+    closeLenEdit();
+    if (e.target && e.target.closest && e.target.closest('[data-killpick],[data-addcorner],[data-len]')) return;
     var h = handleAt(w);
     if (!h) return;
     press.handle = h;
@@ -2166,6 +2610,14 @@
     }
     if (h.kind === 'wall' || h.kind === 'iwallmid') {
       press.origInt = floor().internals.map(function (sg) { return [sg[0].slice(), sg[1].slice()]; });
+    }
+    if (h.which === 'block' || h.which === 'ext') {
+      var ringB = shapeOf(h.which).outline;
+      press.wasBad = !!blockTrouble(h.which, ringB);     // already wrong: let it be dragged right
+      if (h.kind === 'body') {
+        press.orig = ringB.map(function (q) { return q.slice(); });
+        press.att = blockOn(hostOf(h.which), ringB);
+      }
     }
     snapshot();
     try { $('sk-svg').setPointerCapture(e.pointerId); } catch (err) {}
@@ -2262,17 +2714,33 @@
       $('sk-svg').classList.add('grabbing');
       var w2 = toWorld(e), g = snapFrom(null, w2);
       var h = press.handle, f2 = floor();
-      if (h.kind === 'corner') {
-        shapeOf(h.which).outline[h.i] = g;
+      var guarded2 = (h.which === 'block' || h.which === 'ext') && !press.wasBad;
+      var allowed = function (i1, q1, i2, q2) {
+        if (!guarded2) return true;
+        var cand = shapeOf(h.which).outline.map(function (q) { return q.slice(); });
+        cand[i1] = q1; if (i2 !== undefined) cand[i2] = q2;
+        return !blockTrouble(h.which, cand) && !selfIntersects(cand) && !hasZeroWall(cand);
+      };
+      if (h.kind === 'body') {
+        var movedB = moveBlock(h.which, press, w2);
+        if (movedB) shapeOf(h.which).outline = movedB;
+        S.pick = null;
+      } else if (h.kind === 'corner') {
+        // an extension's corner stops at the house instead of going through it
+        if (allowed(h.i, g)) {
+          shapeOf(h.which).outline[h.i] = g;
+          S.guides = guidesFor(g, h.which, [h.i]);
+        }
         S.pick = { kind: 'corner', which: h.which, i: h.i };
-        S.guides = guidesFor(g, h.which, [h.i]);
       } else if (h.kind === 'wall') {
         var ringW = shapeOf(h.which).outline, moved = slideWall(press.orig, press.world, w2);
-        ringW[h.i] = moved[0]; ringW[(h.i + 1) % ringW.length] = moved[1];
-        if (h.which === 'floor') carryEnds(f2, press.orig, moved, -1);
+        if (allowed(h.i, moved[0], (h.i + 1) % ringW.length, moved[1])) {
+          ringW[h.i] = moved[0]; ringW[(h.i + 1) % ringW.length] = moved[1];
+          if (h.which === 'floor') carryEnds(f2, press.orig, moved, -1);
+          S.guides = guidesFor(moved[0], h.which, [h.i, (h.i + 1) % ringW.length])
+            .concat(guidesFor(moved[1], h.which, [h.i, (h.i + 1) % ringW.length]));
+        }
         S.pick = null;
-        S.guides = guidesFor(moved[0], h.which, [h.i, (h.i + 1) % ringW.length])
-          .concat(guidesFor(moved[1], h.which, [h.i, (h.i + 1) % ringW.length]));
       } else if (h.kind === 'iwallmid') {
         var movedI = slideWall(press.orig, press.world, w2);
         var a1 = keepInside(movedI[0]), b1 = keepInside(movedI[1]);
@@ -2314,7 +2782,7 @@
     var pointing = placingStage() && !(S.stage === 'internal' && !drawingWalls());
     if (!pointing) { S.cursor = null; }
     else {
-      var tg = snapTarget(raw);
+      var tg = aim(raw);
       S.snapKind = tg.kind;
       S.cursor = tg.p;
       if (S.stage === 'internal') S.cursor = keepInside(S.cursor);
@@ -2354,15 +2822,24 @@
     if (S.askUp) return 'arrow';
     var snapped = S.snapKind && S.snapKind !== 'grid';
     if (h && h.kind === 'pin') return 'pick';
-    if (h && h.kind !== 'wall') return 'grab';
+    if (h && h.kind === 'body') return 'move';
+    if (h && h.kind === 'wall') {
+      // the arrow points the way the wall will go
+      var hr = shapeOf(h.which).outline, ha = hr[h.i], hb = hr[(h.i + 1) % hr.length];
+      var nx = Math.abs(hb[1] - ha[1]), ny = Math.abs(hb[0] - ha[0]);
+      if (nx > ny * 2.4) return 'size-ew';
+      if (ny > nx * 2.4) return 'size-ns';
+      return ((hb[0] - ha[0]) * (hb[1] - ha[1]) > 0) ? 'size-nesw' : 'size-nwse';
+    }
+    if (h) return 'grab';
     if (S.drawing && S.drawing.length) return snapped ? 'draw-snap' : 'draw';
     if (S.stage === 'outline') {
       if (!f.closed) return snapped ? 'draw-snap' : 'draw';
-      return wallOfShape(f, w) ? 'split' : 'arrow';
+      return 'arrow';
     }
     if (S.stage === 'extension') {
       if (!S.extension.closed) return snapped ? 'draw-snap' : 'draw';
-      return wallOfShape(S.extension, w) ? 'split' : 'arrow';
+      return 'arrow';
     }
     if (S.stage === 'internal') {
       if (drawingWalls()) return insideHouse(snapFrom(null, w)) ? (snapped ? 'draw-snap' : 'draw') : 'no';
@@ -2420,6 +2897,7 @@
           if (back) {
             var o = JSON.parse(back);
             S.floors = o.floors; S.extensions = o.extensions || [o.extension]; S.extIdx = Math.min(o.extIdx || 0, S.extensions.length - 1);
+            S.block = o.block || null;
           }
           settled();
           return;
@@ -2445,7 +2923,7 @@
       UNDO.pop();                          // nothing changed, so nothing to undo
       REDO.length = 0;
       S.guides = null;
-      if (hh.kind === 'wall' || hh.kind === 'iwallmid') { onTap(p.world, e); return; }
+      if (hh.kind === 'wall' || hh.kind === 'iwallmid' || hh.kind === 'body') { onTap(p.world, e); return; }
       // outside the shape steps a corner is only for dragging: a tap on it is
       // a tap on the plan, so an inside wall can start from a house corner
       if (hh.kind === 'corner' && !editable()) { onTap(p.world, e); return; }
@@ -2471,7 +2949,7 @@
     if (p.rubber && S.drawing && S.drawing.length) { onTap(toWorld(e), e); return; }   // the other end of a dragged wall
     if (Math.abs(e.clientX - p.x) + Math.abs(e.clientY - p.y) > 8) return;   // a drag on nothing
     var tgt = p.target || e.target;
-    if (tgt && tgt.closest && tgt.closest('[data-killpick],[data-addcorner]')) return;   // the overlay handler does it
+    if (tgt && tgt.closest && tgt.closest('[data-killpick],[data-addcorner],[data-len]')) return;   // the overlay handler does it
     onTap(p.world, e);
   }
 
@@ -2506,7 +2984,7 @@
         return;
       }
 
-      var p = exact ? snapFrom(null, w) : snapTarget(w).p;
+      var p = exact ? snapFrom(null, w) : aim(w).p;
       if (!S.drawing) { snapshot(); S.drawing = []; }
       if (S.drawing.length > 2 && dist(p, S.drawing[0]) < CLOSE_UNITS) { closeShape(); return; }
       // an extension that started on the house can finish on it too
@@ -2564,7 +3042,7 @@
         changed();
         return;
       }
-      var end = keepInside(e === 'typed' ? snapFrom(null, w) : snapTarget(w).p);
+      var end = keepInside(e === 'typed' ? snapFrom(null, w) : aim(w).p);
       if (dist(end, S.drawing[0]) < SNAP * 0.5) { S.drawing = null; changed(); return; }
       if (crossesOutline(S.drawing[0], end)) { say('That wall would run outside the house.'); return; }
       f.internals.push([S.drawing[0], end]);
@@ -2832,7 +3310,8 @@
       return;
     }
     snapshot();
-    S.frontIdx = S.calibIdx;
+    S.frontIdx = frontWallIndex(f.outline);   // the street is at the bottom of the screen
+    S.measured = true;
     toMetres(metres / units);
     S.calibrating = false;
     // one clear question instead of a small "+ floor" nobody finds
@@ -2855,10 +3334,93 @@
       snapshot();
       S.floors.push(newFloor(S.floors.length));
       S.active = S.floors.length - 1;
-      say('Draw the upstairs, or copy the floor below and change it.');
     }
     FRAME = null; MANUAL = false;
     settled();
+    // asked on the way to the next step: carry on there, unless there is an upstairs to draw
+    var on = S.afterUp;
+    S.afterUp = null;
+    if (on && how !== 'diff') goStage(on);
+  }
+
+  /**
+   * The quick way in: say roughly how big the house is and it is there, in
+   * metres, square, the street at the bottom. There is no loose grid and no
+   * "how long is this wall" — every number on it can be tapped and typed, and
+   * every wall drags.
+   */
+  function startBox(w, d) {
+    S.started = true;
+    toMetres(1);
+    var f = ground();
+    f.outline = [[0, 0], [w, 0], [w, d], [0, d]];
+    f.closed = true;
+    f.internals = []; f.openings = []; f.markers = [];
+    S.frontIdx = 2;                // the bottom wall: the street
+    S.calibIdx = 0; S.calibrating = false; S.preset = false; S.measured = false;
+    S.askUp = false; S.askedUp = false; S.afterUp = null;
+    S.drawing = null; S.block = null; S.pick = null;
+    UNDO.length = 0; REDO.length = 0;
+    say('');
+    FRAME = null; MANUAL = false;
+    settled();
+  }
+
+  /** The two numbers on the first screen, in whichever units they were typed. */
+  function boxGo() {
+    var wi = $('sk-box-w'), di = $('sk-box-d'), err = $('sk-box-err');
+    var k = S.units === 'ft' ? 0.3048 : 1;
+    var w = parseFloat(wi && wi.value) * k, d = parseFloat(di && di.value) * k;
+    var bad = !(w >= 2 && w <= 40) || !(d >= 2 && d <= 40);
+    if (err) err.textContent = bad ? 'A house is between 2 and 40 metres each way. A rough guess is fine.' : '';
+    if (bad) return;
+    // to the nearest 5 cm: nobody knows their house closer than that
+    startBox(Math.round(w * 20) / 20, Math.round(d * 20) / 20);
+  }
+  function boxUnits(u1) {
+    var u0 = S.units || 'm';
+    ['w', 'd'].forEach(function (k) {
+      var el = $('sk-box-' + k), v = parseFloat(el && el.value);
+      if (el && v && u0 !== u1) el.value = (u1 === 'ft' ? v / 0.3048 : v * 0.3048).toFixed(u1 === 'ft' ? 0 : 1);
+    });
+    S.units = u1;
+    var ub = $('sk-box-units');
+    if (ub) Array.prototype.forEach.call(ub.querySelectorAll('button'), function (b) {
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-boxunits') === u1));
+    });
+    Array.prototype.forEach.call(doc.querySelectorAll('.sk-box-unit'), function (el) { el.textContent = u1 === 'ft' ? 'ft' : 'm'; });
+  }
+
+  /* ---- typing a length on to a wall ---------------------------------------- */
+  var LENEDIT = null;
+  function openLenEdit(which, i, el) {
+    var box = $('sk-lenedit'), inp = $('sk-lenedit-in'), shape = shapeOf(which);
+    if (!box || !inp || !shape || !shape.outline || !shape.outline[i]) return;
+    var a = shape.outline[i], b = shape.outline[(i + 1) % shape.outline.length];
+    var metres = m(dist(a, b)), ft = S.units === 'ft';
+    LENEDIT = { which: which, i: i };
+    inp.value = ft ? (metres / 0.3048).toFixed(1) : metres.toFixed(2);
+    var un = $('sk-lenedit-unit');
+    if (un) un.textContent = ft ? 'ft' : 'm';
+    box.hidden = false;
+    var r = el.getBoundingClientRect(), c = box.parentNode.getBoundingClientRect();
+    box.style.left = Math.max(84, Math.min(c.width - 84, r.left + r.width / 2 - c.left)) + 'px';
+    box.style.top = Math.max(70, Math.min(c.height - 28, r.top + r.height / 2 - c.top)) + 'px';
+    say('');
+    try { inp.focus(); inp.select(); } catch (e) {}
+  }
+  function closeLenEdit() {
+    var box = $('sk-lenedit');
+    if (box) box.hidden = true;
+    LENEDIT = null;
+  }
+  function applyLenEdit() {
+    var inp = $('sk-lenedit-in'), le = LENEDIT;
+    if (!le || !inp) return;
+    var v = parseFloat(inp.value);
+    if (S.units === 'ft' && v) v = v * 0.3048;
+    if (!v) { closeLenEdit(); return; }
+    if (setWallLength(le.which, le.i, v / (S.scale || 1))) closeLenEdit();
   }
 
   /* ---- shapes to start from ---------------------------------------------
@@ -2930,35 +3492,16 @@
     else settled();
   }
 
+  /** An extension is a block: on the back wall if there is room, else wherever there is. */
   function addRearExtension() {
     var g = ground();
     if (!g.closed) return;
-    var front = S.frontIdx !== undefined ? S.frontIdx : frontWallIndex(g.outline);
-    var fa = g.outline[front], fb = g.outline[(front + 1) % g.outline.length];
-    var fm = [(fa[0] + fb[0]) / 2, (fa[1] + fb[1]) / 2];
-    // the back is the wall farthest from the front
-    var best = -1, bd = -1;
-    for (var i = 0; i < g.outline.length; i++) {
-      if (i === front) continue;
-      var a = g.outline[i], b = g.outline[(i + 1) % g.outline.length];
-      var d = dist(fm, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]);
-      if (d > bd) { bd = d; best = i; }
-    }
-    var a2 = g.outline[best], b2 = g.outline[(best + 1) % g.outline.length];
-    var L = dist(a2, b2);
-    var ux = (b2[0] - a2[0]) / L, uy = (b2[1] - a2[1]) / L;
-    var n = outward(a2, b2, centroid(g.outline));
-    var nl = Math.hypot(n[0], n[1]) || 1;
-    n = [n[0] / nl, n[1] / nl];
-    var width = Math.min(3.5 / (S.scale || 1), L * 0.8), depth = 4 / (S.scale || 1);
-    var mid = [(a2[0] + b2[0]) / 2, (a2[1] + b2[1]) / 2];
-    var p1 = snapFrom(null, [mid[0] - ux * width / 2, mid[1] - uy * width / 2]);
-    var p2 = snapFrom(null, [mid[0] + ux * width / 2, mid[1] + uy * width / 2]);
-    var q1 = snapFrom(null, [p1[0] + n[0] * depth, p1[1] + n[1] * depth]);
-    var q2 = snapFrom(null, [p2[0] + n[0] * depth, p2[1] + n[1] * depth]);
+    var ring = placeBlock('ext', 4, 3);
+    if (!ring) { say('There is no wall with room for one. Tap its corners round instead.'); return; }
     snapshot();
-    S.extension = { outline: [p1, q1, q2, p2], closed: true, storeys: S.extension.storeys || 1 };
-    S.drawing = null;
+    S.extension = { outline: ring, closed: true, storeys: S.extension.storeys || 1 };
+    S.drawing = null; S.pick = null;
+    say('');
     FRAME = null; MANUAL = false;
     settled();
   }
@@ -3078,6 +3621,7 @@
     wrap.classList.remove('on');
     wrap.setAttribute('aria-hidden', 'true');
     S.confirm = null;
+    closeLenEdit();
     if (!going && S.onClose) S.onClose();
   }
   function reset() {
@@ -3089,6 +3633,8 @@
     S.extensions = [newExtension()]; S.extIdx = 0;
     S.garden = newGarden(); S.gardenMode = 'boundary';
     S.drawing = null; S.cursor = null; S.selected = null; S.pick = null;
+    S.block = null; S.measured = false; S.afterUp = null; S.frontIdx = undefined;
+    closeLenEdit();
     S.calibrating = false; S.pickWall = false; S.kind = null; S.wallMode = 'draw';
     S.askUp = false; S.askedUp = false; S.preset = false; S.frontIdx = undefined; S.more = false;
     FRAME = null; say('');
@@ -3146,6 +3692,8 @@
     if (id !== 'outline' && !ready()) return;
     if (!ACTIVE.some(function (st) { return st.id === id; })) return;
     if (S.stage === 'internal' && S.drawing) S.drawing = null;
+    S.block = null;
+    closeLenEdit();
     // an "Add another extension" nobody drew is dropped on the way out
     if (S.stage === 'extension' && id !== 'extension' && S.extensions.length > 1) {
       S.extensions = S.extensions.filter(function (x) { return x.closed; });
@@ -3259,6 +3807,17 @@
     if (len) len.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') { e.preventDefault(); applyCalibration(); }
     });
+    var lenEd = $('sk-lenedit-in');
+    if (lenEd) lenEd.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); applyLenEdit(); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeLenEdit(); }
+    });
+    ['sk-box-w', 'sk-box-d'].forEach(function (id) {
+      var el = $(id);
+      if (el) el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); boxGo(); }
+      });
+    });
     // the typed-length box is re-rendered, so it is listened to from the overlay
     $('sk-overlay').addEventListener('keydown', function (e) {
       if (e.target && e.target.id === 'sk-typed' && e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); addTyped(null); }
@@ -3281,6 +3840,7 @@
       hit = t.closest && t.closest('[data-skfloor]');
       if (hit) {
         S.active = +hit.getAttribute('data-skfloor');
+        S.block = null; closeLenEdit();
         S.drawing = null; S.selected = null; FRAME = null; settled();
         return;
       }
@@ -3354,17 +3914,40 @@
         }
         if (act === 'sk-close-shape' || act === 'sk-close-ext' || act === 'sk-close-garden') { closeShape(); return; }
         if (act === 'sk-copy') { copyFloorBelow(); return; }
-        if (act.indexOf('sk-go-') === 0) { goStage(act.slice(6)); return; }
+        if (act === 'sk-joinblock') { joinBlock(); return; }
+        if (act.indexOf('sk-go-') === 0) {
+          // a house that came from its sizes has not been asked about upstairs yet
+          if (S.stage === 'outline' && ready() && S.floors.length === 1 && !S.askedUp) {
+            S.askUp = true; S.afterUp = act.slice(6); S.pick = null;
+            closeLenEdit(); render(); return;
+          }
+          goStage(act.slice(6)); return;
+        }
         return;
       }
 
       // a click lands on whatever is under the finger — often a <span> inside
       // the button — so resolve to the button before matching on id
       var btn = t.closest ? t.closest('button') : null;
+      hit = t.closest && t.closest('[data-len]');
+      if (hit) {
+        var lk = hit.getAttribute('data-len').split(':');
+        openLenEdit(lk[0], +lk[1], hit);
+        return;
+      }
+      hit = t.closest && t.closest('[data-nudgebox]');
+      if (hit) {
+        var nb = hit.getAttribute('data-nudgebox').split(':'), ni = $('sk-box-' + nb[0]);
+        var nstep = S.units === 'ft' ? 2 : 0.5, ncur = parseFloat(ni.value) || 0;
+        ni.value = String(Math.max(S.units === 'ft' ? 8 : 2, Math.round((ncur + nstep * +nb[1]) * 10) / 10));
+        return;
+      }
+      hit = t.closest && t.closest('[data-boxunits]');
+      if (hit) { boxUnits(hit.getAttribute('data-boxunits')); return; }
       hit = t.closest && t.closest('[data-addcorner]');
       if (hit) {
         var addTo = editable();
-        if (addTo) splitWall(addTo, +hit.getAttribute('data-addcorner'), 0.5);
+        if (addTo) splitWall(addTo, +hit.getAttribute('data-addcorner'), +hit.getAttribute('data-addt') || 0.5);
         return;
       }
       hit = t.closest && t.closest('[data-killpick]');
@@ -3378,7 +3961,11 @@
       }
 
       switch ((btn && btn.id) || t.id) {
-        case 'sk-blank':     S.started = true; settled(); return;
+        case 'sk-blank':     S.started = true; S.measured = false; settled(); return;
+        case 'sk-box-go':    boxGo(); return;
+        case 'sk-addblock':  addBlock(); return;
+        case 'sk-cancelblock': S.block = null; say(''); FRAME = null; MANUAL = false; settled(); return;
+        case 'sk-lenedit-ok': applyLenEdit(); return;
         case 'sk-addext':    addRearExtension(); return;
         case 'sk-addplot':   addTypicalPlot(); return;
         case 'sk-cancelrun': S.drawing = null; S.cursor = null; say(''); render(); return;
@@ -3436,6 +4023,9 @@
           S.extensions.push(newExtension(1));
           S.extIdx = S.extensions.length - 1;
           S.pick = null; S.drawing = null; say('');
+          // it arrives as a block on whichever wall has room; no room, and it is drawn by hand
+          var ringX = placeBlock('ext', 3, 3);
+          if (ringX) { S.extension.outline = ringX; S.extension.closed = true; }
           MANUAL = false; FRAME = null; refitTight(); inflate(1.35);
           render(); persist(); return;
         case 'sk-dropext':
@@ -3487,6 +4077,8 @@
         return;
       }
       if (e.key === 'Escape') {
+        if (LENEDIT) { closeLenEdit(); return; }
+        if (S.block) { S.block = null; say(''); FRAME = null; settled(); return; }
         if (S.drawing) { S.drawing = null; S.cursor = null; render(); }
         else if (S.pick || S.selected) { S.pick = null; S.selected = null; render(); }
         else close();

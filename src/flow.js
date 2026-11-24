@@ -1340,6 +1340,8 @@
 
   ROUTER.on(function (r) {
     route = r;
+    // the drawing is a page of its own: leave that page — Back included — and it goes too
+    if (r.name !== 'draw' && D.SKETCH && D.SKETCH.close) D.SKETCH.close(true);
     if (r.name === 'landing') return;
     if (r.name === 'start') { paintChooser(); return; }
 

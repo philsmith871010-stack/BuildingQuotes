@@ -31,7 +31,61 @@ measures it accurately.
 Anything not in that table is not captured. There is no room naming, no
 furniture, no north point, no wall types, no levels, no rendering.
 
+## Blocks first
+
+The default way in is no longer a grid to tap corners on. It is two numbers —
+*roughly how wide is your house, and how deep?* — and the house is there: a
+rectangle, in metres, square, with the street at the bottom of the screen and
+the back garden at the top. Both are labelled, because "rear extension" means
+nothing until the drawing says which way round it is.
+
+Everything after that is built from the same piece, a **block**: a rectangle
+standing on one wall.
+
+- **Add a part that sticks out** puts a block on the back wall. Drag it by its
+  middle and it slides along the wall; drag it towards another wall and it
+  steps on to that one. Drag an edge to size it. *Join it to the house* makes
+  its three walls part of the outline. An L, a T, a back addition and a porch
+  are two or three blocks.
+- **An extension is a block that is not joined.** It arrives on the back wall
+  (or, for a second one, on whichever wall has room), moves the same way, and
+  shows its width and how far it comes out.
+- **Every length is a button.** Tap a number on the drawing and type the real
+  one. The wall beyond the far end moves to suit; if that cannot be done, the
+  wall before the near end does.
+- **Nothing can stand on the house.** A block, an extension or one of its
+  corners stops at the house wall while it is being dragged, and stops at
+  another extension. Before this a wall slid the wrong way priced 7.5 m² of
+  existing house as new extension, and the only warning said it was "not
+  touching".
+
+Why: tapping corners asks a finger to hit a point, and houses are made of
+right angles. Two taps meant to be level landed a grid line apart and the wall
+between them leaned — on a phone the grid lines are twelve pixels apart, and
+five once the house is measured. Dragging a wall asks a finger only for a
+direction, and a block cannot be out of square.
+
+A block is not stored as one. `blockOn(host, ring)` reads it off the shape each
+time — four corners, a rectangle, one side lying along a wall — so a block
+whose corner has been dragged simply stops being a block and carries on as an
+ordinary outline, and old drawings need no migration. The geometry lives in one
+section of `src/sketch.js` headed *blocks*.
+
+**Tapping round the corners is still there**, behind *It is an odd shape* on the
+first screen and for drawing over an uploaded plan, and it is what the rest of
+this document describes. It now squares up as it goes: a corner within a
+fingertip of level or plumb with the last one — or with the first, so the
+closing wall comes home square — is made level or plumb. A wall drawn well off
+square is left alone, so a bay is still a bay. An upstairs being tapped out
+catches the corners and walls of the floor below.
+
+An extension that is not a plain block is priced on the floor it really has:
+its width across, and the depth that gives its true area. The box round a
+triangle is twice the triangle.
+
 ## The idea the whole thing rests on
+
+*(This is the tapped route: the odd-shape and uploaded-plan way in.)*
 
 **You draw the shape, then measure it once — and the grid becomes real metres.**
 
@@ -95,7 +149,8 @@ Supporting choices:
 Drawing it once is never enough, so a finished outline stays editable:
 
 - **Drag a corner** — both walls either side follow, the ring never opens.
-- **Tap a wall** — a corner appears in it and the wall becomes two. Splitting
+- **Tap the + on a wall** — a corner appears in it and the wall becomes two. (A
+  bare tap on a wall used to do this, and nobody guessed it.) Splitting
   never moves the wall: the new corner lands on it, at a grid intersection
   where the wall passes through one, which every square and 45° wall does.
 - **Tap a corner, then the ×** — the two walls either side merge. A bare tap
@@ -164,8 +219,8 @@ and this is a sequence. The side panel says "Step 3 of 6" and names the stage,
 one primary button always says what comes next, and every hint is one plain
 sentence.
 
-1. **Shape** — pick the nearest of three shapes (rectangle, L, T) and drag any
-   corner, or tap round the corners yourself. Then one question: *roughly how
+1. **Shape** — say how wide and deep the house is and add the parts that stick
+   out (see *Blocks first*), or tap round the corners yourself. Then one question: *roughly how
    wide is it across the front?* — in metres or feet, with a rough guide for
    people who have never measured a house. The shape stays live while the
    question is up: people drag first and answer second, so a preset is

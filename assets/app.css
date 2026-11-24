@@ -914,6 +914,63 @@ html { scroll-padding-top: 62px; }
 .sk-add text { fill: var(--ink-2); font-family: var(--mono); font-weight: 700; pointer-events: none; }
 .sk-add:hover circle { stroke: var(--accent); }
 .sk-add:hover text { fill: var(--accent); }
+.sk-block { fill: rgba(31,78,121,.16); stroke: var(--accent); stroke-width: 3; stroke-dasharray: 9 6; stroke-linejoin: round; }
+.sk-arrow circle, .sk-moveh circle { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+.sk-arrow path, .sk-moveh path { fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sk-moveh circle { fill: var(--surface); stroke: var(--accent); }
+.sk-moveh path { stroke: var(--accent); }
+.sk-arrow:hover circle { fill: var(--accent-ink, var(--accent)); stroke-width: 3; }
+#sk-svg.cur-size-ew { cursor: ew-resize; }
+#sk-svg.cur-size-ns { cursor: ns-resize; }
+#sk-svg.cur-size-nwse { cursor: nwse-resize; }
+#sk-svg.cur-size-nesw { cursor: nesw-resize; }
+#sk-svg.cur-move { cursor: move; }
+.sk-key { list-style: none; margin: 0; padding: 0; display: grid; gap: .3rem; }
+.sk-key[hidden] { display: none; }
+.sk-key li { display: flex; align-items: center; gap: .55rem; font-size: .84rem; color: var(--ink-2); line-height: 1.3; }
+.sk-key i {
+  flex: 0 0 auto; font-style: normal; display: inline-grid; place-items: center;
+  min-width: 1.5rem; height: 1.5rem; border-radius: 999px; font-size: .85rem; font-weight: 700;
+}
+.sk-key .k-sym { background: var(--accent); color: #fff; }
+.sk-key .k-move { background: var(--surface); color: var(--accent); border: 2px solid var(--accent); }
+.sk-key .k-plus { background: var(--surface); color: var(--ink-2); border: 1.6px solid var(--ink-3); }
+.sk-key .k-num {
+  border-radius: 3px; padding: 0 .3rem; font-family: var(--mono); font-size: .7rem; font-weight: 500;
+  color: var(--ink-2); background: var(--surface); border: 1px dashed var(--accent);
+}
+.sk-compass { font-family: var(--mono); letter-spacing: .16em; fill: var(--ink-3); opacity: .75; pointer-events: none; }
+.sk-tag.tap { cursor: pointer; }
+.sk-tag.tap rect { stroke: var(--accent); stroke-dasharray: 3 2; }
+.sk-tag.tap:hover rect { fill: var(--accent); stroke-dasharray: none; }
+.sk-tag.tap:hover text { fill: #fff; }
+.sk-tag.live.tap rect { stroke: var(--surface); stroke-dasharray: none; }
+.sk-lenedit {
+  position: absolute; z-index: 6; transform: translate(-50%, -50%);
+  display: flex; align-items: center; gap: .35rem; padding: .35rem .45rem;
+  background: var(--surface); border: 2px solid var(--accent); border-radius: 4px;
+  box-shadow: 0 6px 22px rgba(0,0,0,.18);
+}
+.sk-lenedit[hidden] { display: none; }
+.sk-lenedit input {
+  width: 5.2rem; font-family: var(--mono); font-size: 1.05rem; padding: .3rem .4rem;
+  border: 1px solid var(--rule); border-radius: 2px; background: var(--paper); color: var(--ink);
+}
+.sk-lenedit span { font-family: var(--mono); font-size: .8rem; color: var(--ink-3); }
+.sk-addblock { width: 100%; }
+.sk-size { display: flex; flex-wrap: wrap; gap: 1rem 1.6rem; justify-content: center; margin-top: .5rem; }
+.sk-size-f { display: grid; gap: .35rem; justify-items: center; }
+.sk-size-f label { font-size: .9rem; font-weight: 600; color: var(--ink); }
+.sk-size-row { display: flex; align-items: center; gap: .4rem; }
+.sk-size-row input {
+  width: 5.6rem; text-align: center; font-family: var(--mono); font-size: 1.5rem; padding: .45rem .3rem;
+  border: 1px solid var(--rule); border-radius: 3px; background: var(--surface); color: var(--ink);
+}
+.sk-size-row input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sk-size-row .sk-box-unit { font-family: var(--mono); font-size: .9rem; color: var(--ink-3); min-width: 1.2rem; text-align: left; }
+.sk-size-row .sk-nudge { width: 2.6rem; height: 2.6rem; font-size: 1.2rem; }
+.sk-box-go { font-size: 1.05rem; padding: .85rem 1.8rem; margin-top: .2rem; }
+.sk-size-tip { font-size: .82rem; color: var(--ink-3); max-width: 26rem; }
 .sk-extension.other { opacity: .35; }
 .sk-extline.other { opacity: .45; }
 .sk-extnum { font-family: var(--mono); font-weight: 700; fill: var(--ink-2); pointer-events: none; }

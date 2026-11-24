@@ -12,8 +12,8 @@
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap"></noscript>
-<link rel="stylesheet" href="assets/styles.css?v=202609211547">
-<link rel="stylesheet" href="assets/app.css?v=202609211547">
+<link rel="stylesheet" href="assets/styles.css?v=202611241013">
+<link rel="stylesheet" href="assets/app.css?v=202611241013">
 </head>
 <body>
 
@@ -555,23 +555,39 @@
 
     <!-- Blank canvas, or their own plan to draw over. -->
     <div class="sk-choose" id="sk-choose">
-      <h3>Your house, in a minute.</h3>
-      <p>Draw it on the grid, or draw over your own plan. Say how wide it is across the
-        front and everything else is measured from that.</p>
-      <div class="sk-choice">
-        <button type="button" class="sk-card sk-card-main" id="sk-blank">
-          <span class="sk-card-ico" aria-hidden="true">&#9633;</span>
-          <b>Start with a blank canvas</b>
-          <span>Tap round the corners of your house on the grid. About a minute.</span>
-        </button>
-        <button type="button" class="sk-card" id="sk-upload">
-          <span class="sk-card-ico" aria-hidden="true">&#8673;</span>
-          <b>Use my floor plan</b>
-          <span>A photo or screenshot of an estate agent plan. It sits under the grid and you tap round it.</span>
-        </button>
+      <h3>Roughly how big is your house?</h3>
+      <p>A guess is fine. One big step is about a metre, and you can change everything afterwards.</p>
+      <div class="sk-size">
+        <div class="sk-size-f">
+          <label for="sk-box-w">Width, across the front</label>
+          <div class="sk-size-row">
+            <button type="button" class="sk-nudge" data-nudgebox="w:-1" aria-label="Narrower">&minus;</button>
+            <input id="sk-box-w" type="number" step="0.1" min="2" inputmode="decimal" value="6">
+            <span class="sk-box-unit">m</span>
+            <button type="button" class="sk-nudge" data-nudgebox="w:1" aria-label="Wider">+</button>
+          </div>
+        </div>
+        <div class="sk-size-f">
+          <label for="sk-box-d">Depth, front to back</label>
+          <div class="sk-size-row">
+            <button type="button" class="sk-nudge" data-nudgebox="d:-1" aria-label="Shallower">&minus;</button>
+            <input id="sk-box-d" type="number" step="0.1" min="2" inputmode="decimal" value="8">
+            <span class="sk-box-unit">m</span>
+            <button type="button" class="sk-nudge" data-nudgebox="d:1" aria-label="Deeper">+</button>
+          </div>
+        </div>
       </div>
+      <div class="seg" id="sk-box-units" role="group" aria-label="Units">
+        <button type="button" data-boxunits="m" aria-pressed="true">metres</button>
+        <button type="button" data-boxunits="ft" aria-pressed="false">feet</button>
+      </div>
+      <p class="sk-say" id="sk-box-err"></p>
+      <button type="button" class="btn sk-box-go" id="sk-box-go">Draw my house &rarr;</button>
+      <p class="sk-size-tip">Just the main part of the house. Anything that sticks out is added next.</p>
       <input type="file" id="sk-file" accept="image/*" hidden>
       <div class="sk-alts">
+        <button type="button" class="sk-alt" id="sk-upload">I have a floor plan to draw over</button>
+        <button type="button" class="sk-alt" id="sk-blank">It is an odd shape: let me tap round the corners</button>
         <button type="button" class="sk-alt sk-alt-quiet" id="sk-autotrace" hidden>Got a clean estate agent plan? We can find the rooms for you.</button>
         <button type="button" class="sk-alt sk-alt-quiet" id="sk-skip" hidden>Skip &mdash; I would rather type the measurements</button>
       </div>
@@ -581,6 +597,12 @@
       <div class="sk-canvas">
         <div class="sk-floors" id="sk-floors" role="group" aria-label="Floor"></div>
         <svg id="sk-svg" preserveAspectRatio="xMidYMid meet" aria-label="Your plan"></svg>
+        <!-- Tap a length on the drawing and it becomes this box. -->
+        <div class="sk-lenedit" id="sk-lenedit" hidden>
+          <input id="sk-lenedit-in" type="number" step="0.05" min="0.3" inputmode="decimal" aria-label="Length of this wall">
+          <span id="sk-lenedit-unit">m</span>
+          <button type="button" class="btn btn-sm" id="sk-lenedit-ok">OK</button>
+        </div>
         <div class="sk-actions">
           <button type="button" class="btn btn-ghost btn-sm" id="sk-undo" title="Undo">&#8630; Undo</button>
           <button type="button" class="btn btn-ghost btn-sm" id="sk-redo" title="Redo">&#8631;</button>
@@ -596,6 +618,7 @@
         <p class="sk-of" id="sk-of"></p>
         <h3 class="sk-stagename" id="sk-stagename"></h3>
         <p class="sk-hint" id="sk-hint"></p>
+        <ul class="sk-key" id="sk-key" hidden></ul>
         <p class="sk-say" id="sk-say"></p>
 
         <!-- The one number the whole drawing is scaled by. -->
@@ -636,20 +659,20 @@
   </div>
 </div>
 
-<script src="vendor/opentakeoff/geom.js?v=202609211547"></script>
-<script src="vendor/gsap.min.js?v=202609211547"></script>
-<script src="vendor/ScrollTrigger.min.js?v=202609211547"></script>
-<script src="src/ratebook.js?v=202609211547"></script>
-<script src="src/trees.js?v=202609211547"></script>
-<script src="src/store.js?v=202609211547"></script>
-<script src="src/rates.js?v=202609211547"></script>
-<script src="src/engine.js?v=202609211547"></script>
-<script src="src/draw2d.js?v=202609211547"></script>
-<script src="src/plan-sample.js?v=202609211547"></script>
-<script src="src/trace.js?v=202609211547"></script>
-<script src="src/sketch.js?v=202609211547"></script>
-<script src="src/router.js?v=202609211547"></script>
-<script src="src/hero.js?v=202609211547"></script>
-<script src="src/flow.js?v=202609211547"></script>
+<script src="vendor/opentakeoff/geom.js?v=202611241013"></script>
+<script src="vendor/gsap.min.js?v=202611241013"></script>
+<script src="vendor/ScrollTrigger.min.js?v=202611241013"></script>
+<script src="src/ratebook.js?v=202611241013"></script>
+<script src="src/trees.js?v=202611241013"></script>
+<script src="src/store.js?v=202611241013"></script>
+<script src="src/rates.js?v=202611241013"></script>
+<script src="src/engine.js?v=202611241013"></script>
+<script src="src/draw2d.js?v=202611241013"></script>
+<script src="src/plan-sample.js?v=202611241013"></script>
+<script src="src/trace.js?v=202611241013"></script>
+<script src="src/sketch.js?v=202611241013"></script>
+<script src="src/router.js?v=202611241013"></script>
+<script src="src/hero.js?v=202611241013"></script>
+<script src="src/flow.js?v=202611241013"></script>
 </body>
 </html>
