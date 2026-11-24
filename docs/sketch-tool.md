@@ -138,6 +138,38 @@ names the floor. A floor with no shape yet offers *Draw this floor's shape first
 A room is named **where it is tapped**: the list of room types opens beside the
 tap, and tapping a name opens the same list to change or remove it.
 
+### Inside walls have no modes
+
+The inside walls step used to have four modes — add a wall, move or remove,
+add a doorway, knock a wall out — and a tap on the plan meant something
+different in each. That is a thing to learn, and a thing to get wrong. Now the
+step works like every other step:
+
+- **Add a wall** puts one in: across the middle of the biggest space there is,
+  running the short way, from wall to wall. That is how a room is usually
+  divided, so the first two or three presses often land close to right.
+- **Drag** its arrow and it slides. It goes on reaching from wall to wall as it
+  moves, so a wall dragged into a narrower part of the house gets shorter and
+  gets its length back on the way out. An end that was stopped short on purpose
+  stays as long as it was. Drag an end to shorten or lengthen it.
+- **Tap** a wall and it is picked: × removes it, and three buttons wake up —
+  *Add a doorway*, *Turn it round*, *Knock it out* (which becomes *Put it
+  back*). Those buttons are on the panel from the first wall onwards, asleep
+  until a wall is tapped, so the panel does not jump when one is.
+
+A tap on the plan never draws anything on this step. A wall's arrow moves off
+its middle when another wall ends there, and the arrow wins over that end, so
+a T-junction can still be slid from either wall.
+
+**The house can change under them.** After any change, each inside wall keeps
+the part of itself that is still indoors; a wall left wholly outside goes, with
+its doorways; and a wall that reached an outside wall goes on reaching it when
+that wall is moved away. So going back to make the house a metre wider makes
+the rooms a metre wider, not a house with walls that stop short.
+
+A wall that is coming out used to forget it on undo and on reload — the mark
+was hung on a list, which saving drops. It is now written out and read back.
+
 ### Undo, and going back
 
 Undo and Redo walk a history of snapshots. A snapshot is **where you were, not
@@ -237,8 +269,7 @@ Corners drag on every step, not only the Shape step, because the dots are on
 screen on every step and a dot that will not move reads as broken. Splitting a
 wall and removing a corner stay on the Shape step, where a tap on a wall cannot
 mean anything else. Inside walls work the same way: drag an end to move one, tap
-it to pick it and the × appears, tap the picked wall again to start a new wall
-from it (a T-junction). On a touch screen the tap that places a room pin used to
+it to pick it and the × appears. On a touch screen the tap that places a room pin used to
 be followed by a click on the pin it had just drawn, which removed it; a pin is
 now only ever removed through the pointer path.
 
@@ -305,12 +336,10 @@ sentence.
    wall that may just have been split. A hand-drawn shape measures its longest
    wall, and *measure a different wall* lets you tap another. Then one more:
    *does it have an upstairs?* Yes copies the floor below.
-2. **Inside walls** — optional. Add a wall, move or remove one, add a doorway,
-   or knock one out. They come before the rooms because they are what makes a
-   room a room. Adding and moving are separate modes on purpose: while adding,
-   nothing on the canvas is a handle, so a tap or a drag that starts on an
-   outside wall or a corner starts a wall there instead of moving it. Tap one
-   end then the other, or drag from one to the other.
+2. **Inside walls** — optional. *Add a wall* puts one in, it drags to where it
+   is, and a tap on it offers a doorway, a turn, or knocking it out. They come
+   before the rooms because they are what makes a room a room. There are no
+   modes: see "Inside walls have no modes" above.
 3. **Doors & windows** — pick one, tap the outside wall it is in.
 4. **Rooms** — pick a type, tap the room. Tap a label to pick it: the type
    buttons then change it, × removes it, and it drags. The rooms page of the
@@ -405,7 +434,7 @@ the way the pointer points. The corner lands exactly there. Typing before the
 house has been measured makes the grid metres on the spot, so the measuring
 question never comes, and typing the closing length closes the shape.
 
-Every wall also slides (on the Shape step, or in "Move or remove" on the
+Every wall also slides (outside walls on the Shape step, inside walls on the
 inside-walls step). Grab the middle of an outside wall and it moves sideways
 with both neighbours stretching; the same for an inside wall. Walls
 that ended on the wall being slid move with it, so a T-junction stays a
@@ -424,8 +453,7 @@ you might still want (change the measurement, draw the floor again, draw over a
 plan, remove the floor) sit as a quiet row *after* Next, not as a stack of
 buttons in front of it. While a run of corners or a wall is open there is a
 Cancel link, so a phone user is never stuck mid-run. A doorway or window is
-previewed on the wall it will land on before the tap, and a wall to knock out
-lights up red under the pointer. The frame keeps its top clear of the undo and
+previewed on the wall it will land on before the tap. The frame keeps its top clear of the undo and
 zoom buttons, so no corner ever hides under them.
 
 ## The pointer says what a click will do
@@ -433,11 +461,12 @@ zoom buttons, so no corner ever hides under them.
 A crosshair everywhere told nobody anything. Each state has its own cursor: a
 pen while a tap draws (with a blue dot when the point will snap to something),
 a hand over anything that drags, a "+" on a wall that a tap will split, a door
-over a wall a doorway can go in, a hammer over a wall that can be knocked out,
+over an outside wall a door or window can go in,
 a pin where a room can be named, a ring over a label that a tap will pick, and
 "not here" wherever a tap would be refused. A wall-middle handle defers to what
 a tap does there, so on the doors step a wall shows the door cursor, not a
-hand, and walls slide only on the Shape step and in "Move or remove".
+hand. Outside walls slide only on the Shape step; an inside wall shows the
+way it slides on the inside-walls step.
 
 ## Doorways, doors and the extension
 
@@ -495,11 +524,10 @@ the flow can be shown without drawing a house first.
 ## Knocking walls out
 
 Asking a client how many metres of wall are coming out asks them to total up
-something they can point at. So in stage 2 the tools offer a choice — draw a new
-wall, or knock one out — and knocking one out is a tap on the wall itself. It
-draws dashed and red, labelled COMING OUT, its length is taken out of the
-plastering, and the total lands on the renovation's "walls coming out" as a
-measured figure. Tapping it again puts it back. Marking none means none rather
+something they can point at. So in stage 2 they point at it: tap the wall, then
+*Knock it out*. It draws dashed and red, labelled COMING OUT, its length is
+taken out of the plastering, and the total lands on the renovation's "walls
+coming out" as a measured figure. *Put it back* undoes it. Marking none means none rather
 than the default.
 
 ## Protections

@@ -1739,7 +1739,6 @@ html { scroll-padding-top: 62px; }
 #sk-svg.cur-draw-snap { cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M4 24 L6 18 L18 6 L22 10 L10 22 Z' fill='%23fff' stroke='%2314191D' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cpath d='M18 6 L22 10' stroke='%2314191D' stroke-width='1.6'/%3E%3Ccircle cx='5' cy='23' r='4' fill='%23154C7C' stroke='%23fff' stroke-width='1.5'/%3E%3C/svg%3E") 4 24, crosshair; }
 #sk-svg.cur-split { cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M3 14 H25' stroke='%2314191D' stroke-width='2.5' stroke-linecap='round'/%3E%3Cpath d='M3 14 H25' stroke='%23fff' stroke-width='5' stroke-linecap='round' opacity='.9'/%3E%3Cpath d='M3 14 H25' stroke='%2314191D' stroke-width='2.5' stroke-linecap='round'/%3E%3Ccircle cx='14' cy='14' r='6' fill='%23fff' stroke='%23154C7C' stroke-width='1.5'/%3E%3Cpath d='M11 14 h6 M14 11 v6' stroke='%23154C7C' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") 14 14, copy; }
 #sk-svg.cur-door { cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M4 22 H24' stroke='%2314191D' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M9 22 V8 A14 14 0 0 1 23 22' fill='none' stroke='%23154C7C' stroke-width='1.6' stroke-dasharray='2 2'/%3E%3Cpath d='M9 22 V7' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3Crect x='9' y='7' width='4' height='15' fill='%23154C7C'/%3E%3C/svg%3E") 14 22, pointer; }
-#sk-svg.cur-out { cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M4 14 H24' stroke='%2314191D' stroke-width='4' stroke-linecap='round' stroke-dasharray='3 3'/%3E%3Ccircle cx='14' cy='14' r='7' fill='%23fff' stroke='%23B4432B' stroke-width='1.5'/%3E%3Cpath d='M10.5 10.5 L17.5 17.5 M17.5 10.5 L10.5 17.5' stroke='%23B4432B' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E") 14 14, pointer; }
 #sk-svg.cur-pin { cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Crect x='4' y='6' width='20' height='11' rx='5.5' fill='%23154C7C' stroke='%23fff' stroke-width='1.5'/%3E%3Cpath d='M14 17 L14 25' stroke='%2314191D' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='14' cy='25' r='2' fill='%2314191D'/%3E%3Ctext x='14' y='14' font-family='monospace' font-size='7' font-weight='700' text-anchor='middle' fill='%23fff'%3EROOM%3C/text%3E%3C/svg%3E") 14 25, pointer; }
 #sk-svg.cur-pick { cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M4 14 H24' stroke='%2314191D' stroke-width='4' stroke-linecap='round'/%3E%3Ccircle cx='14' cy='14' r='7' fill='none' stroke='%23fff' stroke-width='2.5'/%3E%3Ccircle cx='14' cy='14' r='7' fill='none' stroke='%23154C7C' stroke-width='1.2'/%3E%3C/svg%3E") 14 14, pointer; }
 #sk-svg.grabbing { cursor: grabbing !important; }
@@ -1756,6 +1755,9 @@ html { scroll-padding-top: 62px; }
 .sk-side button, .sk-actions button, .sk-floors button, .sk-stages button:not(:disabled), .sk-choose button { cursor: pointer; }
 .sk-side input[type="number"], .sk-side input[type="text"] { cursor: text; }
 .sk-side button:disabled { cursor: not-allowed; }
+.sk-side .seg button:disabled { opacity: .42; }
+/* what can be done to a picked wall: big enough for a thumb */
+#sk-doorway, #sk-turnwall, #sk-wallout { min-height: 40px; padding-left: .8rem; padding-right: .8rem; }
 
 .sk-quiet { display: flex; flex-wrap: wrap; gap: .2rem .9rem; justify-content: center; }
 .sk-quiet .sk-alt { font-size: .76rem; }
@@ -5627,12 +5629,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       plan: 'Tap each outside corner on your plan in turn, going round until you are back where you started.',
       done: 'Check the sizes, then add any part that sticks out.' },
     { id: 'internal',  n: 2, label: 'Inside walls',
-      hint: 'Optional. Tap one end of a wall, then the other end — or drag from one to the other. Nothing moves while you are adding.',
-      done: 'Tap or drag to add another wall. Choose "Move or remove" to change one.',
-      move: 'Drag an end or a whole wall. Tap a wall, then × to remove it.',
-      picked: 'Tap × to remove this wall, or drag an end to move it.',
-      door: 'Tap a wall to put a doorway in it. Drag a doorway to move it along the wall. Tap it, then × to remove it.',
-      out:  'Tap any wall you are knocking out. Tap it again to put it back.' },
+      hint: 'Optional. Press “Add a wall”, then drag it to where it is.',
+      done: 'Drag a wall to move it, or an end to shorten it. Tap a wall for a doorway and more.',
+      picked: 'Drag this wall or its ends. Tap × to remove it.' },
     { id: 'openings',  n: 3, label: 'Doors & windows',
       hint: 'Pick a window or a door, then tap the outside wall it is in.',
       done: 'Drag one to move it along the wall. Tap it to change its width.' },
@@ -6089,8 +6088,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (!FRAME) refit();
     return FRAME;
   }
-  function changed() { refit(); render(); persist(); }
-  function settled() { refitTight(); render(); persist(); }
+  function changed() { fitWalls(); refit(); render(); persist(); }
+  function settled() { fitWalls(); refitTight(); render(); persist(); }
 
   /* ---- drawing --------------------------------------------------------------- */
 
@@ -6254,7 +6253,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         '" y2="' + P(seg[1])[1] + '" class="sk-int' + (on ? ' on' : '') + (seg.out ? ' out' : '') + (hot ? ' hot' : '') + '"/>');
       if (seg.out) {
         out.push('<text x="' + ((seg[0][0] + seg[1][0]) / 2 * K) + '" y="' +
-          ((seg[0][1] + seg[1][1]) / 2 * K - 8 * RU) + '" text-anchor="middle" class="sk-outlab">COMING OUT</text>');
+          ((seg[0][1] + seg[1][1]) / 2 * K - 18 * RU) + '" text-anchor="middle" class="sk-outlab">COMING OUT</text>');
       }
       if (movingWalls() || drawingWalls()) {
         [0, 1].forEach(function (e) {
@@ -6358,6 +6357,19 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
     // a + in the middle of each wall of the shape being edited: the one way
     // to add a corner, so no tap on a wall ever changes the shape by accident
+    // every inside wall carries the arrow that slides it, like every other wall that moves
+    if (S.stage === 'internal' && !live.length && !S.calibrating && !S.askUp) {
+      f.internals.forEach(function (sg, wi) {
+        var wl = dist(sg[0], sg[1]) || 1;
+        if (wl * px < 46) return;
+        var wdeg = (Math.atan2((sg[1][0] - sg[0][0]) / wl, -(sg[1][1] - sg[0][1]) / wl) * 180 / Math.PI).toFixed(1);
+        var grip = wallGrip(f, wi);
+        out.push('<g class="sk-arrow" transform="translate(' + (grip[0] * K).toFixed(1) + ' ' + (grip[1] * K).toFixed(1) +
+          ') rotate(' + wdeg + ') scale(' + (RU * 0.9).toFixed(3) + ')"><title>Drag to move this wall</title><circle r="11"/>' +
+          '<path d="M-6.5 0H6.5M-6.5 0l3.4-3.4M-6.5 0l3.4 3.4M6.5 0l-3.4-3.4M6.5 0l-3.4 3.4"/></g>');
+      });
+    }
+
     /* What can be done to a shape is drawn on it, because a hover cursor is no
        use on a phone and a wall gives no sign that it drags:
          an arrow in the middle of every wall that can be dragged in or out,
@@ -6691,10 +6703,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         : ((S.stage === 'internal' || S.stage === 'openings' || S.stage === 'rooms') && !f.closed)
             ? 'The ' + f.name.toLowerCase() + ' has no shape yet, so there is nothing to put walls or rooms in.'
         : (S.stage === 'outline' && S.block) ? 'Put it where it is on your house, and make it the right size.'
-        : (S.stage === 'internal' && S.wallMode === 'out') ? stage.out
-        : (S.stage === 'internal' && S.wallMode === 'door') ? stage.door
-        : (S.stage === 'internal' && S.wallMode === 'move' && S.pick && S.pick.kind === 'iwall') ? stage.picked
-        : (S.stage === 'internal' && S.wallMode === 'move') ? stage.move
+        : (S.stage === 'internal' && S.selected) ? 'Drag the doorway along its wall, and choose how wide it is.'
+        : (S.stage === 'internal' && S.pick && S.pick.kind === 'iwall') ? stage.picked
         : (S.stage === 'garden' && !mid && isArea(gardenTarget()))
             ? 'Put the ' + gardenKind(shapeOf(gardenTarget()).kind).label.toLowerCase() + ' where it is, and make it the right size.'
         : (S.stage === 'garden' && !mid && S.garden.plot.closed && S.gardenMode === 'tree') ? stage.tree
@@ -6878,10 +6888,17 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     };
 
     if (stage === 'internal') {
-      var mode = S.wallMode || 'draw';
-      return '<div class="sk-tool"><label>I want to</label>' +
-        seg([['draw', 'Add a wall'], ['move', 'Move or remove'], ['door', 'Add a doorway'], ['out', 'Knock a wall out']], mode, 'data-wallmode') + '</div>' +
-        (mode === 'door' ? widths() : '');
+      var fw = floor(), pw = S.pick && S.pick.kind === 'iwall' ? fw.internals[S.pick.i] : null;
+      var off = pw ? '' : ' disabled';
+      return (fw.closed ? '<button type="button" class="btn btn-ghost sk-addblock" id="sk-addwall">Add a wall</button>' : '') +
+        /* What can be done to a wall is always here once there is a wall, and
+           wakes up when one is tapped — so the panel does not jump about. */
+        (fw.internals.length && !sel ? '<div class="sk-tool"><label>' + (pw ? 'This wall' : 'Tap a wall, then') + '</label><div class="seg seg-wrap">' +
+            '<button type="button" id="sk-doorway"' + off + '>Add a doorway</button>' +
+            '<button type="button" id="sk-turnwall"' + off + '>Turn it round</button>' +
+            '<button type="button" id="sk-wallout"' + off + '>' + (pw && pw.out ? 'Put it back' : 'Knock it out') + '</button>' +
+            '</div></div>' : '') +
+        widths();
     }
     if (stage === 'openings') {
       return '<div class="sk-tool"><label>Put in a</label>' +
@@ -7411,6 +7428,246 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     changed();
   }
 
+  /** Every outside wall of this floor, and of the extensions that stand on it. */
+  function shellSegs(f, fi) {
+    var out = [];
+    [f.outline].concat(extsOn(fi === undefined ? S.active : fi).map(function (x) { return x.outline; })).forEach(function (ring) {
+      for (var i = 0; i < ring.length; i++) out.push([ring[i], ring[(i + 1) % ring.length]]);
+    });
+    return out;
+  }
+
+  /**
+   * From p along unit d: how far to the first wall. An outside wall always
+   * stops it. An inside wall stops it only where it is crossed — one that
+   * merely ends on the line is a wall butting up to this one, not a wall in
+   * its way.
+   */
+  function reachIn(shell, inner, p, d) {
+    var best = Infinity;
+    var test = function (a, b, strict) {
+      var ex = b[0] - a[0], ey = b[1] - a[1], den = d[0] * ey - d[1] * ex;
+      if (Math.abs(den) < 1e-9) return;
+      var t = ((a[0] - p[0]) * ey - (a[1] - p[1]) * ex) / den;
+      var u = ((a[0] - p[0]) * d[1] - (a[1] - p[1]) * d[0]) / den;
+      var lo = strict ? 1e-4 : -1e-6;
+      if (t > 0.05 && u >= lo && u <= 1 - lo && t < best) best = t;
+    };
+    shell.forEach(function (sg) { test(sg[0], sg[1], false); });
+    inner.forEach(function (sg) { test(sg[0], sg[1], true); });
+    return best;
+  }
+  function reach(f, p, d, skip) {
+    return reachIn(shellSegs(f), f.internals.filter(function (sg, k) { return k !== skip; }), p, d);
+  }
+
+  /** Is this point on one of these walls? */
+  function liesOn(p, segs) {
+    return segs.some(function (sg) { return projectOnSeg(p, sg[0], sg[1]).d < 1e-3; });
+  }
+
+  /**
+   * A wall that ran from wall to wall still does once it has been slid: each
+   * end that was touching a wall reaches for one again, from where the wall
+   * is being held. So a wall dragged into a narrower part of the house gets
+   * shorter, and gets its length back when it is dragged out again. An end
+   * that stopped short of a wall on purpose is left as long as it was.
+   */
+  function refitWall(moved, hold) {
+    var L = dist(moved[0], moved[1]) || 1, d = [(moved[1][0] - moved[0][0]) / L, (moved[1][1] - moved[0][1]) / L];
+    var t = Math.max(0.08, Math.min(0.92, projectOnSeg(hold, moved[0], moved[1]).t));
+    var c = [moved[0][0] + (moved[1][0] - moved[0][0]) * t, moved[0][1] + (moved[1][1] - moved[0][1]) * t];
+    if (!insideHouse(c)) return null;
+    var ends = [0, 1].map(function (e) {
+      if (!press.touch[e]) return insideHouse(moved[e]) ? moved[e] : null;
+      var r = reachIn(press.shell, press.inner, c, e ? d : [-d[0], -d[1]]);
+      return isFinite(r) ? mm([c[0] + (e ? 1 : -1) * d[0] * r, c[1] + (e ? 1 : -1) * d[1] * r]) : null;
+    });
+    if (!ends[0] || !ends[1] || dist(ends[0], ends[1]) < 0.5) return null;
+    return ends;
+  }
+
+  /** Which ends of which inside walls reach an outside wall, on every floor: taken before each change. */
+  var HELD = null;
+  function holdWalls() {
+    HELD = S.floors.map(function (f, fi) {
+      if (!f.closed) return [];
+      var shell = shellSegs(f, fi);
+      return f.internals.map(function (sg) {
+        return { a: sg[0].slice(), b: sg[1].slice(), on: [liesOn(sg[0], shell), liesOn(sg[1], shell)] };
+      });
+    });
+  }
+
+  /**
+   * Inside walls live inside the house, whatever is done to the house. After
+   * any change each wall keeps the part of itself that is still indoors, and a
+   * wall left wholly outside goes, with its doorways. And a wall that reached
+   * an outside wall goes on reaching it when that wall is moved away — the
+   * house got bigger, so the room did.
+   */
+  function fitWalls() {
+    S.floors.forEach(function (f, fi) {
+      if (!f.closed || !f.internals.length) return;
+      var shell = shellSegs(f, fi), touched = false;
+      var held = HELD && HELD[fi] && HELD[fi].length === f.internals.length ? HELD[fi] : null;
+      // where each doorway is, so it can be put back on its wall afterwards
+      var doors = f.openings.map(function (o) {
+        var w = o.on === 'int' && f.internals[o.idx];
+        return w ? { wall: w, p: [w[0][0] + (w[1][0] - w[0][0]) * o.t, w[0][1] + (w[1][1] - w[0][1]) * o.t] } : null;
+      });
+      f.internals.forEach(function (sg, i) {
+        var a = sg[0], b = sg[1], cuts = [0, 1], L = dist(a, b);
+        shell.forEach(function (w) {
+          var ex = w[1][0] - w[0][0], ey = w[1][1] - w[0][1], dx = b[0] - a[0], dy = b[1] - a[1], den = dx * ey - dy * ex;
+          if (Math.abs(den) < 1e-9) return;
+          var t = ((w[0][0] - a[0]) * ey - (w[0][1] - a[1]) * ex) / den, u = ((w[0][0] - a[0]) * dy - (w[0][1] - a[1]) * dx) / den;
+          if (t > 1e-6 && t < 1 - 1e-6 && u >= -1e-6 && u <= 1 + 1e-6) cuts.push(t);
+        });
+        cuts.sort(function (x, y) { return x - y; });
+        // the longest run of the wall that is indoors
+        var best = null, run = null;
+        for (var k = 0; k < cuts.length - 1; k++) {
+          var t0 = cuts[k], t1 = cuts[k + 1], tm = (t0 + t1) / 2;
+          if (t1 - t0 < 1e-6) continue;
+          if (insideHouse([a[0] + (b[0] - a[0]) * tm, a[1] + (b[1] - a[1]) * tm], fi)) {
+            run = run ? [run[0], t1] : [t0, t1];
+            if (!best || run[1] - run[0] > best[1] - best[0]) best = run;
+          } else run = null;
+        }
+        if (!best || (best[1] - best[0]) * L < 0.3) { sg.gone = true; touched = true; return; }
+        if (best[0] > 1e-6 || best[1] < 1 - 1e-6) {
+          sg[0] = mm([a[0] + (b[0] - a[0]) * best[0], a[1] + (b[1] - a[1]) * best[0]]);
+          sg[1] = mm([a[0] + (b[0] - a[0]) * best[1], a[1] + (b[1] - a[1]) * best[1]]);
+          touched = true;
+          return;
+        }
+        // it has not moved, but the outside wall it reached has: reach for it again
+        var was = held && held[i];
+        if (!was || dist(was.a, a) > 1e-6 || dist(was.b, b) > 1e-6) return;
+        var others = f.internals.filter(function (o, k2) { return k2 !== i && !o.gone; });
+        [0, 1].forEach(function (e) {
+          if (!was.on[e] || liesOn(sg[e], shell.concat(others))) return;
+          var d = [(sg[e][0] - sg[1 - e][0]) / L, (sg[e][1] - sg[1 - e][1]) / L];
+          var r = reachIn(shell, others, sg[e], d);
+          if (isFinite(r) && r < 30) { sg[e] = mm([sg[e][0] + d[0] * r, sg[e][1] + d[1] * r]); touched = true; }
+        });
+      });
+      if (!touched) return;
+      var keep = [];
+      f.openings.forEach(function (o, k) {
+        var at = doors[k];
+        if (!at) { keep.push(o); return; }
+        if (at.wall.gone) return;                    // a doorway in a wall that has gone goes with it
+        o.t = Math.max(0.05, Math.min(0.95, projectOnSeg(at.p, at.wall[0], at.wall[1]).t));
+        keep.push(o);
+      });
+      var lost = f.internals.some(function (sg) { return sg.gone; });
+      f.internals = f.internals.filter(function (sg) { return !sg.gone; });
+      keep.forEach(function (o, k) { if (doors[f.openings.indexOf(o)]) o.idx = f.internals.indexOf(doors[f.openings.indexOf(o)].wall); });
+      f.openings = keep;
+      if (fi === S.active) {
+        if (lost && S.pick && S.pick.kind === 'iwall') S.pick = null;
+        if (S.selected && !f.openings.some(function (o) { return o.id === S.selected; })) S.selected = null;
+      }
+    });
+    HELD = null;
+  }
+
+  /** Where a wall's arrow sits: its middle, unless another wall ends there. */
+  function wallGrip(f, i) {
+    var sg = f.internals[i], clear = grabRadius() * 1.6, best = null;
+    [0.5, 0.34, 0.66, 0.22, 0.78].some(function (t) {
+      var q = [sg[0][0] + (sg[1][0] - sg[0][0]) * t, sg[0][1] + (sg[1][1] - sg[0][1]) * t], near = Infinity;
+      f.internals.forEach(function (o, k) {
+        if (k === i) return;
+        near = Math.min(near, dist(q, o[0]), dist(q, o[1]), projectOnSeg(q, o[0], o[1]).d);
+      });
+      if (!best || near > best.near) best = { p: q, near: near };
+      return near >= clear;
+    });
+    return best.p;
+  }
+
+  /** The middle of the biggest space on this floor: where the next wall is most likely wanted. */
+  function wallSpot(f) {
+    var c = null, reg = f.internals.length ? regionsOf(f) : null;
+    if (reg && reg.list && reg.list.length) {
+      var big = reg.list.slice().sort(function (a, b) { return b.area - a.area; })[0];
+      c = big.cx !== undefined ? [big.cx, big.cy] : [big.mx, big.my];
+    }
+    if (!c || !isFinite(c[0]) || !within(f.outline, c)) c = centroid(f.outline);
+    c = snapFrom(null, c);
+    if (within(f.outline, c)) return c;
+    // an L or a T: the average of the corners can fall outside it, so look for a place that is inside
+    var xs = f.outline.map(function (p) { return p[0]; }), ys = f.outline.map(function (p) { return p[1]; });
+    for (var y = Math.min.apply(null, ys) + 1; y < Math.max.apply(null, ys); y += 0.5) {
+      for (var x = Math.min.apply(null, xs) + 1; x < Math.max.apply(null, xs); x += 0.5) {
+        if (within(f.outline, [x, y]) && reach(f, [x, y], [1, 0]) > 0.75 && reach(f, [x, y], [0, 1]) > 0.75) return [x, y];
+      }
+    }
+    return null;
+  }
+
+  /**
+   * A new inside wall, across the middle of the biggest space there is and
+   * running the short way — which is how a room is usually divided. It reaches
+   * from wall to wall, and arrives picked, ready to be dragged to where it is.
+   */
+  function addWall() {
+    var f = floor();
+    if (!f.closed) return;
+    var c = wallSpot(f), best = null;
+    if (c) {
+      [[1, 0], [0, 1]].forEach(function (d) {
+        var a = reach(f, c, [-d[0], -d[1]]), b = reach(f, c, d);
+        if (!isFinite(a) || !isFinite(b) || a + b < 0.75) return;
+        if (!best || a + b < best.L) {
+          best = { L: a + b, p1: mm([c[0] - d[0] * a, c[1] - d[1] * a]), p2: mm([c[0] + d[0] * b, c[1] + d[1] * b]) };
+        }
+      });
+    }
+    if (!best) { say('There is no room for another wall on this floor.'); return; }
+    snapshot();
+    f.internals.push([best.p1, best.p2]);
+    S.pick = { kind: 'iwall', i: f.internals.length - 1 };
+    S.selected = null; S.drawing = null;
+    say('');
+    settled();
+  }
+
+  /** Swing a wall through a right angle about its middle, reaching wall to wall the other way. */
+  function turnWall(i) {
+    var f = floor(), sg = f.internals[i];
+    if (!sg) return;
+    var L = dist(sg[0], sg[1]) || 1, mid = snapFrom(null, [(sg[0][0] + sg[1][0]) / 2, (sg[0][1] + sg[1][1]) / 2]);
+    var d = [-(sg[1][1] - sg[0][1]) / L, (sg[1][0] - sg[0][0]) / L];
+    var a = reach(f, mid, [-d[0], -d[1]], i), b = reach(f, mid, d, i);
+    if (!isFinite(a) || !isFinite(b) || a + b < 0.75) { say('It will not fit the other way round there.'); return; }
+    snapshot();
+    var was = sg.out;
+    f.internals[i] = [mm([mid[0] - d[0] * a, mid[1] - d[1] * a]), mm([mid[0] + d[0] * b, mid[1] + d[1] * b])];
+    if (was) f.internals[i].out = true;
+    say('');
+    settled();
+  }
+
+  /** A doorway in the middle of a wall — or beside the one that is already there. */
+  function addDoorway(i) {
+    var f = floor();
+    if (!f.internals[i]) return;
+    var taken = f.openings.filter(function (o) { return o.on === 'int' && o.idx === i; }).map(function (o) { return o.t; });
+    var t = [0.5, 0.25, 0.75, 0.12, 0.88].filter(function (x) { return !taken.some(function (y) { return Math.abs(x - y) < 0.1; }); })[0];
+    if (t === undefined) { say('That wall is full of doorways.'); return; }
+    snapshot();
+    var o = { id: 'o' + (++SEQ), on: 'int', idx: i, t: t, width: DEFAULTS.intDoor, kind: 'intDoor' };
+    f.openings.push(o);
+    S.selected = o.id;
+    S.pick = null;
+    say('');
+    changed();
+  }
+
   function removeInternal(i) {
     var f = floor();
     var pts = openingPoints(f);
@@ -7742,18 +7999,30 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
      leave the panel on whatever step it was on — the drawing showing one thing
      and the side of the screen another, and, after undoing the measurement, a
      house with no scale and no Next button to get out with. */
+  /* A wall that is coming out is marked on the wall itself, and saving drops
+     anything hung on a list — so undo, and coming back tomorrow, both forgot
+     which walls were being knocked through. It is written as a third item and
+     read back into the mark. */
+  function packOut(k, v) { return (Array.isArray(v) && v.out) ? [v[0], v[1], 'out'] : v; }
+  function unpackOut(floors) {
+    (floors || []).forEach(function (f) {
+      (f.internals || []).forEach(function (sg) { if (sg.length > 2) { sg.length = 2; sg.out = true; } });
+    });
+    return floors;
+  }
+
   function stateNow() {
     return JSON.stringify({
       floors: S.floors, extensions: S.extensions, extIdx: S.extIdx, garden: S.garden, scale: S.scale,
       active: S.active, drawing: S.drawing, snap: SNAP, block: S.block, front: S.frontIdx,
       stage: S.stage, calibrating: !!S.calibrating, calibIdx: S.calibIdx, preset: !!S.preset,
       askUp: !!S.askUp, askedUp: !!S.askedUp, afterUp: S.afterUp || null,
-      gardenMode: S.gardenMode, measured: !!S.measured, wallMode: S.wallMode
-    });
+      gardenMode: S.gardenMode, measured: !!S.measured
+    }, packOut);
   }
   function restore(json) {
     var o = JSON.parse(json);
-    S.floors = o.floors;
+    S.floors = unpackOut(o.floors);
     S.extensions = o.extensions || [o.extension || newExtension()];
     S.extIdx = Math.min(o.extIdx || 0, S.extensions.length - 1);
     S.garden = o.garden || newGarden();
@@ -7768,7 +8037,6 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       S.calibrating = !!o.calibrating; S.calibIdx = o.calibIdx || 0; S.preset = !!o.preset;
       S.askUp = !!o.askUp; S.askedUp = !!o.askedUp; S.afterUp = o.afterUp || null;
       S.gardenMode = o.gardenMode || 'idle'; S.measured = !!o.measured;
-      if (o.wallMode) S.wallMode = o.wallMode;
     }
     S.pick = null; S.selected = null; S.cursor = null; S.pickWall = false; S.confirm = null;
     S.ghost = null; S.hotWall = -1; S.guides = null;
@@ -7821,6 +8089,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
   function snapshot() {
     REDO.length = 0;
+    holdWalls();
     try { UNDO.push(stateNow()); } catch (e) { return; }
     if (UNDO.length > 60) UNDO.shift();
   }
@@ -8361,8 +8630,12 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
      should start a wall on an outside wall was being taken as "drag this wall",
      and on a phone every tap moves a few pixels. While adding, nothing on the
      canvas is a handle: every tap and every drag draws. */
-  function drawingWalls() { return S.stage === 'internal' && (S.wallMode || 'draw') === 'draw'; }
-  function movingWalls()  { return S.stage === 'internal' && S.wallMode === 'move'; }
+  /* There used to be four modes here — add, move, doorway, knock out — and a
+     tap meant something different in each. Now there are none: a wall is put
+     down by its button, dragged by its arrow or its ends, and a tap on it
+     picks it, which is where its doorway, its turn and its removal live. */
+  function drawingWalls() { return false; }
+  function movingWalls()  { return S.stage === 'internal'; }
 
   function draggable() {
     if (drawingWalls()) return null;
@@ -8390,6 +8663,12 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
           var d = dist(p, seg[e]);
           if (d < r && (!best || d < best.d)) best = { kind: 'iend', i: i, end: e, d: d };
         });
+      });
+      // a wall's arrow is that wall's, even where another wall ends beside it
+      floor().internals.forEach(function (seg, i) {
+        if (dist(seg[0], seg[1]) * pxPerUnit() < 46) return;
+        var dg = dist(p, wallGrip(floor(), i));
+        if (dg < r * 0.8 && (!best || best.kind !== 'iwallmid' || dg < best.d)) best = { kind: 'iwallmid', i: i, d: dg };
       });
     }
     // the middle of a wall drags the whole wall sideways: corners win when
@@ -8419,7 +8698,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       });
     }
     // a door in the wrong place should slide, not be deleted and put back
-    if (S.stage === 'openings' || (S.stage === 'internal' && (movingWalls() || S.wallMode === 'door'))) {
+    if (S.stage === 'openings' || S.stage === 'internal') {
       var f = floor();
       f.openings.forEach(function (o) {
         var w = openingWall(f, o);
@@ -8458,8 +8737,15 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       var ring0 = shapeOf(h.which).outline;
       press.orig = [ring0[h.i].slice(), ring0[(h.i + 1) % ring0.length].slice()];
     } else if (h.kind === 'iwallmid') {
-      var sg0 = floor().internals[h.i];
+      var fp = floor(), sg0 = fp.internals[h.i];
       press.orig = [sg0[0].slice(), sg0[1].slice()];
+      press.shell = shellSegs(fp);
+      // walls that butt up to this one come with it, so they are not in its way
+      press.inner = fp.internals.filter(function (sg, k) {
+        return k !== h.i && projectOnSeg(sg[0], sg0[0], sg0[1]).d > 1e-6 && projectOnSeg(sg[1], sg0[0], sg0[1]).d > 1e-6;
+      }).map(function (sg) { return [sg[0].slice(), sg[1].slice()]; });
+      var about = press.shell.concat(fp.internals.filter(function (sg, k) { return k !== h.i; }));
+      press.touch = [liesOn(sg0[0], about), liesOn(sg0[1], about)];
     }
     if (h.kind === 'wall' || h.kind === 'iwallmid') {
       press.origInt = floor().internals.map(function (sg) { return [sg[0].slice(), sg[1].slice()]; });
@@ -8612,11 +8898,10 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         }
         S.pick = keepPick;
       } else if (h.kind === 'iwallmid') {
-        var movedI = slideWall(press.orig, press.world, w2);
-        var a1 = keepInside(movedI[0]), b1 = keepInside(movedI[1]);
-        if (!crossesOutline(a1, b1)) {
-          f2.internals[h.i][0] = a1; f2.internals[h.i][1] = b1;
-          carryEnds(f2, press.orig, [a1, b1], h.i);
+        var movedI = slideWall(press.orig, press.world, w2), fitI = refitWall(movedI, w2);
+        if (fitI && !crossesOutline(fitI[0], fitI[1])) {
+          f2.internals[h.i][0] = fitI[0]; f2.internals[h.i][1] = fitI[1];
+          carryEnds(f2, press.orig, movedI, h.i);
         }
         S.pick = { kind: 'iwall', i: h.i };
       } else if (h.kind === 'tree') {
@@ -8658,14 +8943,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       if (S.stage === 'internal') S.cursor = keepInside(S.cursor);
     }
     // the preview of what a tap will do, where it will do it
-    if (!hh && S.stage === 'internal' && S.wallMode === 'door') {
-      var dw = wallAt(raw, 'int') || wallAt(raw, 'ext') || wallAt(raw, 'xt');
-      if (dw) S.ghost = { on: dw.w.on, idx: dw.w.idx, t: dw.t, kind: dw.w.on === 'int' ? 'intDoor' : 'door', width: dw.w.on === 'int' ? DEFAULTS.intDoor : DEFAULTS.door };
-    } else if (!hh && S.stage === 'openings') {
+    if (!hh && S.stage === 'openings') {
       var ow = wallAt(raw, 'ext') || wallAt(raw, 'xt'), ok2 = S.kind || 'window';
       if (ow) S.ghost = { on: ow.w.on, idx: ow.w.idx, t: ow.t, kind: ok2, width: DEFAULTS[ok2] };
-    } else if (S.stage === 'internal' && S.wallMode === 'out') {
-      S.hotWall = nearestInternal(raw);
     }
     setCursor(cursorFor(raw, hh));
     renderSoon();
@@ -8701,6 +8981,13 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       if (ny > nx * 2.4) return 'size-ns';
       return ((hb[0] - ha[0]) * (hb[1] - ha[1]) > 0) ? 'size-nesw' : 'size-nwse';
     }
+    if (h && h.kind === 'iwallmid') {
+      var isg = floor().internals[h.i];
+      if (isg) {
+        var inx = Math.abs(isg[1][1] - isg[0][1]), iny = Math.abs(isg[1][0] - isg[0][0]);
+        return inx > iny * 2.4 ? 'size-ew' : iny > inx * 2.4 ? 'size-ns' : 'move';
+      }
+    }
     if (h) return 'grab';
     if (S.drawing && S.drawing.length) return snapped ? 'draw-snap' : 'draw';
     if (S.stage === 'outline') {
@@ -8712,10 +8999,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       return 'arrow';
     }
     if (S.stage === 'internal') {
-      if (drawingWalls()) return insideHouse(snapFrom(null, w)) ? (snapped ? 'draw-snap' : 'draw') : 'no';
-      if (movingWalls()) return nearestInternal(w) >= 0 ? 'grab' : 'arrow';
-      if (S.wallMode === 'door') return (wallAt(w, 'int') || wallAt(w, 'ext') || wallAt(w, 'xt')) ? 'door' : 'no';
-      if (S.wallMode === 'out') return nearestInternal(w) >= 0 ? 'out' : 'no';
+      return nearestInternal(w) >= 0 ? 'pick' : 'arrow';
     }
     if (S.stage === 'openings') return (wallAt(w, 'ext') || wallAt(w, 'xt')) ? 'door' : 'no';
     if (S.stage === 'rooms') return (h && h.kind === 'pin') ? 'pick' : insideHouse(snapFrom(null, w)) ? 'pin' : 'no';
@@ -8764,7 +9048,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
           var back = UNDO.pop();
           if (back) {
             var o = JSON.parse(back);
-            S.floors = o.floors; S.extensions = o.extensions || [o.extension]; S.extIdx = Math.min(o.extIdx || 0, S.extensions.length - 1);
+            S.floors = unpackOut(o.floors); S.extensions = o.extensions || [o.extension]; S.extIdx = Math.min(o.extIdx || 0, S.extensions.length - 1);
             S.block = o.block || null;
           }
           settled();
@@ -8866,37 +9150,11 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
     if (S.stage === 'garden') { S.typedTap = e === 'typed'; gardenTap(w); S.typedTap = false; return; }
 
-    if (S.stage === 'internal' && S.wallMode === 'door') {
-      // an inside wall gets a doorway; an outside wall gets a door
-      var iw = wallAt(w, 'int'), ext = iw ? null : (wallAt(w, 'ext') || wallAt(w, 'xt'));
-      if (!iw && !ext) { say('Tap a wall to put the doorway in.'); return; }
-      snapshot();
-      var od = iw
-        ? { id: 'o' + (++SEQ), on: 'int', idx: iw.w.idx, t: iw.t, width: DEFAULTS.intDoor, kind: 'intDoor' }
-        : { id: 'o' + (++SEQ), on: ext.w.on, idx: ext.w.idx, t: ext.t, width: DEFAULTS.door, kind: 'door' };
-      f.openings.push(od);
-      S.selected = od.id;
-      say('');
-      changed();
-      return;
-    }
-
-    if (S.stage === 'internal' && S.wallMode === 'out') {
-      // knocking a wall through is something you do TO a wall, so you point at
-      // the wall — not something you total up in metres in your head
-      var pick = nearestInternal(w);
-      if (pick < 0) { say('Tap one of the walls inside the house.'); return; }
-      snapshot();
-      f.internals[pick].out = !f.internals[pick].out;
-      say('');
-      changed();
-      return;
-    }
-
     if (movingWalls()) {
-      // a tap on a wall picks it (and the × appears); a tap elsewhere lets go
+      // a tap on a wall picks it, and what can be done to it appears; a tap elsewhere lets go
       var on = nearestInternal(w);
       S.pick = (on >= 0 && !(S.pick && S.pick.kind === 'iwall' && S.pick.i === on)) ? { kind: 'iwall', i: on } : null;
+      S.selected = null;
       say('');
       render();
       return;
@@ -9559,7 +9817,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     S.drawing = null; S.cursor = null; S.selected = null; S.pick = null;
     S.block = null; S.measured = false; S.afterUp = null; S.frontIdx = undefined;
     closeLenEdit();
-    S.calibrating = false; S.pickWall = false; S.kind = null; S.wallMode = 'draw';
+    S.calibrating = false; S.pickWall = false; S.kind = null;
     S.askUp = false; S.askedUp = false; S.preset = false; S.frontIdx = undefined; S.more = false;
     FRAME = null; say('');
     settled();
@@ -9634,7 +9892,6 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (id === 'garden') S.gardenMode = S.garden.plot.closed ? 'idle' : 'boundary';
     S.drawing = null; S.cursor = null; S.selected = null; S.pick = null;
     S.kind = id === 'openings' ? (S.kind || 'window') : null;
-    if (id === 'internal') S.wallMode = S.wallMode || 'draw';
     say('');
     refitTight();
     if (id === 'extension' && !S.extension.closed) inflate(1.35);
@@ -9794,9 +10051,6 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         S.units = u1; render(); return;
       }
 
-      hit = t.closest && t.closest('[data-wallmode]');
-      if (hit) { S.wallMode = hit.getAttribute('data-wallmode'); S.drawing = null; S.pick = null; S.selected = null; S.ghost = null; S.hotWall = -1; say(''); render(); return; }
-
       hit = t.closest && t.closest('[data-kind]');
       if (hit) { S.kind = hit.getAttribute('data-kind'); S.selected = null; render(); return; }
       hit = t.closest && t.closest('[data-room]');
@@ -9903,6 +10157,16 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         case 'sk-blank':     S.started = true; S.measured = false; settled(); return;
         case 'sk-box-go':    boxGo(); return;
         case 'sk-addblock':  addBlock(); return;
+        case 'sk-addwall':   addWall(); return;
+        case 'sk-doorway':   if (S.pick && S.pick.kind === 'iwall') addDoorway(S.pick.i); return;
+        case 'sk-turnwall':  if (S.pick && S.pick.kind === 'iwall') turnWall(S.pick.i); return;
+        case 'sk-wallout':
+          if (S.pick && S.pick.kind === 'iwall' && floor().internals[S.pick.i]) {
+            snapshot();
+            floor().internals[S.pick.i].out = !floor().internals[S.pick.i].out;
+            changed();
+          }
+          return;
         case 'sk-droparea':
           var gt2 = gardenTarget();
           if (isArea(gt2)) removeArea(+gt2.slice(1));
@@ -10059,11 +10323,11 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       root.localStorage.setItem(SKEY, JSON.stringify({
         v: 1, floors: S.floors, extensions: S.extensions, extIdx: S.extIdx, garden: S.garden, scale: S.scale,
         active: S.active, snap: SNAP, started: S.started, stage: S.stage, askedUp: !!S.askedUp
-      }));
+      }, packOut));
     } catch (e) {
       // an uploaded plan can be megabytes; the drawing matters more than the backdrop
       try {
-        var lean = JSON.parse(JSON.stringify(S.floors));
+        var lean = JSON.parse(JSON.stringify(S.floors, packOut));
         lean.forEach(function (f) { f.image = null; });
         root.localStorage.setItem(SKEY, JSON.stringify({
           v: 1, floors: lean, extensions: S.extensions, extIdx: S.extIdx, garden: S.garden, scale: S.scale,
@@ -10081,7 +10345,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       var o = JSON.parse(raw);
       if (!o || o.v !== 1 || !o.floors || !o.floors.length) return false;
       if (!o.floors[0].closed) return false;        // nothing worth restoring
-      S.floors = o.floors;
+      S.floors = unpackOut(o.floors);
       S.extensions = o.extensions || [o.extension || newExtension()];
       S.extIdx = Math.min(o.extIdx || 0, S.extensions.length - 1);
       S.garden = o.garden || newGarden();
@@ -12002,9 +12266,21 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       return out;
     }
     if (S.stage === 'internal') {
-      out.now = run ? 'Now tap where that wall ends.'
-        : 'This step is optional. To add an inside wall' + upper + ', tap where it starts, then where it ends. When you have finished, press “' + nextTxt + '”.';
-      out.target = run ? $('sk-svg') : next;
+      var addW = $('sk-addwall'), nWalls = f.internals.length;
+      var gotWall = S.pick && S.pick.kind === 'iwall';
+      if (S.selected) {
+        out.now = 'Drag the doorway along its wall, and choose how wide it is. When you have finished, press “' + nextTxt + '”.';
+        out.target = next;
+      } else if (gotWall) {
+        out.now = 'Drag this wall to where it is, or drag an end to make it shorter. The buttons add a doorway or mark it as coming out. The × removes it.';
+        out.target = next;
+      } else if (!nWalls) {
+        out.now = 'This step is optional. To add an inside wall' + upper + ', press “Add a wall”, then drag it to where it is. No inside walls to add? Press “' + nextTxt + '”.';
+        out.target = shown(addW) ? addW : next;
+      } else {
+        out.now = 'Press “Add a wall” for another one, or drag a wall to move it. Tap a wall to add a doorway. When you have finished, press “' + nextTxt + '”.';
+        out.target = next;
+      }
       return out;
     }
     if (S.stage === 'openings') {

@@ -148,6 +148,21 @@ function check(S, SK, errors) {
   if (!!S.block !== blockDrawn) fail('part-drawn-out-of-step', 'state ' + !!S.block + ', drawn ' + blockDrawn);
   if (S.block && shown(next) && !/join/i.test(next.textContent)) fail('part-without-join-button', next.textContent);
 
+  // an inside wall is a wall: it has a length, and both its ends are in the house
+  S.floors.forEach((fl, fi) => {
+    if (!fl.closed) return;
+    const homes = [fl.outline].concat(S.extensions.filter((x) => x.closed && (fi === 0 || (fi === 1 && x.storeys > 1))).map((x) => x.outline));
+    fl.internals.forEach((sg, k) => {
+      if (Math.hypot(sg[1][0] - sg[0][0], sg[1][1] - sg[0][1]) < 0.2) fail('inside-wall-of-no-length', 'floor ' + fi + ' wall ' + k);
+      sg.forEach((p) => {
+        if (!homes.some((h) => inside(h, p) || nearEdge(h, p, 0.05))) fail('inside-wall-outside-the-house', 'floor ' + fi + ' wall ' + k);
+      });
+    });
+    fl.openings.forEach((o) => {
+      if (o.on === 'int' && !fl.internals[o.idx]) fail('doorway-in-a-wall-that-is-gone', 'floor ' + fi + ' wall ' + o.idx);
+    });
+  });
+
   // the list of room names only ever opens on the Rooms step
   if (shown($('sk-roommenu')) && S.stage !== 'rooms') fail('room-menu-on-another-step', S.stage);
 
@@ -289,7 +304,9 @@ function actions(S, R) {
     [1, clickOne('#sk-redraw')],
     [1, clickOne('#sk-recal')],
     [4, clickOne('#sk-calib-go')],
-    [2, clickOne('[data-wallmode]')],
+    [6, clickOne('#sk-addwall')],
+    [5, clickOne('#sk-doorway:not([disabled]), #sk-turnwall:not([disabled]), #sk-wallout:not([disabled])')],
+    [2, clickOne('[data-width], #sk-del')],
     [2, clickOne('[data-kind]')],
     [7, clickOne('#sk-roommenu [data-pickroom], #sk-roommenu-remove')],
     // name a room the way a person does: tap in the house, then press what it is

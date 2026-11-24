@@ -154,9 +154,21 @@
       return out;
     }
     if (S.stage === 'internal') {
-      out.now = run ? 'Now tap where that wall ends.'
-        : 'This step is optional. To add an inside wall' + upper + ', tap where it starts, then where it ends. When you have finished, press “' + nextTxt + '”.';
-      out.target = run ? $('sk-svg') : next;
+      var addW = $('sk-addwall'), nWalls = f.internals.length;
+      var gotWall = S.pick && S.pick.kind === 'iwall';
+      if (S.selected) {
+        out.now = 'Drag the doorway along its wall, and choose how wide it is. When you have finished, press “' + nextTxt + '”.';
+        out.target = next;
+      } else if (gotWall) {
+        out.now = 'Drag this wall to where it is, or drag an end to make it shorter. The buttons add a doorway or mark it as coming out. The × removes it.';
+        out.target = next;
+      } else if (!nWalls) {
+        out.now = 'This step is optional. To add an inside wall' + upper + ', press “Add a wall”, then drag it to where it is. No inside walls to add? Press “' + nextTxt + '”.';
+        out.target = shown(addW) ? addW : next;
+      } else {
+        out.now = 'Press “Add a wall” for another one, or drag a wall to move it. Tap a wall to add a doorway. When you have finished, press “' + nextTxt + '”.';
+        out.target = next;
+      }
       return out;
     }
     if (S.stage === 'openings') {

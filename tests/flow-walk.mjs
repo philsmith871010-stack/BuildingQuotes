@@ -90,6 +90,14 @@ export async function run(opts) {
             const g = all('[data-gadd]').filter(shown);
             if (g.length) { g[Math.floor(R() * g.length)].click(); await wait(300); }
           }
+          // inside walls: a few of them, and sometimes a doorway or one coming out
+          if (SK._S.stage === 'internal' && shown($('sk-addwall'))) {
+            const n = Math.floor(R() * 4);
+            for (let k = 0; k < n; k++) { $('sk-addwall').click(); await wait(200); }
+            for (const id of ['sk-doorway', 'sk-wallout']) {
+              if (n && R() < 0.4 && $(id) && !$(id).disabled) { $(id).click(); await wait(200); }
+            }
+          }
           const next = $('sk-next');
           if (!shown(next)) { fail(project, 'draw:' + SK._S.stage, 'no-way-forward', ''); break; }
           next.click(); await wait(600);
@@ -128,6 +136,10 @@ export async function run(opts) {
 
       // the estimate itself
       await wait(1900);                                     // the figures count up
+      // in a tab that is not on screen nothing animates, and the figures would
+      // sit at nought for ever: finish whatever is still counting
+      try { if (window.gsap) window.gsap.globalTimeline.getChildren(true, true, true).forEach((t) => t.progress(1)); } catch (e) { /* no animation library */ }
+      await wait(60);
       page(project, 'estimate');
       const lo = money($('fig-low')), hi = money($('fig-high')), items = ($('items') || {}).innerText || '';
       const note = ($('readout-note') || {}).textContent || '';
