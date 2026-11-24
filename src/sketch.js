@@ -84,10 +84,10 @@
       hint: 'Optional. Add an extension and drag it to where you want it, or tap its corners round yourself.',
       done: 'Put it where you want it, and make it the right size.' },
     { id: 'garden',    n: 6, label: 'Garden',
-      hint: 'Optional. Add a typical plot and drag its corners to your fence line, or tap round it yourself.',
-      done: 'Pick what is in the garden, then tap round it. Drag any corner. Tap a thing, then × to remove it.',
+      hint: 'Optional. Add your garden, then say what is in it.',
+      done: 'Add what is in the garden. Tap anything to change it.',
       tree: 'Tap where each tree is. Tap a tree again to remove it.',
-      fence: 'Drag a corner of the fence line, or tap the line to add a corner.' }
+      fence: 'Move the fence to where yours is.' }
   ];
 
   /* The stages a given project actually needs, in the order it needs them.
@@ -371,7 +371,8 @@
     if (S.garden.plot.closed) {
       var gA = {};
       GARDEN_KINDS.forEach(function (k) { gA[k.id] = 0; });
-      S.garden.areas.forEach(function (a) { gA[a.kind] = (gA[a.kind] || 0) + m(shoelace(a.outline)) * m(1); });
+      var shown = visibleAreas();
+      S.garden.areas.forEach(function (a, ai) { gA[a.kind] = (gA[a.kind] || 0) + shown[ai]; });
       var plotArea = m(shoelace(S.garden.plot.outline)) * m(1);
       // the nearest tree to whatever is being built, for the foundations
       var targets = builtExts().map(function (x) { return x.outline; });
@@ -592,6 +593,19 @@
     if (S.stage === 'extension') {
       S.extensions.forEach(function (x, k) { if (x.closed) tag('ext', x.outline, k === S.extIdx); });
     }
+    if (S.stage === 'garden') {
+      var gt = gardenTarget();
+      if (gt) {
+        var gr = shapeOf(gt).outline, gc = centroid(gr);
+        // a plain rectangle is as long one side as the other: two numbers, not four
+        var rect = gr.length === 4 && Math.abs(dist(gr[0], gr[1]) - dist(gr[2], gr[3])) < 0.01 &&
+                   Math.abs(dist(gr[1], gr[2]) - dist(gr[3], gr[0])) < 0.01;
+        for (var gi = 0; gi < gr.length; gi++) {
+          if (rect && gi > 1) break;
+          out.push(lengthTag(gr[gi], gr[(gi + 1) % gr.length], gt === 'plot' ? '' : 'live', outward(gr[gi], gr[(gi + 1) % gr.length], gc), undefined, gt + ':' + gi));
+        }
+      }
+    }
     return out.join('');
   }
 
@@ -762,14 +776,24 @@
       : editing === 'ext' ? S.extension.outline
       : editing === 'plot' ? S.garden.plot.outline
       : editing === 'block' ? []
+      : isArea(editing) ? shapeOf(editing).outline
       : editing === 'floor' ? f.outline
+      // where the house cannot be dragged, its corners are not drawn as if it could
+      : (S.stage === 'garden' || S.stage === 'extension') ? []
       : (f.closed ? f.outline : []);
+    // corner dots shrink with the shape, like its other handles
+    var dotS = 1;
+    if (!live.length && editing && handles.length > 2) {
+      var dxs = handles.map(function (q) { return q[0]; }), dys = handles.map(function (q) { return q[1]; });
+      dotS = Math.max(0.5, Math.min(1, Math.min(Math.max.apply(null, dxs) - Math.min.apply(null, dxs),
+        Math.max.apply(null, dys) - Math.min.apply(null, dys)) * px / 120));
+    }
     handles.forEach(function (p, i) {
       var isTarget = live.length > 2 && i === 0;
       var picked = !live.length && editing && S.pick && S.pick.kind === 'corner' && S.pick.i === i &&
         (S.pick.which === editing || (editing === 'floor' && S.pick.which === 'floor'));
       out.push('<circle cx="' + P(p)[0] + '" cy="' + P(p)[1] + '" r="' +
-        (isTarget ? 15 * RU : (S.touch ? 11 : 9) * RU).toFixed(1) + '" class="sk-node' +
+        (isTarget ? 15 * RU : (S.touch ? 11 : 9) * RU * dotS).toFixed(1) + '" class="sk-node' +
         (isTarget ? ' start' : '') + (picked ? ' on' : '') + '"/>');
     });
 
@@ -780,15 +804,19 @@
          an arrow in the middle of every wall that can be dragged in or out,
          a + a quarter of the way along to add a corner (not on a part being placed),
          a four-way arrow in the middle of a part or extension, which moves whole. */
-    var editRing = editing === 'block' ? S.block.outline : (editing === 'floor' || editing === 'ext') ? shapeOf(editing).outline : null;
+    var editRing = editing ? shapeOf(editing).outline : null;
     if (!live.length && editRing && editRing.length > 2 && !S.calibrating && !S.askUp) {
-      var movable = editing === 'block' || editing === 'ext';
-      var ru = RU.toFixed(3);
+      var movable = movesWhole(editing), hosted = editing === 'block' || editing === 'ext';
+      // a small shape gets smaller handles: a patio on a phone was hidden under its own
+      var xsE = editRing.map(function (q) { return q[0]; }), ysE = editRing.map(function (q) { return q[1]; });
+      var least = Math.min(Math.max.apply(null, xsE) - Math.min.apply(null, xsE), Math.max.apply(null, ysE) - Math.min.apply(null, ysE)) * px;
+      var hs = Math.max(0.58, Math.min(1, least / 120));
+      var ru = (RU * hs).toFixed(3);
       editRing.forEach(function (a, i) {
         var b = editRing[(i + 1) % editRing.length], Lpx = dist(a, b) * px;
-        if (movable && onHost(editing, a, b)) return;        // that wall is the house's
+        if (hosted && onHost(editing, a, b)) return;         // that wall is the house's
         var L = dist(a, b) || 1;
-        if (Lpx >= 58) {
+        if (Lpx >= 58 * hs) {
           // points across the wall: the way it will go
           var deg = (Math.atan2((b[0] - a[0]) / L, -(b[1] - a[1]) / L) * 180 / Math.PI).toFixed(1);
           out.push('<g class="sk-arrow" transform="translate(' + ((a[0] + b[0]) / 2 * K).toFixed(1) + ' ' + ((a[1] + b[1]) / 2 * K).toFixed(1) +
@@ -805,7 +833,7 @@
       if (movable) {
         var xsM = editRing.map(function (q) { return q[0]; }), ysM = editRing.map(function (q) { return q[1]; });
         var wM = (Math.max.apply(null, xsM) - Math.min.apply(null, xsM)) * px, hM = (Math.max.apply(null, ysM) - Math.min.apply(null, ysM)) * px;
-        if (wM >= 70 && hM >= 70) {
+        if (wM >= 54 && hM >= 54) {
           var cM = centroid(editRing);
           out.push('<g class="sk-moveh" transform="translate(' + (cM[0] * K).toFixed(1) + ' ' + (cM[1] * K).toFixed(1) + ') scale(' + ru +
             ')"><title>Drag to move it</title><circle r="15"/>' +
@@ -825,9 +853,6 @@
       } else if (S.pick.kind === 'pin') {
         var pk = f.markers[S.pick.i];
         if (pk) kill = [pk.x, pk.y - 26 * RU / K];
-      } else if (S.pick.kind === 'garea') {
-        var ga = S.garden.areas[S.pick.i];
-        if (ga) { var gc = centroid(ga.outline); kill = [gc[0], gc[1] - 22 * RU / K]; }
       } else if (S.pick.kind === 'iwall') {
         var seg = f.internals[S.pick.i];
         if (seg) kill = [(seg[0][0] + seg[1][0]) / 2, (seg[0][1] + seg[1][1]) / 2 - 24 * RU / K];
@@ -1000,6 +1025,19 @@
     paintPanel();
   }
 
+  /** Is this step the thing the project is actually about (an extension on an extension job)? */
+  function stageNeeded() {
+    var st = ACTIVE.filter(function (x) { return x.id === S.stage; })[0];
+    return !!(st && st.required);
+  }
+  /** Nothing put down on this step yet. */
+  function stageEmpty() {
+    if (S.drawing && S.drawing.length) return false;
+    if (S.stage === 'extension') return !builtExts().length;
+    if (S.stage === 'garden') return !S.garden.plot.closed;
+    return false;
+  }
+
   /** The one action that is obviously next. Nothing else needs explaining. */
   /** A floor that still has no rooms on it, other than this one. */
   function floorWithoutRooms() {
@@ -1038,8 +1076,9 @@
       return { id: 'sk-close-garden', label: 'Finish the ' + (S.garden.plot.closed ? gardenKind(S.gardenMode).label.toLowerCase() : 'plot') };
     }
     var nx = stageAfter(S.stage);
-    if (nx) return { id: 'sk-go-' + nx.id, label: 'Next — ' + nx.label.toLowerCase() };
-    if (ready()) return { id: 'sk-finish', label: 'Done — use these figures' };
+    var quiet = stageNeeded() && stageEmpty();
+    if (nx) return { id: 'sk-go-' + nx.id, label: 'Next — ' + nx.label.toLowerCase(), quiet: quiet };
+    if (ready()) return { id: 'sk-finish', label: 'Done — use these figures', quiet: quiet };
     return null;
   }
 
@@ -1074,6 +1113,8 @@
         : (S.stage === 'internal' && S.wallMode === 'door') ? stage.door
         : (S.stage === 'internal' && S.wallMode === 'move' && S.pick && S.pick.kind === 'iwall') ? stage.picked
         : (S.stage === 'internal' && S.wallMode === 'move') ? stage.move
+        : (S.stage === 'garden' && !mid && isArea(gardenTarget()))
+            ? 'Put the ' + gardenKind(shapeOf(gardenTarget()).kind).label.toLowerCase() + ' where it is, and make it the right size.'
         : (S.stage === 'garden' && !mid && S.garden.plot.closed && S.gardenMode === 'tree') ? stage.tree
         : (S.stage === 'garden' && !mid && S.garden.plot.closed && S.gardenMode === 'boundary') ? stage.fence
         : mid && S.stage === 'internal' ? 'Now tap the other end of the wall.'
@@ -1094,12 +1135,13 @@
     var key = $('sk-key');
     if (key) {
       var kWhich = (S.calibrating || S.askUp || (S.drawing && S.drawing.length)) ? null : editable();
-      if (kWhich === 'plot' || (kWhich && !S.scale)) kWhich = null;
+      if (kWhich && !S.scale) kWhich = null;
       var kRow = function (sym, cls, text) { return '<li><i class="' + cls + '">' + sym + '</i><span>' + text + '</span></li>'; };
       key.hidden = !kWhich;
       key.innerHTML = !kWhich ? '' :
-        (kWhich !== 'floor' ? kRow('✥', 'k-move', 'Drag the middle to move it') : '') +
-        kRow('↔', 'k-sym', kWhich === 'floor' ? 'Drag an arrow to move a wall' : 'Drag an arrow to make it bigger or smaller') +
+        (movesWhole(kWhich) ? kRow('✥', 'k-move', 'Drag the middle to move it') : '') +
+        kRow('↔', 'k-sym', kWhich === 'floor' ? 'Drag an arrow to move a wall' : kWhich === 'plot' ? 'Drag an arrow to move a fence'
+          : 'Drag an arrow to make it bigger or smaller') +
         kRow('3.00', 'k-num', 'Tap a number to type the size') +
         (kWhich !== 'block' ? kRow('+', 'k-plus', 'Adds a corner. Tap a corner, then × removes it') : '');
     }
@@ -1142,6 +1184,7 @@
       var n = nextAction();
       act.hidden = !n;
       if (n) { act.textContent = n.label; act.setAttribute('data-act', n.id); }
+      act.classList.toggle('btn-ghost', !!(n && n.quiet));
     }
 
     var read = $('sk-read');
@@ -1297,7 +1340,7 @@
             '</div>'
           : '') +
         (!cur.closed && !xmid
-          ? '<button type="button" class="btn" id="sk-addext">Add an extension</button>' +
+          ? '<button type="button" class="btn' + (stageNeeded() ? '' : ' btn-ghost') + '" id="sk-addext">Add an extension</button>' +
             '<p class="sk-tiny">It starts on ' + (others ? 'a free wall' : 'the back wall') + '. Drag it to where you want it.</p>'
           : '') +
         '<div class="sk-tool"><label>How many storeys?</label>' +
@@ -1313,15 +1356,24 @@
       var gp = S.garden.plot;
       if (!gp.closed) {
         return (!(S.drawing && S.drawing.length)
-          ? '<button type="button" class="btn" id="sk-addplot">Add a typical plot</button>' +
-            '<p class="sk-tiny">A fence line round the house. Drag its corners to where yours is.</p>'
+          ? '<button type="button" class="btn' + (stageNeeded() ? '' : ' btn-ghost') + '" id="sk-addplot">Add my garden</button>' +
+            '<p class="sk-tiny">A fence line round the house, to move to where yours is.</p>'
           : '');
       }
-      return '<div class="sk-tool"><label>Add a</label>' +
-        seg(GARDEN_KINDS.map(function (k) { return [k.id, k.label]; }).concat([['tree', 'Tree'], ['boundary', 'Fence line']]),
-            S.gardenMode, 'data-gmode') + '</div>' +
-        '<button type="button" class="btn btn-ghost btn-sm' + (S.confirm === 'plot' ? ' sk-danger' : '') +
-        '" id="sk-dropplot">' + (S.confirm === 'plot' ? 'Tap again to remove it all' : 'Remove the garden') + '</button>';
+      // each thing is a button that puts one down, ready to be moved and sized
+      var gtt = gardenTarget(), gpick = isArea(gtt) ? S.garden.areas[+gtt.slice(1)] : null;
+      return '<div class="sk-tool"><label>Add to the garden</label><div class="seg seg-wrap">' +
+        GARDEN_KINDS.map(function (k) {
+          return '<button type="button" data-gadd="' + k.id + '">+ ' + esc(k.label) + '</button>';
+        }).join('') +
+        '<button type="button" data-gmode="tree" aria-pressed="' + (S.gardenMode === 'tree') + '">+ Trees</button>' +
+        '</div></div>' +
+        (gpick ? '<button type="button" class="btn btn-ghost btn-sm" id="sk-droparea">Remove this ' +
+          esc(gardenKind(gpick.kind).label.toLowerCase()) + '</button>' : '') +
+        '<div class="sk-quiet">' +
+        (gtt === 'plot' ? '' : '<button type="button" class="sk-alt" data-gmode="boundary">Move the fence</button>') +
+        '<button type="button" class="sk-alt' + (S.confirm === 'plot' ? ' sk-danger' : '') +
+        '" id="sk-dropplot">' + (S.confirm === 'plot' ? 'Tap again to remove it all' : 'Remove the garden') + '</button></div>';
     }
     return '';
   }
@@ -1403,6 +1455,40 @@
 
   /* ---- the garden ---------------------------------------------------------- */
 
+  /**
+   * How much of each garden surface is actually there to be laid, in m².
+   *
+   * People draw the lawn across the garden and then put the patio and the shed
+   * down on it, and they are right to: the lawn is what is left. So a surface
+   * counts only where nothing put down after it covers it — otherwise the turf
+   * under the shed is paid for as turf. Counted on a fine grid rather than by
+   * cutting polygons up: good to a per cent or so, and it cannot go wrong.
+   */
+  var VIS = { key: null, v: [] };
+  function visibleAreas() {
+    var areas = S.garden.areas, key = JSON.stringify([areas.map(function (a) { return a.outline; }), S.scale]);
+    if (VIS.key === key) return VIS.v;
+    var out = areas.map(function (a, i) {
+      var full = m(shoelace(a.outline)) * m(1);
+      var above = areas.slice(i + 1).filter(function (o) { return ringsOverlap(a.outline, o.outline); });
+      if (!above.length || !full) return full;
+      var xs = a.outline.map(function (p) { return p[0]; }), ys = a.outline.map(function (p) { return p[1]; });
+      var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+      var step = Math.max(0.1, Math.sqrt((x1 - x0) * (y1 - y0) / 6000)), inside = 0, clear = 0;
+      for (var y = y0 + step / 2; y < y1; y += step) {
+        for (var x = x0 + step / 2; x < x1; x += step) {
+          var q = [x, y];
+          if (!insidePoly(a.outline, q)) continue;
+          inside++;
+          if (!above.some(function (o) { return insidePoly(o.outline, q); })) clear++;
+        }
+      }
+      return inside ? full * clear / inside : full;
+    });
+    VIS = { key: key, v: out };
+    return out;
+  }
+
   function gardenKind(id) {
     return GARDEN_KINDS.filter(function (k) { return k.id === id; })[0] || GARDEN_KINDS[0];
   }
@@ -1447,7 +1533,7 @@
                 [r(x1 + grow.r), r(y1 + grow.b)], [r(x0 - grow.l), r(y1 + grow.b)]],
       closed: true
     };
-    S.gardenMode = 'patio';
+    S.gardenMode = 'boundary';
     S.pick = null;
     FRAME = null; MANUAL = false;
     say('');
@@ -1472,6 +1558,7 @@
     snapshot();
     S.garden.areas.splice(i, 1);
     S.pick = null;
+    S.gardenMode = 'idle';
     settled();
   }
 
@@ -1506,33 +1593,70 @@
       changed();
       return;
     }
-    // The fence line is edited in its own mode, so that in every other mode
-    // a tap on it means "start the lawn here", which is what it means.
-    if (S.gardenMode === 'boundary') {
-      var hit = wallOfShape(gd.plot, w);
-      if (hit) { splitWall('plot', hit.i, hit.t); return; }
-      if (S.pick) { S.pick = null; render(); }
-      return;
-    }
-    // a tap on the edge of the picked surface adds a corner to it
-    if (S.pick && S.pick.kind === 'garea' && gd.areas[S.pick.i]) {
-      var h2 = wallOfShape(gd.areas[S.pick.i], w);
-      if (h2 && !onRing(gd.plot.outline, w)) { splitWall('a' + S.pick.i, h2.i, h2.t); return; }
-    }
-    // a tap inside a surface picks it; on the picked one, lets it go. A tap on
-    // its edge is not inside it — that is where the next surface starts.
+    // Things are put down by their buttons, so a tap only ever picks: the
+    // surface under it, the fence if it is on the fence, or nothing at all.
     var inA = areaAt(w);
-    if (inA >= 0 && !onRing(gd.areas[inA].outline, snapTarget(w).p)) {
-      S.pick = (S.pick && S.pick.kind === 'garea' && S.pick.i === inA) ? null : { kind: 'garea', i: inA };
+    if (inA >= 0) {
+      S.pick = { kind: 'garea', i: inA };
+      S.gardenMode = gd.areas[inA].kind;
       say('');
       render();
       return;
     }
-    if (S.pick) { S.pick = null; }
-    if (!within(gd.plot.outline, snapFrom(null, w))) { say('Tap inside the plot.'); return; }
+    if (wallOfShape(gd.plot, w)) { S.pick = null; S.gardenMode = 'boundary'; say(''); render(); return; }
+    if (S.pick || S.gardenMode === 'boundary') { S.pick = null; S.gardenMode = 'idle'; render(); }
+  }
+
+  /**
+   * Put a patio, a lawn, a drive, decking or an outbuilding down where one
+   * usually is, ready to be moved and sized: paving behind the house, grass
+   * beyond it, the drive in front, the shed in the far corner.
+   */
+  function addGardenBlock(kind) {
+    var gd = S.garden;
+    if (!gd.plot.closed) return;
+    var fd = frontDir(), b = [-fd[0], -fd[1]], r = [-b[1], b[0]];      // b: towards the back fence; r: across
+    var dot = function (p, v) { return p[0] * v[0] + p[1] * v[1]; };
+    var span = function (pts, v) {
+      var vs = pts.map(function (p) { return dot(p, v); });
+      return [Math.min.apply(null, vs), Math.max.apply(null, vs)];
+    };
+    var house = ground().outline.slice();
+    builtExts().forEach(function (x) { house = house.concat(x.outline); });
+    var hb = span(house, b), hr = span(house, r), pb = span(gd.plot.outline, b), pr = span(gd.plot.outline, r);
+    var sn = function (v) { return Math.round(v / SNAP) * SNAP; };
+    var w, d, r0, b0;
+    if (kind === 'lawn') {
+      r0 = pr[0] + 0.5; w = Math.max(2, pr[1] - pr[0] - 1);
+      b0 = hb[1] + 3.5; d = pb[1] - 0.5 - b0;
+      if (d < 2) { b0 = hb[1] + 0.5; d = Math.max(2, pb[1] - 0.5 - b0); }
+    } else if (kind === 'drive') {
+      w = 3; r0 = pr[0] + 0.25;
+      d = Math.max(2.5, hb[0] - pb[0]); b0 = hb[0] - d;
+    } else if (kind === 'building') {
+      w = 3; d = 4; r0 = pr[0] + 0.5; b0 = pb[1] - 0.5 - d;
+    } else {
+      w = kind === 'decking' ? 3 : Math.min(5, Math.max(3, hr[1] - hr[0]));
+      d = 3; r0 = (hr[0] + hr[1]) / 2 - w / 2; b0 = hb[1];
+    }
+    var make = function (r1, b1) {
+      var q = function (rr, bb) { return mm([sn(rr) * r[0] + sn(bb) * b[0], sn(rr) * r[1] + sn(bb) * b[1]]); };
+      return [q(r1, b1), q(r1 + w, b1), q(r1 + w, b1 + d), q(r1, b1 + d)];
+    };
+    // step it clear of the house, and of anything already put down in the same place
+    var ring = make(r0, b0), tries = 0;
+    var clash = function (rg) {
+      return blockTrouble('a0', rg) || gd.areas.some(function (a) { return dist(centroid(a.outline), centroid(rg)) < 0.3; });
+    };
+    while (clash(ring) && tries < 24) { tries++; ring = make(r0 + (tries % 2 ? 0 : 0.5 * tries / 2), b0 + 0.5 * Math.ceil(tries / 2)); }
     snapshot();
-    S.drawing = [snapTarget(w).p];
-    changed();
+    gd.areas.push({ kind: kind, outline: ring, closed: true });
+    S.pick = { kind: 'garea', i: gd.areas.length - 1 };
+    S.gardenMode = kind;
+    S.drawing = null;
+    say('');
+    FRAME = null; MANUAL = false;
+    settled();
   }
 
   function gardenSvg(RU) {
@@ -1546,11 +1670,9 @@
       var on = S.pick && S.pick.kind === 'garea' && S.pick.i === i;
       out.push('<polygon points="' + poly(a.outline) + '" class="sk-garea ' + a.kind + (on ? ' on' : '') + '"/>');
       var c = centroid(a.outline);
-      out.push('<text x="' + (c[0] * K) + '" y="' + (c[1] * K + 4 * RU) + '" text-anchor="middle" class="sk-galab" font-size="' +
-        (11 * RU).toFixed(1) + '">' + gardenKind(a.kind).tag + ' · ' + fmt(m(shoelace(a.outline)) * m(1), 0) + ' m²</text>');
-      a.outline.forEach(function (p) {
-        out.push('<circle cx="' + (p[0] * K) + '" cy="' + (p[1] * K) + '" r="' + (7 * RU).toFixed(1) + '" class="sk-node small"/>');
-      });
+      // the one in hand has a move handle in its middle, so its name sits under that
+      out.push('<text x="' + (c[0] * K) + '" y="' + (c[1] * K + (on ? 32 : 4) * RU) + '" text-anchor="middle" class="sk-galab" font-size="' +
+        (11 * RU).toFixed(1) + '">' + gardenKind(a.kind).tag + ' · ' + fmt(visibleAreas()[i], 0) + ' m²</text>');
     });
     gd.trees.forEach(function (t) {
       out.push('<g class="sk-tree"><circle cx="' + (t[0] * K) + '" cy="' + (t[1] * K) + '" r="' + (1.4 * K) + '"/>' +
@@ -1685,7 +1807,7 @@
     if (which === 'floor' && S.active === 0) reindexWalls('remove', i, shape.outline.length);
     shape.outline.splice(i, 1);
     if (pts) reassignOpenings(f, pts);
-    S.pick = null;
+    S.pick = isArea(which) ? { kind: 'garea', i: +which.slice(1) } : null;
     say('');
     settled();
   }
@@ -2308,6 +2430,11 @@
 
   /** Why a block or an extension cannot be where `ring` puts it — or null. */
   function blockTrouble(which, ring) {
+    if (isArea(which)) {
+      var onHouse = ringsOverlap(ring, ground().outline) ||
+        builtExts().some(function (x) { return ringsOverlap(ring, x.outline); });
+      return onHouse ? 'That would put it on top of the house.' : null;
+    }
     var host = hostOf(which);
     if (ringsOverlap(ring, host)) {
       return which === 'block' ? 'That would put it inside the house.' : 'An extension cannot sit on top of the house.';
@@ -2486,12 +2613,29 @@
     return true;
   }
 
+  /** A garden surface: 'a0', 'a1'… */
+  function isArea(which) { return !!which && which.charAt(0) === 'a'; }
+  /** Things that move whole when dragged by the middle. */
+  function movesWhole(which) { return which === 'block' || which === 'ext' || isArea(which); }
+
+  /** The one thing in the garden that is in hand: a surface that has been
+      tapped, or the fence. Nothing else there has handles, so nothing else can
+      be moved by accident. */
+  function gardenTarget() {
+    var p = S.pick, gd = S.garden;
+    if (!gd.plot.closed) return null;
+    if (p && p.kind === 'garea' && gd.areas[p.i]) return 'a' + p.i;
+    if (p && p.kind === 'corner' && isArea(p.which) && gd.areas[+p.which.slice(1)]) return p.which;
+    if (S.gardenMode === 'boundary') return 'plot';
+    return null;
+  }
+
   /** Which shape is being edited in this stage, if any. */
   function editable() {
     if (S.stage === 'outline' && S.block) return 'block';
     if (S.stage === 'outline' && floor().closed) return 'floor';
     if (S.stage === 'extension' && S.extension.closed) return 'ext';
-    if (S.stage === 'garden' && S.garden.plot.closed) return 'plot';
+    if (S.stage === 'garden') return gardenTarget();
     return null;
   }
 
@@ -2509,7 +2653,7 @@
     if (drawingWalls()) return null;
     if (S.stage === 'outline' && S.block) return 'block';     // a part being placed has the canvas to itself
     if (S.stage === 'extension') return S.extension.closed ? 'ext' : null;
-    if (S.stage === 'garden') return S.garden.plot.closed ? 'plot' : null;
+    if (S.stage === 'garden') return gardenTarget();
     return floor().closed ? 'floor' : null;
   }
 
@@ -2518,6 +2662,7 @@
     var r = grabRadius(), best = null;
     var which = draggable();
     var blockish = which === 'block' || which === 'ext';
+    var whole = movesWhole(which);
     if (which && which !== 'block') {
       shapeOf(which).outline.forEach(function (q, i) {
         var d = dist(p, q);
@@ -2534,8 +2679,7 @@
     }
     // the middle of a wall drags the whole wall sideways: corners win when
     // they are close, and a tap (no drag) on the wall still means what it did
-    var slideOK = S.stage === 'outline' || S.stage === 'extension' ||
-                  (S.stage === 'garden' && S.gardenMode === 'boundary');
+    var slideOK = S.stage === 'outline' || S.stage === 'extension' || S.stage === 'garden';
     if (!best && which && slideOK) {
       var ring = shapeOf(which).outline;
       for (var wi = 0; wi < ring.length; wi++) {
@@ -2546,7 +2690,7 @@
       }
     }
     // grab a block or an extension by its middle and it moves, rather than the page
-    if (!best && blockish && within(shapeOf(which).outline, p)) best = { kind: 'body', which: which, d: 0 };
+    if (!best && whole && within(shapeOf(which).outline, p)) best = { kind: 'body', which: which, d: 0 };
     if (!best && movingWalls()) {
       floor().internals.forEach(function (seg, i) {
         var pr = projectOnSeg(p, seg[0], seg[1]);
@@ -2554,12 +2698,6 @@
       });
     }
     if (S.stage === 'garden') {
-      S.garden.areas.forEach(function (a, ai) {
-        a.outline.forEach(function (q, i) {
-          var d = dist(p, q);
-          if (d < r && (!best || d < best.d)) best = { kind: 'corner', which: 'a' + ai, i: i, d: d };
-        });
-      });
       S.garden.trees.forEach(function (t, i) {
         var d = dist(p, t);
         if (d < r && (!best || d < best.d)) best = { kind: 'tree', i: i, d: d };
@@ -2611,12 +2749,12 @@
     if (h.kind === 'wall' || h.kind === 'iwallmid') {
       press.origInt = floor().internals.map(function (sg) { return [sg[0].slice(), sg[1].slice()]; });
     }
-    if (h.which === 'block' || h.which === 'ext') {
+    if (movesWhole(h.which)) {
       var ringB = shapeOf(h.which).outline;
       press.wasBad = !!blockTrouble(h.which, ringB);     // already wrong: let it be dragged right
       if (h.kind === 'body') {
         press.orig = ringB.map(function (q) { return q.slice(); });
-        press.att = blockOn(hostOf(h.which), ringB);
+        press.att = isArea(h.which) ? null : blockOn(hostOf(h.which), ringB);   // a patio stands on nothing
       }
     }
     snapshot();
@@ -2714,7 +2852,9 @@
       $('sk-svg').classList.add('grabbing');
       var w2 = toWorld(e), g = snapFrom(null, w2);
       var h = press.handle, f2 = floor();
-      var guarded2 = (h.which === 'block' || h.which === 'ext') && !press.wasBad;
+      var guarded2 = movesWhole(h.which) && !press.wasBad;
+      // a garden surface stays picked while it is dragged about
+      var keepPick = isArea(h.which) ? { kind: 'garea', i: +h.which.slice(1) } : null;
       var allowed = function (i1, q1, i2, q2) {
         if (!guarded2) return true;
         var cand = shapeOf(h.which).outline.map(function (q) { return q.slice(); });
@@ -2724,7 +2864,7 @@
       if (h.kind === 'body') {
         var movedB = moveBlock(h.which, press, w2);
         if (movedB) shapeOf(h.which).outline = movedB;
-        S.pick = null;
+        S.pick = keepPick;
       } else if (h.kind === 'corner') {
         // an extension's corner stops at the house instead of going through it
         if (allowed(h.i, g)) {
@@ -2740,7 +2880,7 @@
           S.guides = guidesFor(moved[0], h.which, [h.i, (h.i + 1) % ringW.length])
             .concat(guidesFor(moved[1], h.which, [h.i, (h.i + 1) % ringW.length]));
         }
-        S.pick = null;
+        S.pick = keepPick;
       } else if (h.kind === 'iwallmid') {
         var movedI = slideWall(press.orig, press.world, w2);
         var a1 = keepInside(movedI[0]), b1 = keepInside(movedI[1]);
@@ -2852,11 +2992,9 @@
     if (S.stage === 'garden') {
       var gd = S.garden;
       if (!gd.plot.closed) return snapped ? 'draw-snap' : 'draw';
-      if (S.gardenMode === 'boundary') return wallOfShape(gd.plot, w) ? 'split' : 'arrow';
       if (S.gardenMode === 'tree') return within(gd.plot.outline, snapFrom(null, w)) ? 'pin' : 'no';
-      if (S.pick && S.pick.kind === 'garea' && gd.areas[S.pick.i] && wallOfShape(gd.areas[S.pick.i], w)) return 'split';
-      if (areaAt(w) >= 0) return 'pick';
-      return within(gd.plot.outline, snapFrom(null, w)) ? (snapped ? 'draw-snap' : 'draw') : 'no';
+      if (areaAt(w) >= 0 || wallOfShape(gd.plot, w)) return 'pick';
+      return 'arrow';
     }
     return 'arrow';
   }
@@ -3211,7 +3349,7 @@
     } else if (S.stage === 'garden') {
       if (!S.garden.plot.closed) {
         S.garden.plot = { outline: S.drawing.slice(), closed: true };
-        S.gardenMode = 'patio';
+        S.gardenMode = 'boundary';
       } else {
         S.garden.areas.push({ kind: S.gardenMode, outline: S.drawing.slice(), closed: true });
         S.pick = { kind: 'garea', i: S.garden.areas.length - 1 };
@@ -3703,7 +3841,7 @@
     S.stage = id;
     if (id === 'extension' || id === 'garden') S.active = 0;     // both sit round the ground floor
     if (id === 'rooms' && !S.roomPicked) S.roomType = S.active === 0 ? 'kitchen' : 'bedroom';
-    if (id === 'garden') S.gardenMode = S.garden.plot.closed ? (S.gardenMode || 'patio') : 'boundary';
+    if (id === 'garden') S.gardenMode = S.garden.plot.closed ? 'idle' : 'boundary';
     S.drawing = null; S.cursor = null; S.selected = null; S.pick = null;
     S.kind = id === 'openings' ? (S.kind || 'window') : null;
     if (id === 'internal') S.wallMode = S.wallMode || 'draw';
@@ -3886,7 +4024,14 @@
       hit = t.closest && t.closest('[data-dir]');
       if (hit) { addTyped(hit.getAttribute('data-dir')); return; }
       hit = t.closest && t.closest('[data-gmode]');
-      if (hit) { S.gardenMode = hit.getAttribute('data-gmode'); S.drawing = null; S.pick = null; say(''); render(); return; }
+      if (hit) {
+        // "+ Trees" is a switch: on to plant them, off again when done
+        var gm = hit.getAttribute('data-gmode');
+        S.gardenMode = (gm === 'tree' && S.gardenMode === 'tree') ? 'idle' : gm;
+        S.drawing = null; S.pick = null; say(''); render(); return;
+      }
+      hit = t.closest && t.closest('[data-gadd]');
+      if (hit) { addGardenBlock(hit.getAttribute('data-gadd')); return; }
       hit = t.closest && t.closest('[data-storeys]');
       if (hit) { S.extension.storeys = +hit.getAttribute('data-storeys'); render(); return; }
       hit = t.closest && t.closest('[data-skext]');
@@ -3964,6 +4109,10 @@
         case 'sk-blank':     S.started = true; S.measured = false; settled(); return;
         case 'sk-box-go':    boxGo(); return;
         case 'sk-addblock':  addBlock(); return;
+        case 'sk-droparea':
+          var gt2 = gardenTarget();
+          if (isArea(gt2)) removeArea(+gt2.slice(1));
+          return;
         case 'sk-cancelblock': S.block = null; say(''); FRAME = null; MANUAL = false; settled(); return;
         case 'sk-lenedit-ok': applyLenEdit(); return;
         case 'sk-addext':    addRearExtension(); return;
@@ -4135,7 +4284,7 @@
       S.extensions = o.extensions || [o.extension || newExtension()];
       S.extIdx = Math.min(o.extIdx || 0, S.extensions.length - 1);
       S.garden = o.garden || newGarden();
-      S.gardenMode = S.garden.plot.closed ? 'patio' : 'boundary';
+      S.gardenMode = S.garden.plot.closed ? 'idle' : 'boundary';
       S.scale = o.scale;
       S.active = Math.min(o.active || 0, o.floors.length - 1);
       SNAP = o.snap || LOOSE;

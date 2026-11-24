@@ -215,6 +215,22 @@ the SVG's screen matrix, and read state from `window.DATUM.SKETCH._S` and
   consent change to "nothing leaves the browser". Worth doing as an
   accelerator on the upload path, with the result shown as editable walls
   over the plan (never a clean redraw). See the roadmap.
+- **Nothing is priced until it is asked for.** Optional work starts at none:
+  bi-folds, the knock-through and the kitchen on an extension; every room on
+  a renovation ("Leave it"); the dormer and ensuite on a loft; walls, fencing,
+  drains, steps and lights outdoors. Someone who presses Next without reading
+  used to get a figure holding about twenty thousand pounds of things they
+  never chose. What a job cannot be done without stays in: the stairs, steel
+  and fire doors of a loft. A job with nothing chosen is nought, with no fees
+  on it, and says so. The "Typically about" figures on the chooser are still
+  each type's worked example, not these defaults.
+- **Where the garden ends is not an order for a fence.** The fence line drawn
+  on the garden step sets the plot; new fencing is its own question.
+- **Blocks first.** The house starts from two numbers and is built from
+  rectangles that stand on a wall; corner tapping is the way in for odd
+  shapes only. See `docs/sketch-tool.md`.
+- **Questions are in the customer's words.** No trade terms, no notes to
+  ourselves, and "Not sure" wherever nobody could be expected to know.
 - **No 3D or renders.** Partner, don't build.
 - **Margin on the invoice.** Nobody else prints it; it is our sharpest
   sentence in a market whose problem is trust.

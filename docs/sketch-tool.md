@@ -83,6 +83,37 @@ An extension that is not a plain block is priced on the floor it really has:
 its width across, and the depth that gives its true area. The box round a
 triangle is twice the triangle.
 
+### What can be done is drawn on the shape
+
+A hover cursor is no use on a phone, and a wall gives no sign that it drags. So
+whatever is in hand carries its own controls, and a key in the side panel
+repeats them in the same symbols:
+
+- an **arrow** in the middle of every wall that drags in or out;
+- a **four-way arrow** in the middle of anything that moves whole;
+- every **length** is a button — tap it and type;
+- a small **+** a quarter of the way along a wall adds a corner there, and a
+  picked corner has a **×**.
+
+Handles shrink with the shape, so a small patio is not hidden under its own.
+Where a step is the point of the project (an extension, on an extension job)
+its *Add* button is the main button and *Next* is quiet; on an optional step it
+is the other way round. One obvious button at a time.
+
+### The garden works the same way
+
+*Add my garden* puts a fence line round the house, already in hand: arrows on
+each side, lengths to tap. Then each thing is a button that puts one down where
+one usually is — paving behind the house, grass beyond it, the drive in front,
+a shed in the far corner — ready to be moved and sized. A tap picks whatever is
+under it; nothing is drawn by tapping, so nothing is drawn by accident. *+ Trees*
+is a switch: on to plant them, off when done.
+
+People draw the lawn across the garden and then put the patio and the shed down
+on it, and they are right to. So a surface is counted only where nothing put
+down after it covers it (`visibleAreas()`): otherwise the turf under the shed is
+paid for as turf. A surface cannot be dragged on to the house.
+
 ## The idea the whole thing rests on
 
 *(This is the tapped route: the odd-shape and uploaded-plan way in.)*

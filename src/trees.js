@@ -48,6 +48,8 @@
   // Essex and most of the London basin is high-plasticity clay, so that is
   // the default. Getting this wrong is the single biggest error in the model.
   var SOILS = [
+    // nobody knows their soil. "Not sure" is priced as heavy clay: the commonest here, and the cautious answer
+    { id: 'unsure', name: 'Not sure',        note: 'We assume heavy clay, the cautious answer',   factor: 1.00 },
     { id: 'high',   name: 'Heavy clay',      note: 'Most of Essex, London and the Home Counties', factor: 1.00 },
     { id: 'medium', name: 'Medium clay',     note: 'Mixed clay and silt',                          factor: 0.85 },
     { id: 'low',    name: 'Light clay',      note: 'Sandy clay, low shrinkage',                    factor: 0.70 },

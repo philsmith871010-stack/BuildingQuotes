@@ -842,7 +842,8 @@ html { scroll-padding-top: 62px; }
     border-left: 0; border-bottom: 1px solid var(--rule);
     order: -1;
     position: sticky; top: 52px; z-index: 20;
-    height: 42svh; min-height: 260px;
+    /* a third of the screen, not nearly half: the question has to be in view too */
+    height: 32svh; min-height: 210px;
     background: var(--surface);
   }
   .flow-draw-bar { padding-block: .4rem; }
@@ -1534,6 +1535,8 @@ html { scroll-padding-top: 62px; }
 }
 .sk-lenedit span { font-family: var(--mono); font-size: .8rem; color: var(--ink-3); }
 .sk-addblock { width: 100%; }
+.closing { text-align: center; display: grid; gap: .9rem; justify-items: center; }
+.closing p { color: var(--ink-2); max-width: 30rem; }
 .sk-size { display: flex; flex-wrap: wrap; gap: 1rem 1.6rem; justify-content: center; margin-top: .5rem; }
 .sk-size-f { display: grid; gap: .35rem; justify-items: center; }
 .sk-size-f label { font-size: .9rem; font-weight: 600; color: var(--ink); }
@@ -1984,7 +1987,7 @@ html { scroll-padding-top: 62px; }
   <section class="wrap band" id="honest">
     <div class="band-head">
       <p class="eyebrow">Straight answers</p>
-      <h2>Three things we would rather you heard from us.</h2>
+      <h2>Four things we would rather you heard from us.</h2>
     </div>
     <div class="cards">
       <div class="card"><p class="eyebrow">On the estimate</p><h3>It is an estimate, and it says so</h3><p>The figure is a range, and it stays a range until an architect has measured your house and an engineer has looked at your ground. It is not a quotation and nothing is fixed until there is a contract.</p></div>
@@ -1992,6 +1995,12 @@ html { scroll-padding-top: 62px; }
       <div class="card"><p class="eyebrow">On what is missing</p><h3>What this version does not know yet</h3><p>Party wall awards, site access, drains under the footprint, roof glazing, heating and electrical work, decoration and floor finishes, and which planning route you need. All of them move the number, and all of them are being added.</p></div>
       <div class="card"><p class="eyebrow">On the figures</p><h3>These rates are a first pass</h3><p>The build rate, the door rate and the foundation table are starting figures for a working demonstration. They are being replaced with a full quantity surveyor's schedule.</p></div>
     </div>
+  </section>
+
+  <section class="wrap band closing">
+    <h2>See what yours would cost.</h2>
+    <p>About two minutes. No site visit, and nobody will ring you.</p>
+    <a class="btn" href="#/start">Price my project</a>
   </section>
 
   <footer class="wrap foot">
@@ -2180,7 +2189,7 @@ html { scroll-padding-top: 62px; }
           </div>
           <div class="flow-nav">
             <a class="btn btn-ghost btn-sm" id="result-back" href="#/start">← Change something</a>
-            <a class="skip" href="#/">Back to the start</a>
+            <a class="skip" href="#/start">Start again</a>
           </div>
         </div>
       </div>
@@ -2465,18 +2474,18 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   }
 
   var ACCESS = {
-    id: 'access', label: 'Site access', help: 'Can a machine, a skip and a grab lorry reach the work?',
+    id: 'access', label: 'Getting to the work', help: 'Can a digger and a skip get round to where the work is?',
     appliesTo: 'all', value: 'good',
     options: [
-      { id: 'good',       label: 'Clear rear access', factor: 1.00 },
-      { id: 'restricted', label: 'Through the house',  factor: 1.09 },
-      { id: 'none',       label: 'Hand dig and barrow', factor: 1.20 }
+      { id: 'good',       label: 'Yes, down the side', factor: 1.00 },
+      { id: 'restricted', label: 'Only through the house',  factor: 1.09 },
+      { id: 'none',       label: 'No, by hand only', factor: 1.20 }
     ]
   };
 
   function spec(hi, top) {
     return {
-      id: 'spec', label: 'Specification', help: 'The level of finish the client is buying.',
+      id: 'spec', label: 'Quality of finish', help: 'Most people choose Standard.',
       appliesTo: 'all', value: 'standard',
       options: [
         { id: 'standard', label: 'Standard', factor: 1.00 },
@@ -2622,19 +2631,12 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     return m;
   }
 
-  /** A three-bed semi being done properly — the shape most jobs start from. */
+  /** A three-bed semi, every room left alone until somebody says what is being
+      done to it. Nothing is priced that has not been asked for: a first figure
+      that already holds a new kitchen and a rewire is not the customer's. */
   function defaultRooms() {
-    return [
-      { type: 'kitchen',  level: 'strip' },
-      { type: 'living',   level: 'refit' },
-      { type: 'living',   level: 'refit' },
-      { type: 'bedroom',  level: 'refit' },
-      { type: 'bedroom',  level: 'refit' },
-      { type: 'bedroom',  level: 'refit' },
-      { type: 'bathroom', level: 'strip' },
-      { type: 'wc',       level: 'refit' },
-      { type: 'hall',     level: 'decorate' }
-    ];
+    return ['kitchen', 'living', 'living', 'bedroom', 'bedroom', 'bedroom', 'bathroom', 'wc', 'hall']
+      .map(function (type) { return { type: type, level: 'none' }; });
   }
 
   var ROOMS = {
@@ -2663,35 +2665,35 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         { id: 'width', label: 'Width', unit: 'm',
           ask: { step: 'size', q: 'Width', help: 'Across the back of the house.', input: 'dim', min: 2, max: 12, by: 0.25, value: 5 } },
         { id: 'depth', label: 'Projection', unit: 'm',
-          ask: { step: 'size', q: 'Projection', help: 'How far it comes out into the garden.', input: 'dim', min: 2, max: 8, by: 0.25, value: 4 } },
+          ask: { step: 'size', q: 'How far out', help: 'How far it comes out into the garden.', input: 'dim', min: 2, max: 8, by: 0.25, value: 4 } },
         { id: 'bifoldWidth', label: 'Bi-fold width', unit: 'm',
-          ask: { step: 'build', q: 'Bi-fold doors', help: 'Total width across the opening. Leave at none for a window instead.', input: 'length', min: 0, max: 6, by: 0.3, value: 3, zero: 'None' } },
+          ask: { step: 'build', q: 'Bi-fold doors', help: 'How wide, added together. Choose None for windows instead.', input: 'length', min: 0, max: 6, by: 0.3, value: 0, zero: 'None' } },
         { id: 'rooflights', label: 'Rooflights', unit: 'no.',
-          ask: { step: 'build', q: 'Rooflights in the new flat roof', help: 'Lantern or flat rooflights over the new space.', input: 'count', max: 6, value: 0 } },
+          ask: { step: 'build', q: 'Roof windows', help: 'Glass in the new flat roof, to let light in.', input: 'count', max: 6, value: 0 } },
         { id: 'wallRemoval', label: 'Wall removed', unit: 'm',
-          ask: { step: 'inside', q: 'Opening into the house', help: 'How wide the hole in the existing back wall is, so the new space opens into the house. Steel, padstones and making good included.', input: 'length', min: 0, max: 12, by: 0.5, value: 3, zero: 'None' } },
+          ask: { step: 'inside', q: 'Opening into the house', help: 'How wide a gap to knock through from the house into the new room. The steel beam over it is included.', input: 'length', min: 0, max: 12, by: 0.5, value: 0, zero: 'None' } },
         { id: 'kitchens', label: 'Kitchens', unit: 'no.',
-          ask: { step: 'inside', q: 'A new kitchen?', help: 'Fitting only. You buy the units and appliances you want.', input: 'yesno', value: 1 } },
+          ask: { step: 'inside', q: 'A new kitchen?', help: 'We fit it. You buy the units and appliances you want.', input: 'yesno', value: 0 } },
         { id: 'bathrooms', label: 'Bathrooms', unit: 'no.',
-          ask: { step: 'inside', q: 'Bathrooms in the extension', help: 'Labour only, same principle as the kitchen.', input: 'count', max: 3, value: 0 } }
+          ask: { step: 'inside', q: 'Bathrooms in the extension', help: 'We fit them. You buy the suite.', input: 'count', max: 3, value: 0 } }
       ],
       steps: [
-        { id: 'size',   view: 'plan',    short: 'Size', title: 'How big is it going to be?', lede: 'Drag either dimension on the drawing. Everything else on this site is measured from these two numbers.' },
-        { id: 'build',  view: 'plan',    short: 'Build', title: 'How is it built?', lede: 'The construction of the external walls, and how much of the garden wall is glass.', modifiers: ['wallType'] },
-        { id: 'ground', view: 'section', short: 'Ground', title: 'What is underneath?', lede: 'The question that catches people out. On shrinkable clay a thirsty tree decides how deep you dig, and depth is expensive.', ground: true },
-        { id: 'inside', view: 'plan',    short: 'Inside', title: 'What is going inside?', lede: 'Opening the new space into the house, and the two rooms that carry real labour.', modifiers: ['access', 'spec'] }
+        { id: 'size',   view: 'plan',    short: 'Size', title: 'How big is it going to be?', lede: 'Two numbers: how wide, and how far out.' },
+        { id: 'build',  view: 'plan',    short: 'Build', title: 'How is it built?', lede: 'What the walls are made of, and how much glass faces the garden.', modifiers: ['wallType'] },
+        { id: 'ground', view: 'section', short: 'Ground', title: 'What is underneath?', lede: 'Big trees near clay soil can mean deeper foundations. Not sure? Leave it as it is.', ground: true },
+        { id: 'inside', view: 'plan',    short: 'Inside', title: 'What is going inside?', lede: 'How it joins the house, and what goes in it.', modifiers: ['access', 'spec'] }
       ],
       lines: [
         L('ext.shell',     'Extension shell',      'Foundations to standard depth, walls, flat roof, windows, plaster, first and second fix', 'per_m2', 'floorArea', 3000, 'lee'),
         L('ext.bifold',    'Bi-fold doors',        'Supplied and fitted, aluminium', 'per_linear_m', 'bifoldWidth', 1500, 'lee'),
-        L('ext.wallRemove','Structural openings',  'Steel, padstones and making good', 'per_linear_m', 'wallRemoval', 1000, 'lee'),
+        L('ext.wallRemove','Knocking through walls',  'Steel, padstones and making good', 'per_linear_m', 'wallRemoval', 1000, 'lee'),
         L('ext.kitchen',   'Kitchen fitting',      'Labour only — units and appliances are the client’s', 'per_unit', 'kitchens', 4500, 'lee'),
         L('ext.bathroom',  'Bathroom',             'Labour only', 'per_unit', 'bathrooms', 3000, 'lee'),
         L('ext.rooflight', 'Rooflights',           'Supplied and fitted, kerb included', 'per_unit', 'rooflights', 1800, 'placeholder')
       ],
       modifiers: [
         {
-          id: 'wallType', label: 'Wall construction', help: 'Lee quoted one rate for all three — these deltas are placeholders.',
+          id: 'wallType', label: 'Outside walls', help: 'What the new walls are made of.',
           appliesTo: ['ext.shell'], value: 'brick',
           options: [
             { id: 'brick',  label: 'Brickwork',            factor: 1.00 },
@@ -2718,7 +2720,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       usesFoundations: false,
       measurements: [
         { id: 'floorArea', label: 'Floor area', unit: 'm²',
-          ask: { step: 'size', q: 'Total floor area', help: 'Every storey added together. Sketch the house and this is measured rather than guessed. A three-bed semi is usually 85 to 100 m².', input: 'area', min: 10, max: 500, by: 5, value: 90 } },
+          ask: { step: 'size', q: 'Total floor area', help: 'All floors added together. A three-bed semi is usually 85 to 100 m².', input: 'area', min: 10, max: 500, by: 5, value: 90 } },
 
         /* worked out from the room ticks — never asked directly */
         { id: 'decorArea',       label: 'Area decorated',        unit: 'm²' },
@@ -2738,32 +2740,32 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
         /* the things that are not room by room */
         { id: 'wallRemoval', label: 'Wall removed', unit: 'm',
-          ask: { step: 'house', q: 'Walls coming out', help: 'Knocking rooms together. Steel, padstones and making good included.', input: 'length', min: 0, max: 20, by: 0.5, value: 3, zero: 'None' } },
+          ask: { step: 'house', q: 'Walls coming out', help: 'Knocking rooms together. The steel beam over the gap is included.', input: 'length', min: 0, max: 20, by: 0.5, value: 0, zero: 'None' } },
         { id: 'windows', label: 'Windows replaced', unit: 'no.',
-          ask: { step: 'house', q: 'Windows replaced', help: 'Like for like, supplied and fitted. Scaffolding is in the rate.', input: 'count', max: 24, value: 8 } },
+          ask: { step: 'house', q: 'Windows replaced', help: 'New windows, fitted. Scaffolding is included.', input: 'count', max: 24, value: 0 } },
         { id: 'extDoors', label: 'External doors', unit: 'no.',
-          ask: { step: 'house', q: 'External doors', help: 'Front, back or French doors, supplied and fitted.', input: 'count', max: 6, value: 1 } },
+          ask: { step: 'house', q: 'Outside doors', help: 'Front, back or French doors, fitted.', input: 'count', max: 6, value: 0 } },
         { id: 'consumerUnit', label: 'Consumer unit and mains', unit: 'no.',
-          ask: { step: 'house', q: 'New consumer unit?', help: 'The board, the mains work and the electrical certificate. Needed once, however many rooms are rewired.', input: 'yesno', value: 1 } },
+          ask: { step: 'house', q: 'New fuse box?', help: 'A modern fuse box and the safety certificate. Needed once, however many rooms are rewired.', input: 'yesno', value: 0 } },
         { id: 'newBoiler', label: 'Boiler and heating plant', unit: 'no.',
-          ask: { step: 'house', q: 'New boiler?', help: 'Boiler, controls, flue and cylinder. The radiators themselves are counted room by room.', input: 'yesno', value: 1 } },
+          ask: { step: 'house', q: 'New boiler?', help: 'Boiler, controls and hot water tank. Radiators are counted room by room.', input: 'yesno', value: 0 } },
         { id: 'roofArea', label: 'Roof recovered', unit: 'm²',
-          ask: { step: 'house', q: 'Roof recovered', help: 'Strip and re-tile, including battens, felt and scaffolding. Leave at none if the roof is sound.', input: 'area', min: 0, max: 300, by: 5, value: 0, zero: 'Not this time' } }
+          ask: { step: 'house', q: 'New roof tiles', help: 'Strip and re-tile, scaffolding included. Choose Not this time if the roof is sound.', input: 'area', min: 0, max: 300, by: 5, value: 0, zero: 'Not this time' } }
       ],
       steps: [
-        { id: 'size',      view: 'plan',    short: 'Size',  title: 'How big is the house?', lede: 'One number drives everything else. Sketch the house or trace your floor plan and it is measured rather than estimated.' },
-        { id: 'work',      view: 'plan',    short: 'Rooms', title: 'What is being done, room by room?', lede: 'Pick a preset for each room, then tick or untick what is actually happening in it. A kitchen has more to choose from than a hall. Each room shows its own price.', rooms: true },
-        { id: 'house',     view: 'section', short: 'House', title: 'The things that are not room by room', lede: 'Six questions covering the work you buy once for the whole house, however many rooms are involved.' },
-        { id: 'condition', view: 'section', short: 'Condition', title: 'What are we working with?', lede: 'Older fabric costs more to work into, and a family living upstairs costs time.', modifiers: ['age', 'occupied', 'access', 'spec'] }
+        { id: 'size',      view: 'plan',    short: 'Size',  title: 'How big is the house?', lede: 'One number. Draw the house and it is measured for you.' },
+        { id: 'work',      view: 'plan',    short: 'Rooms', title: 'What is being done, room by room?', lede: 'Pick how much is being done in each room. Each room shows its own price.', rooms: true },
+        { id: 'house',     view: 'section', short: 'House', title: 'Things for the whole house', lede: 'Work you only buy once, however many rooms are involved.' },
+        { id: 'condition', view: 'section', short: 'Condition', title: 'About your house', lede: 'Older houses take more work, and so does working around people living there.', modifiers: ['age', 'occupied', 'access', 'spec'] }
       ],
       lines: [
         /* room by room — driven by how far each room is being taken */
         L('ren.strip',      'Strip out and clear',    'Finishes off, back to brick and joists. Removals, skips and protection', 'per_m2', 'stripArea', 85, 'placeholder'),
-        L('ren.firstfix',   'First fix',              'Electrical circuits and pipework back to the board and the boiler', 'per_m2', 'firstFixArea', 95, 'placeholder'),
+        L('ren.firstfix',   'New pipes and wiring',            'Electrical circuits and pipework back to the board and the boiler', 'per_m2', 'firstFixArea', 95, 'placeholder'),
         L('ren.ceilings',   'New ceilings',           'Down, re-boarded and skimmed', 'per_m2', 'ceilingArea', 48, 'placeholder'),
         L('ren.insulation', 'Insulation',             'Insulating the external walls while they are open', 'per_m2', 'insulationArea', 26, 'placeholder'),
         L('ren.plaster',    'Plastering',             'Walls and ceiling, overboarded or hacked off and re-skimmed', 'per_m2', 'plasterArea', 62, 'placeholder'),
-        L('ren.secondfix',  'Second fix electrics',   'Sockets, switches, lighting and testing', 'per_m2', 'secondFixArea', 58, 'placeholder'),
+        L('ren.secondfix',  'Sockets, switches and lights',  'Sockets, switches, lighting and testing', 'per_m2', 'secondFixArea', 58, 'placeholder'),
         L('ren.doors',      'Internal doors',         'Door, frame, ironmongery and hanging', 'per_unit', 'doorsReplaced', 220, 'placeholder'),
         L('ren.radiators',  'Radiators',              'Radiator or towel rail, valves and connection', 'per_unit', 'radiators', 420, 'placeholder'),
         L('ren.flooring',   'Floor finishes',         'Preparation and laying, materials excluded', 'per_m2', 'floorFinishArea', 65, 'placeholder'),
@@ -2771,10 +2773,10 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         L('ren.tiling',     'Wall tiling',            'Laying and grouting, per m² of wall; tiles excluded', 'per_m2', 'tiledArea', 75, 'placeholder'),
         L('ren.kitchen',    'Kitchen fitting',        'Labour only', 'per_unit', 'kitchens', 4500, 'lee'),
         L('ren.bathroom',   'Bathroom',               'Labour only', 'per_unit', 'bathrooms', 3000, 'lee'),
-        L('ren.wc',         'Cloakroom WC',           'Labour only', 'per_unit', 'wcs', 1200, 'placeholder'),
+        L('ren.wc',         'Downstairs toilet',          'Labour only', 'per_unit', 'wcs', 1200, 'placeholder'),
 
         /* bought once for the whole house */
-        L('ren.opening',    'Structural openings',    'Steel, padstones and making good', 'per_linear_m', 'wallRemoval', 1000, 'lee'),
+        L('ren.opening',    'Knocking through walls',    'Steel, padstones and making good', 'per_linear_m', 'wallRemoval', 1000, 'lee'),
         L('ren.windows',    'Windows',                'Supplied and fitted, like for like, including scaffolding', 'per_unit', 'windows', 850, 'placeholder'),
         L('ren.extdoors',   'External doors',         'Supplied and fitted', 'per_unit', 'extDoors', 1100, 'placeholder'),
         L('ren.consumer',   'Consumer unit and mains','Board, mains work, earthing and certificate', 'per_unit', 'consumerUnit', 1450, 'placeholder'),
@@ -2783,21 +2785,21 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       ],
       modifiers: [
         {
-          id: 'age', label: 'Property age', help: 'Older fabric costs more to work into.',
+          id: 'age', label: 'When was it built?', help: 'Older houses take more work.',
           appliesTo: 'all', value: 'postwar',
           options: [
-            { id: 'modern',   label: 'Post 1980',   factor: 0.94 },
+            { id: 'modern',   label: 'After 1980',   factor: 0.94 },
             { id: 'postwar',  label: '1945 to 1980', factor: 1.00 },
-            { id: 'prewar',   label: 'Pre 1945',    factor: 1.12 },
+            { id: 'prewar',   label: 'Before 1945',    factor: 1.12 },
             { id: 'listed',   label: 'Listed or conservation area', factor: 1.35 }
           ]
         },
         {
-          id: 'occupied', label: 'Occupied during works', help: 'Working around a family costs time.',
+          id: 'occupied', label: 'Will you live there during the work?', help: 'Working around people takes longer.',
           appliesTo: 'all', value: 'empty',
           options: [
-            { id: 'empty',    label: 'Empty property', factor: 1.00 },
-            { id: 'occupied', label: 'Client living in', factor: 1.11 }
+            { id: 'empty',    label: 'No, it will be empty', factor: 1.00 },
+            { id: 'occupied', label: 'Yes', factor: 1.11 }
           ]
         },
         ACCESS, spec(1.25, 1.60)
@@ -2820,24 +2822,24 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       usesFoundations: false,
       measurements: [
         { id: 'floorArea', label: 'New floor area', unit: 'm²',
-          ask: { step: 'size', q: 'Usable floor area', help: 'Only the part with head height counts. Draw the house and this follows from the footprint and the head height below.', input: 'area', min: 8, max: 120, by: 1, value: 28 } },
+          ask: { step: 'size', q: 'Usable floor area', help: 'Only the part you can stand up in counts.', input: 'area', min: 8, max: 120, by: 1, value: 28 } },
         { id: 'dormerWidth', label: 'Dormer width', unit: 'm',
-          ask: { step: 'roof', q: 'Dormer width', help: 'A dormer buys you standing room across its width. None means rooflights only.', input: 'length', min: 0, max: 8, by: 0.3, value: 3.6, zero: 'None' } },
+          ask: { step: 'roof', q: 'Dormer width', help: 'A dormer is a box built out of the roof, for standing room. Choose None for roof windows only.', input: 'length', min: 0, max: 8, by: 0.3, value: 0, zero: 'None' } },
         { id: 'rooflights', label: 'Rooflights', unit: 'no.',
-          ask: { step: 'roof', q: 'Rooflights in the roof slope', help: 'Velux-style lights set into the pitch of the existing roof.', input: 'count', max: 8, value: 2 } },
+          ask: { step: 'roof', q: 'Roof windows', help: 'Velux-style windows set into the roof.', input: 'count', max: 8, value: 2 } },
         { id: 'staircases', label: 'Staircases', unit: 'no.',
-          ask: { step: 'inside', q: 'A new staircase?', help: 'Almost always yes — a loft needs a proper fixed stair to be habitable.', input: 'yesno', value: 1 } },
+          ask: { step: 'inside', q: 'A new staircase?', help: 'Almost always yes. A loft room needs a proper staircase.', input: 'yesno', value: 1 } },
         { id: 'steels', label: 'Steel beams', unit: 'no.',
-          ask: { step: 'inside', q: 'Steel beams', help: 'The new floor has to span onto steel. Three is typical; the engineer confirms it.', input: 'count', max: 8, value: 3 } },
+          ask: { step: 'inside', q: 'Steel beams', help: 'The new floor sits on steel. Three is typical, and the engineer confirms it.', input: 'count', max: 8, value: 3 } },
         { id: 'bathrooms', label: 'Bathrooms', unit: 'no.',
-          ask: { step: 'inside', q: 'An ensuite?', help: 'Labour only.', input: 'count', max: 2, value: 1 } },
+          ask: { step: 'inside', q: 'An ensuite?', help: 'We fit it. You buy the suite.', input: 'count', max: 2, value: 0 } },
         { id: 'fireDoors', label: 'Fire doors', unit: 'no.',
-          ask: { step: 'inside', q: 'Fire doors', help: 'Building control requires a protected escape route. Usually every door off the stairwell.', input: 'count', max: 10, value: 4 } }
+          ask: { step: 'inside', q: 'Fire doors', help: 'The rules need a safe way out, so doors that open on to the stairs are usually replaced.', input: 'count', max: 10, value: 4 } }
       ],
       steps: [
-        { id: 'size',   view: 'section', short: 'Space', title: 'How much can you stand up in?', lede: 'Head height decides everything up here. Below 2.2 m the ridge has to come up or the ceilings below go down — and the usable floor area follows from your answer.', modifiers: ['headroom'] },
-        { id: 'roof',   view: 'section', short: 'Roof', title: 'Dormer, or rooflights?', lede: 'A dormer adds standing room and costs real money. Rooflights are cheaper and give you light rather than space.', modifiers: ['roofStructure'] },
-        { id: 'inside', view: 'plan',    short: 'Inside', title: 'What is going in?', lede: 'Stairs, steel and the things building control will insist on.', modifiers: ['access', 'spec'] }
+        { id: 'size',   view: 'section', short: 'Space', title: 'How much can you stand up in?', lede: 'Head height decides how much of the loft you can use.', modifiers: ['headroom'] },
+        { id: 'roof',   view: 'section', short: 'Roof', title: 'Dormer, or rooflights?', lede: 'A dormer adds standing room and costs more. Roof windows are cheaper and give light, not space.', modifiers: ['roofStructure'] },
+        { id: 'inside', view: 'plan',    short: 'Inside', title: 'What is going in?', lede: 'Stairs, steel and the things the rules require.', modifiers: ['access', 'spec'] }
       ],
       lines: [
         L('loft.shell',     'Conversion shell',    'Floor strengthening, insulation, plasterboard, electrics and heating', 'per_m2', 'floorArea', 1850, 'placeholder'),
@@ -2850,15 +2852,15 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       ],
       modifiers: [
         {
-          id: 'roofStructure', label: 'Existing roof structure', help: 'A trussed roof has to be re-engineered before anything else happens.',
+          id: 'roofStructure', label: 'How is the roof built?', help: 'Look in the loft. Lots of thin timbers in W shapes are trusses, and they need more work.',
           appliesTo: ['loft.shell'], value: 'cut',
           options: [
-            { id: 'cut',    label: 'Traditional cut roof', factor: 1.00 },
-            { id: 'truss',  label: 'Trussed roof',         factor: 1.28 }
+            { id: 'cut',    label: 'A few big timbers', factor: 1.00 },
+            { id: 'truss',  label: 'Lots of thin W shapes', factor: 1.28 }
           ]
         },
         {
-          id: 'headroom', label: 'Head height', help: 'Below 2.2 m the ridge has to be raised or the ceilings dropped.',
+          id: 'headroom', label: 'Head height', help: 'Measured at the highest point. Below 2.2 m the roof has to be raised or the ceilings below lowered.',
           appliesTo: 'all', value: 'ok',
           options: [
             { id: 'ok',      label: 'Over 2.4 m',   factor: 1.00 },
@@ -2886,33 +2888,33 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         { id: 'perimeter', label: 'External perimeter', unit: 'm', derived: true },
         { id: 'floorArea', label: 'Total internal area', unit: 'm²', derived: true },
         { id: 'footprintArea', label: 'Ground floor footprint', unit: 'm²',
-          ask: { step: 'size', q: 'Ground floor footprint', help: 'The area the house covers on the ground.', input: 'area', min: 30, max: 400, by: 5, value: 78 } },
+          ask: { step: 'size', q: 'Size of the ground floor', help: 'The area the house covers on the ground.', input: 'area', min: 30, max: 400, by: 5, value: 78 } },
         { id: 'storeys', label: 'Storeys', unit: 'no.',
-          ask: { step: 'size', q: 'How many storeys?', help: 'Total internal area is the footprint multiplied by this.', input: 'count', min: 1, max: 3, value: 2 } },
+          ask: { step: 'size', q: 'How many storeys?', help: 'How many floors.', input: 'count', min: 1, max: 3, value: 2 } },
         { id: 'roofArea', label: 'Roof area', unit: 'm²',
-          ask: { step: 'form', q: 'Roof area', help: 'On the slope, so larger than the footprint. Roughly one and a quarter times for a normal pitch.', input: 'area', min: 20, max: 500, by: 5, value: 96 } },
+          ask: { step: 'form', q: 'Roof area', help: 'Measured on the slope, so about one and a quarter times the ground floor.', input: 'area', min: 20, max: 500, by: 5, value: 96 } },
         { id: 'garageArea', label: 'Garage area', unit: 'm²',
-          ask: { step: 'form', q: 'Garage', help: 'A single garage is about 18 m². Leave at none if there isn’t one.', input: 'area', min: 0, max: 120, by: 2, value: 18, zero: 'None' } },
+          ask: { step: 'form', q: 'Garage', help: 'A single garage is about 18 m². Leave at none if there isn’t one.', input: 'area', min: 0, max: 120, by: 2, value: 0, zero: 'None' } },
         { id: 'plots', label: 'Plots', unit: 'no.',
-          ask: { step: 'inside', q: 'How many plots?', help: 'One for a single house. Service connections are charged per plot.', input: 'count', min: 1, max: 12, value: 1 } },
+          ask: { step: 'inside', q: 'How many houses?', help: 'One for a single house.', input: 'count', min: 1, max: 12, value: 1 } },
         { id: 'kitchens', label: 'Kitchens', unit: 'no.',
-          ask: { step: 'inside', q: 'Kitchens', help: 'Labour only.', input: 'count', min: 0, max: 12, value: 1 } },
+          ask: { step: 'inside', q: 'Kitchens', help: 'We fit them. You buy the units.', input: 'count', min: 0, max: 12, value: 1 } },
         { id: 'bathrooms', label: 'Bathrooms', unit: 'no.',
-          ask: { step: 'inside', q: 'Bathrooms', help: 'Labour only, including ensuites and the cloakroom.', input: 'count', max: 8, value: 3 } },
+          ask: { step: 'inside', q: 'Bathrooms', help: 'Including ensuites and the downstairs toilet. We fit them.', input: 'count', max: 8, value: 1 } },
         { id: 'externalArea', label: 'External works area', unit: 'm²',
-          ask: { step: 'inside', q: 'Drives, paths and garden', help: 'Everything outside the walls that still has to be built.', input: 'area', min: 0, max: 1500, by: 10, value: 120, zero: 'None' } }
+          ask: { step: 'inside', q: 'Drives, paths and garden', help: 'Everything outside the walls that still has to be built.', input: 'area', min: 0, max: 1500, by: 10, value: 0, zero: 'None' } }
       ],
       steps: [
-        { id: 'size',   view: 'plan',    short: 'Size', title: 'How big is the house?', lede: 'Footprint and storeys. Draw the house and both are measured for you.' },
-        { id: 'form',   view: 'section', short: 'Form', title: 'Roof and garage', lede: 'The roof is priced on its slope area, which is always more than the footprint.' },
-        { id: 'ground', view: 'section', short: 'Ground', title: 'What are you building on?', lede: 'Substructure is the biggest single unknown on a new build, and trees on clay decide it.', ground: true },
-        { id: 'inside', view: 'plan',    short: 'Fit-out', title: 'Inside and out', lede: 'Rooms that carry labour, and everything beyond the walls.', modifiers: ['method', 'efficiency', 'access', 'spec'] }
+        { id: 'size',   view: 'plan',    short: 'Size', title: 'How big is the house?', lede: 'Draw the house and both are measured for you.' },
+        { id: 'form',   view: 'section', short: 'Form', title: 'Roof and garage', lede: 'A sloping roof is always bigger than the floor under it.' },
+        { id: 'ground', view: 'section', short: 'Ground', title: 'What are you building on?', lede: 'Foundations are the biggest unknown, and trees on clay soil decide them.', ground: true },
+        { id: 'inside', view: 'plan',    short: 'Fit-out', title: 'Inside and out', lede: 'What goes inside, and everything outside the walls.', modifiers: ['method', 'efficiency', 'access', 'spec'] }
       ],
       lines: [
-        L('nb.substructure', 'Substructure',        'Dig, footings, oversite and drainage below slab', 'per_m2', 'footprintArea', 480, 'placeholder'),
-        L('nb.superstructure','Superstructure',     'Frame, external walls, floors, windows and doors', 'per_m2', 'floorArea', 1450, 'placeholder'),
+        L('nb.substructure', 'Foundations and ground floor',      'Dig, footings, oversite and drainage below slab', 'per_m2', 'footprintArea', 480, 'placeholder'),
+        L('nb.superstructure','Walls, floors, windows and doors',    'Frame, external walls, floors, windows and doors', 'per_m2', 'floorArea', 1450, 'placeholder'),
         L('nb.roof',         'Roof',                'Structure, covering, insulation and rainwater goods', 'per_m2', 'roofArea', 220, 'placeholder'),
-        L('nb.mep',          'Mechanical and electrical', 'Heating, plumbing, electrics, ventilation and renewables', 'per_m2', 'floorArea', 260, 'placeholder'),
+        L('nb.mep',          'Heating, plumbing and electrics', 'Heating, plumbing, electrics, ventilation and renewables', 'per_m2', 'floorArea', 260, 'placeholder'),
         L('nb.finishes',     'Internal finishes',   'Plaster, joinery, decoration and floor finishes', 'per_m2', 'floorArea', 340, 'placeholder'),
         L('nb.kitchen',      'Kitchen fitting',     'Labour only', 'per_unit', 'kitchens', 4500, 'lee'),
         L('nb.bathroom',     'Bathroom',            'Labour only', 'per_unit', 'bathrooms', 3000, 'lee'),
@@ -2922,21 +2924,21 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       ],
       modifiers: [
         {
-          id: 'method', label: 'Construction method', appliesTo: ['nb.superstructure'], value: 'masonry',
-          help: 'Timber frame and SIPs cost more up front and less in programme.',
+          id: 'method', label: 'How it is built', appliesTo: ['nb.superstructure'], value: 'masonry',
+          help: 'Timber frame costs more to buy and is quicker to build. Not sure? Leave it.',
           options: [
-            { id: 'masonry', label: 'Traditional masonry', factor: 1.00 },
+            { id: 'masonry', label: 'Brick and block', factor: 1.00 },
             { id: 'timber',  label: 'Timber frame',        factor: 1.06 },
-            { id: 'sips',    label: 'SIPs',                factor: 1.14 }
+            { id: 'sips',    label: 'Insulated panels',    factor: 1.14 }
           ]
         },
         {
-          id: 'efficiency', label: 'Energy standard', appliesTo: 'all', value: 'partL',
-          help: 'Anything beyond current Building Regulations costs real money.',
+          id: 'efficiency', label: 'How well insulated', appliesTo: 'all', value: 'partL',
+          help: 'Going beyond what the rules require costs more.',
           options: [
-            { id: 'partL',    label: 'Building Regulations', factor: 1.00 },
-            { id: 'enhanced', label: 'Enhanced fabric',      factor: 1.08 },
-            { id: 'passive',  label: 'Passivhaus',           factor: 1.26 }
+            { id: 'partL',    label: 'Standard', factor: 1.00 },
+            { id: 'enhanced', label: 'Better',      factor: 1.08 },
+            { id: 'passive',  label: 'Best (Passivhaus)',  factor: 1.26 }
           ]
         },
         ACCESS, spec(1.24, 1.55)
@@ -2960,28 +2962,28 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         { id: 'patioArea', label: 'Paved area', unit: 'm²',
           ask: { step: 'area', q: 'Paving', help: 'Porcelain or natural stone. A generous patio is 30 to 50 m².', input: 'area', min: 0, max: 400, by: 2, value: 40, zero: 'None' } },
         { id: 'deckingArea', label: 'Decked area', unit: 'm²',
-          ask: { step: 'area', q: 'Decking', help: 'Framed and boarded, balustrade included.', input: 'area', min: 0, max: 300, by: 2, value: 0, zero: 'None' } },
+          ask: { step: 'area', q: 'Decking', help: 'Frame, boards and handrail.', input: 'area', min: 0, max: 300, by: 2, value: 0, zero: 'None' } },
         { id: 'drivewayArea', label: 'Driveway area', unit: 'm²',
           ask: { step: 'area', q: 'Driveway', help: 'Block paving or resin bound, edgings included.', input: 'area', min: 0, max: 400, by: 5, value: 0, zero: 'None' } },
         { id: 'turfArea', label: 'Turfed area', unit: 'm²',
-          ask: { step: 'area', q: 'Lawn', help: 'Topsoil, preparation and turf.', input: 'area', min: 0, max: 800, by: 5, value: 30, zero: 'None' } },
+          ask: { step: 'area', q: 'Lawn', help: 'Topsoil, preparation and turf.', input: 'area', min: 0, max: 800, by: 5, value: 0, zero: 'None' } },
         { id: 'excavationVol', label: 'Excavation', unit: 'm³',
-          ask: { step: 'ground', q: 'Muck to shift', help: 'Everything dug out and carted away. About 0.3 m³ per m² of paving on level ground, far more on a slope.', input: 'volume', min: 0, max: 300, by: 1, value: 12, zero: 'None' } },
+          ask: { step: 'ground', q: 'Soil to dig out', help: 'Dug out and taken away. About 0.3 m³ for each m² of paving on level ground, and far more on a slope.', input: 'volume', min: 0, max: 300, by: 1, value: 12, zero: 'None' } },
         { id: 'wallLength', label: 'Retaining wall', unit: 'm',
-          ask: { step: 'edges', q: 'Retaining wall', help: 'Holding back a level change. Foundation, blockwork, facing and coping.', input: 'length', min: 0, max: 60, by: 0.5, value: 12, zero: 'None' } },
+          ask: { step: 'edges', q: 'Retaining wall', help: 'Holds the ground back where the level changes.', input: 'length', min: 0, max: 60, by: 0.5, value: 0, zero: 'None' } },
         { id: 'fenceLength', label: 'Fencing', unit: 'm',
-          ask: { step: 'edges', q: 'Fencing', help: 'Posts, panels and gravel boards.', input: 'length', min: 0, max: 150, by: 1, value: 20, zero: 'None' } },
+          ask: { step: 'edges', q: 'Fencing', help: 'Posts and panels.', input: 'length', min: 0, max: 150, by: 1, value: 0, zero: 'None' } },
         { id: 'drainageLength', label: 'Drainage run', unit: 'm',
-          ask: { step: 'edges', q: 'Drainage', help: 'Channel drain, soakaway and connection. Any paving next to the house needs it.', input: 'length', min: 0, max: 100, by: 1, value: 8, zero: 'None' } },
+          ask: { step: 'edges', q: 'Drainage', help: 'Paving next to the house needs a drain.', input: 'length', min: 0, max: 100, by: 1, value: 0, zero: 'None' } },
         { id: 'steps', label: 'Step flights', unit: 'no.',
-          ask: { step: 'edges', q: 'Flights of steps', help: 'Each formed and finished to match.', input: 'count', max: 6, value: 1 } },
+          ask: { step: 'edges', q: 'Flights of steps', help: 'Each one built and finished to match.', input: 'count', max: 6, value: 0 } },
         { id: 'lightPoints', label: 'Light fittings', unit: 'no.',
-          ask: { step: 'edges', q: 'External lighting', help: 'Fitting, cable and controls.', input: 'count', max: 20, value: 4 } }
+          ask: { step: 'edges', q: 'Outside lights', help: 'Each one fitted and wired.', input: 'count', max: 20, value: 0 } }
       ],
       steps: [
-        { id: 'area',   view: 'plan',    short: 'Areas', title: 'What are you laying?', lede: 'Set the areas roughly. You can pace a garden out surprisingly accurately.' },
-        { id: 'ground', view: 'section', short: 'Ground', title: 'What is it going on?', lede: 'Wet clay, made ground and a slope all cost more than the paving does.', modifiers: ['groundConditions', 'levels'] },
-        { id: 'edges',  view: 'plan',    short: 'Edges', title: 'Edges and extras', lede: 'Walls, fences, drainage and steps. Usually more than half the bill on a garden.', modifiers: ['access', 'spec'] }
+        { id: 'area',   view: 'plan',    short: 'Areas', title: 'What are you laying?', lede: 'Rough sizes are fine. You can pace a garden out.' },
+        { id: 'ground', view: 'section', short: 'Ground', title: 'What is it going on?', lede: 'Wet ground and slopes can cost more than the paving.', modifiers: ['groundConditions', 'levels'] },
+        { id: 'edges',  view: 'plan',    short: 'Edges', title: 'Edges and extras', lede: 'Walls, fences, drains and steps are often more than half the cost.', modifiers: ['access', 'spec'] }
       ],
       lines: [
         L('ex.dig',      'Excavation and cart away', 'Dig, load and dispose', 'per_m3', 'excavationVol', 95, 'placeholder'),
@@ -2998,20 +3000,20 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       ],
       modifiers: [
         {
-          id: 'groundConditions', label: 'Ground conditions', appliesTo: 'all', value: 'normal',
-          help: 'Wet clay and made ground both slow everything down.',
+          id: 'groundConditions', label: 'What is the ground like?', appliesTo: 'all', value: 'normal',
+          help: 'Not sure? Leave it on Normal.',
           options: [
-            { id: 'good',   label: 'Free draining',  factor: 0.95 },
+            { id: 'good',   label: 'Dry and sandy',  factor: 0.95 },
             { id: 'normal', label: 'Normal',         factor: 1.00 },
             { id: 'clay',   label: 'Heavy wet clay', factor: 1.12 },
-            { id: 'made',   label: 'Made ground or obstructions', factor: 1.25 }
+            { id: 'made',   label: 'Rubble or old concrete', factor: 1.25 }
           ]
         },
         {
-          id: 'levels', label: 'Levels', appliesTo: 'all', value: 'flat',
-          help: 'A sloping garden means retaining and steps, not just more paving.',
+          id: 'levels', label: 'Is the garden level?', appliesTo: 'all', value: 'flat',
+          help: 'A slope needs walls and steps as well as paving.',
           options: [
-            { id: 'flat',    label: 'Broadly level', factor: 1.00 },
+            { id: 'flat',    label: 'More or less', factor: 1.00 },
             { id: 'sloping', label: 'Sloping',       factor: 1.14 },
             { id: 'steep',   label: 'Steep or terraced', factor: 1.32 }
           ]
@@ -3038,9 +3040,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         { id: 'floorArea', label: 'Floor area', unit: 'm²',
           ask: { step: 'size', q: 'Floor area', help: 'A single garage is about 18 m². A garden office is usually 10 to 15.', input: 'area', min: 4, max: 120, by: 1, value: 15 } },
         { id: 'garageDoors', label: 'Garage doors', unit: 'no.',
-          ask: { step: 'fit', q: 'Garage doors', help: 'Up-and-over or sectional, supplied and fitted.', input: 'count', max: 2, value: 0 } },
+          ask: { step: 'fit', q: 'Garage doors', help: 'Fitted.', input: 'count', max: 2, value: 0 } },
         { id: 'electrics', label: 'Power and lighting', unit: 'no.',
-          ask: { step: 'fit', q: 'Power and lighting?', help: 'An armoured supply from the house, a small consumer unit, lights and sockets.', input: 'yesno', value: 1 } },
+          ask: { step: 'fit', q: 'Power and lighting?', help: 'Electricity from the house, lights and sockets.', input: 'yesno', value: 0 } },
         { id: 'plumbing', label: 'Water and waste', unit: 'no.',
           ask: { step: 'fit', q: 'A sink or a WC?', help: 'A water supply and a drain run back to the house.', input: 'yesno', value: 0 } }
       ],
@@ -3183,7 +3185,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var u = UNITS[line.unit];
     if (line.unit === 'per_item') return 'Fixed sum';
     var n = qty % 1 ? qty.toFixed(2) : String(qty);
-    return n + ' ' + u.qtyUnit + ' at £' + line.rate.toLocaleString('en-GB') + u.suffix;
+    return n + (u.qtyUnit === 'no.' ? '' : ' ' + u.qtyUnit) + ' at £' + line.rate.toLocaleString('en-GB') + u.suffix;
   }
 
   /**
@@ -3253,20 +3255,21 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   /** Fees, margin, contingency and VAT — charged once, over whatever trade total. */
   function wrapUp(book, trade, lines, opts) {
     var c = book.commercial, fe = book.fees;
-    var arch = Math.max(trade * fe.architectural.pct, fe.architectural.min);
-    lines.push({ key: 'architectural', group: 'fees', label: 'Architectural drawings',
+    var some = trade > 0;      // nothing chosen yet: no work, so no fees on it either
+    var arch = some ? Math.max(trade * fe.architectural.pct, fe.architectural.min) : 0;
+    if (some) lines.push({ key: 'architectural', group: 'fees', label: 'Architectural drawings',
       detail: opts.multi ? 'One survey and one set of drawings for the whole project'
                          : 'Survey, plans and planning submission', amount: arch });
 
-    var struct = fe.structural.base + (opts.hasOpenings ? fe.structural.withOpenings : 0);
-    lines.push({ key: 'structural', group: 'fees', label: 'Structural engineer',
+    var struct = some ? fe.structural.base + (opts.hasOpenings ? fe.structural.withOpenings : 0) : 0;
+    if (some) lines.push({ key: 'structural', group: 'fees', label: 'Structural engineer',
       detail: opts.multi ? 'One engineer across every part of the job' : 'Calculations and design',
       amount: struct });
 
     var council = null;
     (book.councils || []).forEach(function (x) { if (x.id === opts.council) council = x; });
-    var bc = council ? council.fee : fe.buildingControl.base;
-    lines.push({ key: 'buildingControl', group: 'fees', label: 'Building control',
+    var bc = some ? (council ? council.fee : fe.buildingControl.base) : 0;
+    if (some) lines.push({ key: 'buildingControl', group: 'fees', label: 'Building control',
       detail: (council ? council.name + ' — ' : 'Your council — ') +
         (opts.multi ? 'one application, not one per job' : 'never a private inspector'), amount: bc });
 
@@ -3485,6 +3488,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   // Essex and most of the London basin is high-plasticity clay, so that is
   // the default. Getting this wrong is the single biggest error in the model.
   var SOILS = [
+    // nobody knows their soil. "Not sure" is priced as heavy clay: the commonest here, and the cautious answer
+    { id: 'unsure', name: 'Not sure',        note: 'We assume heavy clay, the cautious answer',   factor: 1.00 },
     { id: 'high',   name: 'Heavy clay',      note: 'Most of Essex, London and the Home Counties', factor: 1.00 },
     { id: 'medium', name: 'Medium clay',     note: 'Mixed clay and silt',                          factor: 0.85 },
     { id: 'low',    name: 'Light clay',      note: 'Sandy clay, low shrinkage',                    factor: 0.70 },
@@ -3612,7 +3617,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
      new question wording. A stored book from an older shape is rebuilt from the
      current defaults with the rates carried across, so nobody is left on a
      structure the app no longer understands. */
-  var SCHEMA = 5;
+  var SCHEMA = 6;      // 6: question wording rewritten in plain English
 
   function now() { return new Date().toISOString(); }
 
@@ -5412,10 +5417,10 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       hint: 'Optional. Add an extension and drag it to where you want it, or tap its corners round yourself.',
       done: 'Put it where you want it, and make it the right size.' },
     { id: 'garden',    n: 6, label: 'Garden',
-      hint: 'Optional. Add a typical plot and drag its corners to your fence line, or tap round it yourself.',
-      done: 'Pick what is in the garden, then tap round it. Drag any corner. Tap a thing, then × to remove it.',
+      hint: 'Optional. Add your garden, then say what is in it.',
+      done: 'Add what is in the garden. Tap anything to change it.',
       tree: 'Tap where each tree is. Tap a tree again to remove it.',
-      fence: 'Drag a corner of the fence line, or tap the line to add a corner.' }
+      fence: 'Move the fence to where yours is.' }
   ];
 
   /* The stages a given project actually needs, in the order it needs them.
@@ -5699,7 +5704,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (S.garden.plot.closed) {
       var gA = {};
       GARDEN_KINDS.forEach(function (k) { gA[k.id] = 0; });
-      S.garden.areas.forEach(function (a) { gA[a.kind] = (gA[a.kind] || 0) + m(shoelace(a.outline)) * m(1); });
+      var shown = visibleAreas();
+      S.garden.areas.forEach(function (a, ai) { gA[a.kind] = (gA[a.kind] || 0) + shown[ai]; });
       var plotArea = m(shoelace(S.garden.plot.outline)) * m(1);
       // the nearest tree to whatever is being built, for the foundations
       var targets = builtExts().map(function (x) { return x.outline; });
@@ -5920,6 +5926,19 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (S.stage === 'extension') {
       S.extensions.forEach(function (x, k) { if (x.closed) tag('ext', x.outline, k === S.extIdx); });
     }
+    if (S.stage === 'garden') {
+      var gt = gardenTarget();
+      if (gt) {
+        var gr = shapeOf(gt).outline, gc = centroid(gr);
+        // a plain rectangle is as long one side as the other: two numbers, not four
+        var rect = gr.length === 4 && Math.abs(dist(gr[0], gr[1]) - dist(gr[2], gr[3])) < 0.01 &&
+                   Math.abs(dist(gr[1], gr[2]) - dist(gr[3], gr[0])) < 0.01;
+        for (var gi = 0; gi < gr.length; gi++) {
+          if (rect && gi > 1) break;
+          out.push(lengthTag(gr[gi], gr[(gi + 1) % gr.length], gt === 'plot' ? '' : 'live', outward(gr[gi], gr[(gi + 1) % gr.length], gc), undefined, gt + ':' + gi));
+        }
+      }
+    }
     return out.join('');
   }
 
@@ -6090,14 +6109,24 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       : editing === 'ext' ? S.extension.outline
       : editing === 'plot' ? S.garden.plot.outline
       : editing === 'block' ? []
+      : isArea(editing) ? shapeOf(editing).outline
       : editing === 'floor' ? f.outline
+      // where the house cannot be dragged, its corners are not drawn as if it could
+      : (S.stage === 'garden' || S.stage === 'extension') ? []
       : (f.closed ? f.outline : []);
+    // corner dots shrink with the shape, like its other handles
+    var dotS = 1;
+    if (!live.length && editing && handles.length > 2) {
+      var dxs = handles.map(function (q) { return q[0]; }), dys = handles.map(function (q) { return q[1]; });
+      dotS = Math.max(0.5, Math.min(1, Math.min(Math.max.apply(null, dxs) - Math.min.apply(null, dxs),
+        Math.max.apply(null, dys) - Math.min.apply(null, dys)) * px / 120));
+    }
     handles.forEach(function (p, i) {
       var isTarget = live.length > 2 && i === 0;
       var picked = !live.length && editing && S.pick && S.pick.kind === 'corner' && S.pick.i === i &&
         (S.pick.which === editing || (editing === 'floor' && S.pick.which === 'floor'));
       out.push('<circle cx="' + P(p)[0] + '" cy="' + P(p)[1] + '" r="' +
-        (isTarget ? 15 * RU : (S.touch ? 11 : 9) * RU).toFixed(1) + '" class="sk-node' +
+        (isTarget ? 15 * RU : (S.touch ? 11 : 9) * RU * dotS).toFixed(1) + '" class="sk-node' +
         (isTarget ? ' start' : '') + (picked ? ' on' : '') + '"/>');
     });
 
@@ -6108,15 +6137,19 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
          an arrow in the middle of every wall that can be dragged in or out,
          a + a quarter of the way along to add a corner (not on a part being placed),
          a four-way arrow in the middle of a part or extension, which moves whole. */
-    var editRing = editing === 'block' ? S.block.outline : (editing === 'floor' || editing === 'ext') ? shapeOf(editing).outline : null;
+    var editRing = editing ? shapeOf(editing).outline : null;
     if (!live.length && editRing && editRing.length > 2 && !S.calibrating && !S.askUp) {
-      var movable = editing === 'block' || editing === 'ext';
-      var ru = RU.toFixed(3);
+      var movable = movesWhole(editing), hosted = editing === 'block' || editing === 'ext';
+      // a small shape gets smaller handles: a patio on a phone was hidden under its own
+      var xsE = editRing.map(function (q) { return q[0]; }), ysE = editRing.map(function (q) { return q[1]; });
+      var least = Math.min(Math.max.apply(null, xsE) - Math.min.apply(null, xsE), Math.max.apply(null, ysE) - Math.min.apply(null, ysE)) * px;
+      var hs = Math.max(0.58, Math.min(1, least / 120));
+      var ru = (RU * hs).toFixed(3);
       editRing.forEach(function (a, i) {
         var b = editRing[(i + 1) % editRing.length], Lpx = dist(a, b) * px;
-        if (movable && onHost(editing, a, b)) return;        // that wall is the house's
+        if (hosted && onHost(editing, a, b)) return;         // that wall is the house's
         var L = dist(a, b) || 1;
-        if (Lpx >= 58) {
+        if (Lpx >= 58 * hs) {
           // points across the wall: the way it will go
           var deg = (Math.atan2((b[0] - a[0]) / L, -(b[1] - a[1]) / L) * 180 / Math.PI).toFixed(1);
           out.push('<g class="sk-arrow" transform="translate(' + ((a[0] + b[0]) / 2 * K).toFixed(1) + ' ' + ((a[1] + b[1]) / 2 * K).toFixed(1) +
@@ -6133,7 +6166,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       if (movable) {
         var xsM = editRing.map(function (q) { return q[0]; }), ysM = editRing.map(function (q) { return q[1]; });
         var wM = (Math.max.apply(null, xsM) - Math.min.apply(null, xsM)) * px, hM = (Math.max.apply(null, ysM) - Math.min.apply(null, ysM)) * px;
-        if (wM >= 70 && hM >= 70) {
+        if (wM >= 54 && hM >= 54) {
           var cM = centroid(editRing);
           out.push('<g class="sk-moveh" transform="translate(' + (cM[0] * K).toFixed(1) + ' ' + (cM[1] * K).toFixed(1) + ') scale(' + ru +
             ')"><title>Drag to move it</title><circle r="15"/>' +
@@ -6153,9 +6186,6 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       } else if (S.pick.kind === 'pin') {
         var pk = f.markers[S.pick.i];
         if (pk) kill = [pk.x, pk.y - 26 * RU / K];
-      } else if (S.pick.kind === 'garea') {
-        var ga = S.garden.areas[S.pick.i];
-        if (ga) { var gc = centroid(ga.outline); kill = [gc[0], gc[1] - 22 * RU / K]; }
       } else if (S.pick.kind === 'iwall') {
         var seg = f.internals[S.pick.i];
         if (seg) kill = [(seg[0][0] + seg[1][0]) / 2, (seg[0][1] + seg[1][1]) / 2 - 24 * RU / K];
@@ -6328,6 +6358,19 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     paintPanel();
   }
 
+  /** Is this step the thing the project is actually about (an extension on an extension job)? */
+  function stageNeeded() {
+    var st = ACTIVE.filter(function (x) { return x.id === S.stage; })[0];
+    return !!(st && st.required);
+  }
+  /** Nothing put down on this step yet. */
+  function stageEmpty() {
+    if (S.drawing && S.drawing.length) return false;
+    if (S.stage === 'extension') return !builtExts().length;
+    if (S.stage === 'garden') return !S.garden.plot.closed;
+    return false;
+  }
+
   /** The one action that is obviously next. Nothing else needs explaining. */
   /** A floor that still has no rooms on it, other than this one. */
   function floorWithoutRooms() {
@@ -6366,8 +6409,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       return { id: 'sk-close-garden', label: 'Finish the ' + (S.garden.plot.closed ? gardenKind(S.gardenMode).label.toLowerCase() : 'plot') };
     }
     var nx = stageAfter(S.stage);
-    if (nx) return { id: 'sk-go-' + nx.id, label: 'Next — ' + nx.label.toLowerCase() };
-    if (ready()) return { id: 'sk-finish', label: 'Done — use these figures' };
+    var quiet = stageNeeded() && stageEmpty();
+    if (nx) return { id: 'sk-go-' + nx.id, label: 'Next — ' + nx.label.toLowerCase(), quiet: quiet };
+    if (ready()) return { id: 'sk-finish', label: 'Done — use these figures', quiet: quiet };
     return null;
   }
 
@@ -6402,6 +6446,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         : (S.stage === 'internal' && S.wallMode === 'door') ? stage.door
         : (S.stage === 'internal' && S.wallMode === 'move' && S.pick && S.pick.kind === 'iwall') ? stage.picked
         : (S.stage === 'internal' && S.wallMode === 'move') ? stage.move
+        : (S.stage === 'garden' && !mid && isArea(gardenTarget()))
+            ? 'Put the ' + gardenKind(shapeOf(gardenTarget()).kind).label.toLowerCase() + ' where it is, and make it the right size.'
         : (S.stage === 'garden' && !mid && S.garden.plot.closed && S.gardenMode === 'tree') ? stage.tree
         : (S.stage === 'garden' && !mid && S.garden.plot.closed && S.gardenMode === 'boundary') ? stage.fence
         : mid && S.stage === 'internal' ? 'Now tap the other end of the wall.'
@@ -6422,12 +6468,13 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var key = $('sk-key');
     if (key) {
       var kWhich = (S.calibrating || S.askUp || (S.drawing && S.drawing.length)) ? null : editable();
-      if (kWhich === 'plot' || (kWhich && !S.scale)) kWhich = null;
+      if (kWhich && !S.scale) kWhich = null;
       var kRow = function (sym, cls, text) { return '<li><i class="' + cls + '">' + sym + '</i><span>' + text + '</span></li>'; };
       key.hidden = !kWhich;
       key.innerHTML = !kWhich ? '' :
-        (kWhich !== 'floor' ? kRow('✥', 'k-move', 'Drag the middle to move it') : '') +
-        kRow('↔', 'k-sym', kWhich === 'floor' ? 'Drag an arrow to move a wall' : 'Drag an arrow to make it bigger or smaller') +
+        (movesWhole(kWhich) ? kRow('✥', 'k-move', 'Drag the middle to move it') : '') +
+        kRow('↔', 'k-sym', kWhich === 'floor' ? 'Drag an arrow to move a wall' : kWhich === 'plot' ? 'Drag an arrow to move a fence'
+          : 'Drag an arrow to make it bigger or smaller') +
         kRow('3.00', 'k-num', 'Tap a number to type the size') +
         (kWhich !== 'block' ? kRow('+', 'k-plus', 'Adds a corner. Tap a corner, then × removes it') : '');
     }
@@ -6470,6 +6517,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       var n = nextAction();
       act.hidden = !n;
       if (n) { act.textContent = n.label; act.setAttribute('data-act', n.id); }
+      act.classList.toggle('btn-ghost', !!(n && n.quiet));
     }
 
     var read = $('sk-read');
@@ -6625,7 +6673,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
             '</div>'
           : '') +
         (!cur.closed && !xmid
-          ? '<button type="button" class="btn" id="sk-addext">Add an extension</button>' +
+          ? '<button type="button" class="btn' + (stageNeeded() ? '' : ' btn-ghost') + '" id="sk-addext">Add an extension</button>' +
             '<p class="sk-tiny">It starts on ' + (others ? 'a free wall' : 'the back wall') + '. Drag it to where you want it.</p>'
           : '') +
         '<div class="sk-tool"><label>How many storeys?</label>' +
@@ -6641,15 +6689,24 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       var gp = S.garden.plot;
       if (!gp.closed) {
         return (!(S.drawing && S.drawing.length)
-          ? '<button type="button" class="btn" id="sk-addplot">Add a typical plot</button>' +
-            '<p class="sk-tiny">A fence line round the house. Drag its corners to where yours is.</p>'
+          ? '<button type="button" class="btn' + (stageNeeded() ? '' : ' btn-ghost') + '" id="sk-addplot">Add my garden</button>' +
+            '<p class="sk-tiny">A fence line round the house, to move to where yours is.</p>'
           : '');
       }
-      return '<div class="sk-tool"><label>Add a</label>' +
-        seg(GARDEN_KINDS.map(function (k) { return [k.id, k.label]; }).concat([['tree', 'Tree'], ['boundary', 'Fence line']]),
-            S.gardenMode, 'data-gmode') + '</div>' +
-        '<button type="button" class="btn btn-ghost btn-sm' + (S.confirm === 'plot' ? ' sk-danger' : '') +
-        '" id="sk-dropplot">' + (S.confirm === 'plot' ? 'Tap again to remove it all' : 'Remove the garden') + '</button>';
+      // each thing is a button that puts one down, ready to be moved and sized
+      var gtt = gardenTarget(), gpick = isArea(gtt) ? S.garden.areas[+gtt.slice(1)] : null;
+      return '<div class="sk-tool"><label>Add to the garden</label><div class="seg seg-wrap">' +
+        GARDEN_KINDS.map(function (k) {
+          return '<button type="button" data-gadd="' + k.id + '">+ ' + esc(k.label) + '</button>';
+        }).join('') +
+        '<button type="button" data-gmode="tree" aria-pressed="' + (S.gardenMode === 'tree') + '">+ Trees</button>' +
+        '</div></div>' +
+        (gpick ? '<button type="button" class="btn btn-ghost btn-sm" id="sk-droparea">Remove this ' +
+          esc(gardenKind(gpick.kind).label.toLowerCase()) + '</button>' : '') +
+        '<div class="sk-quiet">' +
+        (gtt === 'plot' ? '' : '<button type="button" class="sk-alt" data-gmode="boundary">Move the fence</button>') +
+        '<button type="button" class="sk-alt' + (S.confirm === 'plot' ? ' sk-danger' : '') +
+        '" id="sk-dropplot">' + (S.confirm === 'plot' ? 'Tap again to remove it all' : 'Remove the garden') + '</button></div>';
     }
     return '';
   }
@@ -6731,6 +6788,40 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
   /* ---- the garden ---------------------------------------------------------- */
 
+  /**
+   * How much of each garden surface is actually there to be laid, in m².
+   *
+   * People draw the lawn across the garden and then put the patio and the shed
+   * down on it, and they are right to: the lawn is what is left. So a surface
+   * counts only where nothing put down after it covers it — otherwise the turf
+   * under the shed is paid for as turf. Counted on a fine grid rather than by
+   * cutting polygons up: good to a per cent or so, and it cannot go wrong.
+   */
+  var VIS = { key: null, v: [] };
+  function visibleAreas() {
+    var areas = S.garden.areas, key = JSON.stringify([areas.map(function (a) { return a.outline; }), S.scale]);
+    if (VIS.key === key) return VIS.v;
+    var out = areas.map(function (a, i) {
+      var full = m(shoelace(a.outline)) * m(1);
+      var above = areas.slice(i + 1).filter(function (o) { return ringsOverlap(a.outline, o.outline); });
+      if (!above.length || !full) return full;
+      var xs = a.outline.map(function (p) { return p[0]; }), ys = a.outline.map(function (p) { return p[1]; });
+      var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+      var step = Math.max(0.1, Math.sqrt((x1 - x0) * (y1 - y0) / 6000)), inside = 0, clear = 0;
+      for (var y = y0 + step / 2; y < y1; y += step) {
+        for (var x = x0 + step / 2; x < x1; x += step) {
+          var q = [x, y];
+          if (!insidePoly(a.outline, q)) continue;
+          inside++;
+          if (!above.some(function (o) { return insidePoly(o.outline, q); })) clear++;
+        }
+      }
+      return inside ? full * clear / inside : full;
+    });
+    VIS = { key: key, v: out };
+    return out;
+  }
+
   function gardenKind(id) {
     return GARDEN_KINDS.filter(function (k) { return k.id === id; })[0] || GARDEN_KINDS[0];
   }
@@ -6775,7 +6866,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
                 [r(x1 + grow.r), r(y1 + grow.b)], [r(x0 - grow.l), r(y1 + grow.b)]],
       closed: true
     };
-    S.gardenMode = 'patio';
+    S.gardenMode = 'boundary';
     S.pick = null;
     FRAME = null; MANUAL = false;
     say('');
@@ -6800,6 +6891,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     snapshot();
     S.garden.areas.splice(i, 1);
     S.pick = null;
+    S.gardenMode = 'idle';
     settled();
   }
 
@@ -6834,33 +6926,70 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       changed();
       return;
     }
-    // The fence line is edited in its own mode, so that in every other mode
-    // a tap on it means "start the lawn here", which is what it means.
-    if (S.gardenMode === 'boundary') {
-      var hit = wallOfShape(gd.plot, w);
-      if (hit) { splitWall('plot', hit.i, hit.t); return; }
-      if (S.pick) { S.pick = null; render(); }
-      return;
-    }
-    // a tap on the edge of the picked surface adds a corner to it
-    if (S.pick && S.pick.kind === 'garea' && gd.areas[S.pick.i]) {
-      var h2 = wallOfShape(gd.areas[S.pick.i], w);
-      if (h2 && !onRing(gd.plot.outline, w)) { splitWall('a' + S.pick.i, h2.i, h2.t); return; }
-    }
-    // a tap inside a surface picks it; on the picked one, lets it go. A tap on
-    // its edge is not inside it — that is where the next surface starts.
+    // Things are put down by their buttons, so a tap only ever picks: the
+    // surface under it, the fence if it is on the fence, or nothing at all.
     var inA = areaAt(w);
-    if (inA >= 0 && !onRing(gd.areas[inA].outline, snapTarget(w).p)) {
-      S.pick = (S.pick && S.pick.kind === 'garea' && S.pick.i === inA) ? null : { kind: 'garea', i: inA };
+    if (inA >= 0) {
+      S.pick = { kind: 'garea', i: inA };
+      S.gardenMode = gd.areas[inA].kind;
       say('');
       render();
       return;
     }
-    if (S.pick) { S.pick = null; }
-    if (!within(gd.plot.outline, snapFrom(null, w))) { say('Tap inside the plot.'); return; }
+    if (wallOfShape(gd.plot, w)) { S.pick = null; S.gardenMode = 'boundary'; say(''); render(); return; }
+    if (S.pick || S.gardenMode === 'boundary') { S.pick = null; S.gardenMode = 'idle'; render(); }
+  }
+
+  /**
+   * Put a patio, a lawn, a drive, decking or an outbuilding down where one
+   * usually is, ready to be moved and sized: paving behind the house, grass
+   * beyond it, the drive in front, the shed in the far corner.
+   */
+  function addGardenBlock(kind) {
+    var gd = S.garden;
+    if (!gd.plot.closed) return;
+    var fd = frontDir(), b = [-fd[0], -fd[1]], r = [-b[1], b[0]];      // b: towards the back fence; r: across
+    var dot = function (p, v) { return p[0] * v[0] + p[1] * v[1]; };
+    var span = function (pts, v) {
+      var vs = pts.map(function (p) { return dot(p, v); });
+      return [Math.min.apply(null, vs), Math.max.apply(null, vs)];
+    };
+    var house = ground().outline.slice();
+    builtExts().forEach(function (x) { house = house.concat(x.outline); });
+    var hb = span(house, b), hr = span(house, r), pb = span(gd.plot.outline, b), pr = span(gd.plot.outline, r);
+    var sn = function (v) { return Math.round(v / SNAP) * SNAP; };
+    var w, d, r0, b0;
+    if (kind === 'lawn') {
+      r0 = pr[0] + 0.5; w = Math.max(2, pr[1] - pr[0] - 1);
+      b0 = hb[1] + 3.5; d = pb[1] - 0.5 - b0;
+      if (d < 2) { b0 = hb[1] + 0.5; d = Math.max(2, pb[1] - 0.5 - b0); }
+    } else if (kind === 'drive') {
+      w = 3; r0 = pr[0] + 0.25;
+      d = Math.max(2.5, hb[0] - pb[0]); b0 = hb[0] - d;
+    } else if (kind === 'building') {
+      w = 3; d = 4; r0 = pr[0] + 0.5; b0 = pb[1] - 0.5 - d;
+    } else {
+      w = kind === 'decking' ? 3 : Math.min(5, Math.max(3, hr[1] - hr[0]));
+      d = 3; r0 = (hr[0] + hr[1]) / 2 - w / 2; b0 = hb[1];
+    }
+    var make = function (r1, b1) {
+      var q = function (rr, bb) { return mm([sn(rr) * r[0] + sn(bb) * b[0], sn(rr) * r[1] + sn(bb) * b[1]]); };
+      return [q(r1, b1), q(r1 + w, b1), q(r1 + w, b1 + d), q(r1, b1 + d)];
+    };
+    // step it clear of the house, and of anything already put down in the same place
+    var ring = make(r0, b0), tries = 0;
+    var clash = function (rg) {
+      return blockTrouble('a0', rg) || gd.areas.some(function (a) { return dist(centroid(a.outline), centroid(rg)) < 0.3; });
+    };
+    while (clash(ring) && tries < 24) { tries++; ring = make(r0 + (tries % 2 ? 0 : 0.5 * tries / 2), b0 + 0.5 * Math.ceil(tries / 2)); }
     snapshot();
-    S.drawing = [snapTarget(w).p];
-    changed();
+    gd.areas.push({ kind: kind, outline: ring, closed: true });
+    S.pick = { kind: 'garea', i: gd.areas.length - 1 };
+    S.gardenMode = kind;
+    S.drawing = null;
+    say('');
+    FRAME = null; MANUAL = false;
+    settled();
   }
 
   function gardenSvg(RU) {
@@ -6874,11 +7003,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       var on = S.pick && S.pick.kind === 'garea' && S.pick.i === i;
       out.push('<polygon points="' + poly(a.outline) + '" class="sk-garea ' + a.kind + (on ? ' on' : '') + '"/>');
       var c = centroid(a.outline);
-      out.push('<text x="' + (c[0] * K) + '" y="' + (c[1] * K + 4 * RU) + '" text-anchor="middle" class="sk-galab" font-size="' +
-        (11 * RU).toFixed(1) + '">' + gardenKind(a.kind).tag + ' · ' + fmt(m(shoelace(a.outline)) * m(1), 0) + ' m²</text>');
-      a.outline.forEach(function (p) {
-        out.push('<circle cx="' + (p[0] * K) + '" cy="' + (p[1] * K) + '" r="' + (7 * RU).toFixed(1) + '" class="sk-node small"/>');
-      });
+      // the one in hand has a move handle in its middle, so its name sits under that
+      out.push('<text x="' + (c[0] * K) + '" y="' + (c[1] * K + (on ? 32 : 4) * RU) + '" text-anchor="middle" class="sk-galab" font-size="' +
+        (11 * RU).toFixed(1) + '">' + gardenKind(a.kind).tag + ' · ' + fmt(visibleAreas()[i], 0) + ' m²</text>');
     });
     gd.trees.forEach(function (t) {
       out.push('<g class="sk-tree"><circle cx="' + (t[0] * K) + '" cy="' + (t[1] * K) + '" r="' + (1.4 * K) + '"/>' +
@@ -7013,7 +7140,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (which === 'floor' && S.active === 0) reindexWalls('remove', i, shape.outline.length);
     shape.outline.splice(i, 1);
     if (pts) reassignOpenings(f, pts);
-    S.pick = null;
+    S.pick = isArea(which) ? { kind: 'garea', i: +which.slice(1) } : null;
     say('');
     settled();
   }
@@ -7636,6 +7763,11 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
   /** Why a block or an extension cannot be where `ring` puts it — or null. */
   function blockTrouble(which, ring) {
+    if (isArea(which)) {
+      var onHouse = ringsOverlap(ring, ground().outline) ||
+        builtExts().some(function (x) { return ringsOverlap(ring, x.outline); });
+      return onHouse ? 'That would put it on top of the house.' : null;
+    }
     var host = hostOf(which);
     if (ringsOverlap(ring, host)) {
       return which === 'block' ? 'That would put it inside the house.' : 'An extension cannot sit on top of the house.';
@@ -7814,12 +7946,29 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     return true;
   }
 
+  /** A garden surface: 'a0', 'a1'… */
+  function isArea(which) { return !!which && which.charAt(0) === 'a'; }
+  /** Things that move whole when dragged by the middle. */
+  function movesWhole(which) { return which === 'block' || which === 'ext' || isArea(which); }
+
+  /** The one thing in the garden that is in hand: a surface that has been
+      tapped, or the fence. Nothing else there has handles, so nothing else can
+      be moved by accident. */
+  function gardenTarget() {
+    var p = S.pick, gd = S.garden;
+    if (!gd.plot.closed) return null;
+    if (p && p.kind === 'garea' && gd.areas[p.i]) return 'a' + p.i;
+    if (p && p.kind === 'corner' && isArea(p.which) && gd.areas[+p.which.slice(1)]) return p.which;
+    if (S.gardenMode === 'boundary') return 'plot';
+    return null;
+  }
+
   /** Which shape is being edited in this stage, if any. */
   function editable() {
     if (S.stage === 'outline' && S.block) return 'block';
     if (S.stage === 'outline' && floor().closed) return 'floor';
     if (S.stage === 'extension' && S.extension.closed) return 'ext';
-    if (S.stage === 'garden' && S.garden.plot.closed) return 'plot';
+    if (S.stage === 'garden') return gardenTarget();
     return null;
   }
 
@@ -7837,7 +7986,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (drawingWalls()) return null;
     if (S.stage === 'outline' && S.block) return 'block';     // a part being placed has the canvas to itself
     if (S.stage === 'extension') return S.extension.closed ? 'ext' : null;
-    if (S.stage === 'garden') return S.garden.plot.closed ? 'plot' : null;
+    if (S.stage === 'garden') return gardenTarget();
     return floor().closed ? 'floor' : null;
   }
 
@@ -7846,6 +7995,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var r = grabRadius(), best = null;
     var which = draggable();
     var blockish = which === 'block' || which === 'ext';
+    var whole = movesWhole(which);
     if (which && which !== 'block') {
       shapeOf(which).outline.forEach(function (q, i) {
         var d = dist(p, q);
@@ -7862,8 +8012,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     }
     // the middle of a wall drags the whole wall sideways: corners win when
     // they are close, and a tap (no drag) on the wall still means what it did
-    var slideOK = S.stage === 'outline' || S.stage === 'extension' ||
-                  (S.stage === 'garden' && S.gardenMode === 'boundary');
+    var slideOK = S.stage === 'outline' || S.stage === 'extension' || S.stage === 'garden';
     if (!best && which && slideOK) {
       var ring = shapeOf(which).outline;
       for (var wi = 0; wi < ring.length; wi++) {
@@ -7874,7 +8023,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       }
     }
     // grab a block or an extension by its middle and it moves, rather than the page
-    if (!best && blockish && within(shapeOf(which).outline, p)) best = { kind: 'body', which: which, d: 0 };
+    if (!best && whole && within(shapeOf(which).outline, p)) best = { kind: 'body', which: which, d: 0 };
     if (!best && movingWalls()) {
       floor().internals.forEach(function (seg, i) {
         var pr = projectOnSeg(p, seg[0], seg[1]);
@@ -7882,12 +8031,6 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       });
     }
     if (S.stage === 'garden') {
-      S.garden.areas.forEach(function (a, ai) {
-        a.outline.forEach(function (q, i) {
-          var d = dist(p, q);
-          if (d < r && (!best || d < best.d)) best = { kind: 'corner', which: 'a' + ai, i: i, d: d };
-        });
-      });
       S.garden.trees.forEach(function (t, i) {
         var d = dist(p, t);
         if (d < r && (!best || d < best.d)) best = { kind: 'tree', i: i, d: d };
@@ -7939,12 +8082,12 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (h.kind === 'wall' || h.kind === 'iwallmid') {
       press.origInt = floor().internals.map(function (sg) { return [sg[0].slice(), sg[1].slice()]; });
     }
-    if (h.which === 'block' || h.which === 'ext') {
+    if (movesWhole(h.which)) {
       var ringB = shapeOf(h.which).outline;
       press.wasBad = !!blockTrouble(h.which, ringB);     // already wrong: let it be dragged right
       if (h.kind === 'body') {
         press.orig = ringB.map(function (q) { return q.slice(); });
-        press.att = blockOn(hostOf(h.which), ringB);
+        press.att = isArea(h.which) ? null : blockOn(hostOf(h.which), ringB);   // a patio stands on nothing
       }
     }
     snapshot();
@@ -8042,7 +8185,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       $('sk-svg').classList.add('grabbing');
       var w2 = toWorld(e), g = snapFrom(null, w2);
       var h = press.handle, f2 = floor();
-      var guarded2 = (h.which === 'block' || h.which === 'ext') && !press.wasBad;
+      var guarded2 = movesWhole(h.which) && !press.wasBad;
+      // a garden surface stays picked while it is dragged about
+      var keepPick = isArea(h.which) ? { kind: 'garea', i: +h.which.slice(1) } : null;
       var allowed = function (i1, q1, i2, q2) {
         if (!guarded2) return true;
         var cand = shapeOf(h.which).outline.map(function (q) { return q.slice(); });
@@ -8052,7 +8197,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       if (h.kind === 'body') {
         var movedB = moveBlock(h.which, press, w2);
         if (movedB) shapeOf(h.which).outline = movedB;
-        S.pick = null;
+        S.pick = keepPick;
       } else if (h.kind === 'corner') {
         // an extension's corner stops at the house instead of going through it
         if (allowed(h.i, g)) {
@@ -8068,7 +8213,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
           S.guides = guidesFor(moved[0], h.which, [h.i, (h.i + 1) % ringW.length])
             .concat(guidesFor(moved[1], h.which, [h.i, (h.i + 1) % ringW.length]));
         }
-        S.pick = null;
+        S.pick = keepPick;
       } else if (h.kind === 'iwallmid') {
         var movedI = slideWall(press.orig, press.world, w2);
         var a1 = keepInside(movedI[0]), b1 = keepInside(movedI[1]);
@@ -8180,11 +8325,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (S.stage === 'garden') {
       var gd = S.garden;
       if (!gd.plot.closed) return snapped ? 'draw-snap' : 'draw';
-      if (S.gardenMode === 'boundary') return wallOfShape(gd.plot, w) ? 'split' : 'arrow';
       if (S.gardenMode === 'tree') return within(gd.plot.outline, snapFrom(null, w)) ? 'pin' : 'no';
-      if (S.pick && S.pick.kind === 'garea' && gd.areas[S.pick.i] && wallOfShape(gd.areas[S.pick.i], w)) return 'split';
-      if (areaAt(w) >= 0) return 'pick';
-      return within(gd.plot.outline, snapFrom(null, w)) ? (snapped ? 'draw-snap' : 'draw') : 'no';
+      if (areaAt(w) >= 0 || wallOfShape(gd.plot, w)) return 'pick';
+      return 'arrow';
     }
     return 'arrow';
   }
@@ -8539,7 +8682,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     } else if (S.stage === 'garden') {
       if (!S.garden.plot.closed) {
         S.garden.plot = { outline: S.drawing.slice(), closed: true };
-        S.gardenMode = 'patio';
+        S.gardenMode = 'boundary';
       } else {
         S.garden.areas.push({ kind: S.gardenMode, outline: S.drawing.slice(), closed: true });
         S.pick = { kind: 'garea', i: S.garden.areas.length - 1 };
@@ -9031,7 +9174,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     S.stage = id;
     if (id === 'extension' || id === 'garden') S.active = 0;     // both sit round the ground floor
     if (id === 'rooms' && !S.roomPicked) S.roomType = S.active === 0 ? 'kitchen' : 'bedroom';
-    if (id === 'garden') S.gardenMode = S.garden.plot.closed ? (S.gardenMode || 'patio') : 'boundary';
+    if (id === 'garden') S.gardenMode = S.garden.plot.closed ? 'idle' : 'boundary';
     S.drawing = null; S.cursor = null; S.selected = null; S.pick = null;
     S.kind = id === 'openings' ? (S.kind || 'window') : null;
     if (id === 'internal') S.wallMode = S.wallMode || 'draw';
@@ -9214,7 +9357,14 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       hit = t.closest && t.closest('[data-dir]');
       if (hit) { addTyped(hit.getAttribute('data-dir')); return; }
       hit = t.closest && t.closest('[data-gmode]');
-      if (hit) { S.gardenMode = hit.getAttribute('data-gmode'); S.drawing = null; S.pick = null; say(''); render(); return; }
+      if (hit) {
+        // "+ Trees" is a switch: on to plant them, off again when done
+        var gm = hit.getAttribute('data-gmode');
+        S.gardenMode = (gm === 'tree' && S.gardenMode === 'tree') ? 'idle' : gm;
+        S.drawing = null; S.pick = null; say(''); render(); return;
+      }
+      hit = t.closest && t.closest('[data-gadd]');
+      if (hit) { addGardenBlock(hit.getAttribute('data-gadd')); return; }
       hit = t.closest && t.closest('[data-storeys]');
       if (hit) { S.extension.storeys = +hit.getAttribute('data-storeys'); render(); return; }
       hit = t.closest && t.closest('[data-skext]');
@@ -9292,6 +9442,10 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         case 'sk-blank':     S.started = true; S.measured = false; settled(); return;
         case 'sk-box-go':    boxGo(); return;
         case 'sk-addblock':  addBlock(); return;
+        case 'sk-droparea':
+          var gt2 = gardenTarget();
+          if (isArea(gt2)) removeArea(+gt2.slice(1));
+          return;
         case 'sk-cancelblock': S.block = null; say(''); FRAME = null; MANUAL = false; settled(); return;
         case 'sk-lenedit-ok': applyLenEdit(); return;
         case 'sk-addext':    addRearExtension(); return;
@@ -9463,7 +9617,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       S.extensions = o.extensions || [o.extension || newExtension()];
       S.extIdx = Math.min(o.extIdx || 0, S.extensions.length - 1);
       S.garden = o.garden || newGarden();
-      S.gardenMode = S.garden.plot.closed ? 'patio' : 'boundary';
+      S.gardenMode = S.garden.plot.closed ? 'idle' : 'boundary';
       S.scale = o.scale;
       S.active = Math.min(o.active || 0, o.floors.length - 1);
       SNAP = o.snap || LOOSE;
@@ -9846,7 +10000,12 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var saved = JSON.parse(root.localStorage.getItem(PKEY) || 'null');
     if (saved && Array.isArray(saved.types)) project = saved;
   } catch (e) { /* private mode */ }
+  // While the drawing tool prices a what-if for its running total, nothing is
+  // saved: it used to leave "patio" ticked for good because one had been drawn
+  // and then removed, which reordered the drawing steps on the next visit.
+  var DRY = false;
   function saveProject() {
+    if (DRY) return;
     try { root.localStorage.setItem(PKEY, JSON.stringify(project)); } catch (e) {}
   }
   /** Selected types, in the order the rate book lists them. */
@@ -9890,7 +10049,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       (type.modifiers || []).forEach(function (x) { mods[x.id] = x.value; });
       jobs[typeId] = {
         measurements: m, modifiers: mods,
-        ground: { soil: 'high', trees: [] },
+        ground: { soil: 'unsure', trees: [] },
         rooms: type.steps.some(function (st) { return st.rooms; }) ? RB.ROOMS.defaults() : null,
         touched: {}, seen: {}
       };
@@ -10114,14 +10273,14 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
 
   function groundHtml(j) {
     return '<div class="flow-field"><p class="q-title">What is the ground?</p>' +
-      '<p class="q-help">Most of Essex and the London basin is heavy clay, so that is where we start.</p>' +
+      '<p class="q-help">Not sure? Leave it. We assume heavy clay, which is the cautious answer.</p>' +
       '<div class="seg" role="group" data-soil="1" aria-label="Ground conditions">' +
       TREES.SOILS.map(function (s) {
         return '<button type="button" data-val="' + s.id + '" aria-pressed="' +
           (s.id === j.ground.soil) + '" title="' + esc(s.note) + '">' + esc(s.name) + '</button>';
       }).join('') + '</div></div>' +
       '<div class="flow-field"><p class="q-title">Trees nearby</p>' +
-      '<p class="q-help">Species, and how far away. Worth checking your neighbours’ gardens too — roots do not stop at the fence.</p>' +
+      '<p class="q-help">Any big tree within about 20 metres, next door’s included. Say what kind, and how far away.</p>' +
       '<div class="tree-list" id="tree-list"></div>' +
       '<div style="margin-top:.55rem"><button type="button" class="btn btn-ghost btn-sm" id="tree-add">+ Add a tree</button></div>' +
       '</div><div id="ground-flag"></div>';
@@ -10132,14 +10291,14 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (!list || !route || !route.typeId) return;
     var j = job(route.typeId);
     if (!j.ground.trees.length) {
-      list.innerHTML = '<p class="q-help" style="margin:0">No trees within influencing distance.</p>';
+      list.innerHTML = '<p class="q-help" style="margin:0">No trees added.</p>';
     } else {
       list.innerHTML = j.ground.trees.map(function (t, i) {
         return '<div class="tree-row">' +
           '<select data-tree="' + i + '" data-field="species" aria-label="Tree ' + (i + 1) + ' species">' +
           TREES.SPECIES.map(function (s) {
             return '<option value="' + s.id + '"' + (s.id === t.species ? ' selected' : '') + '>' +
-              esc(s.name) + ' · ' + s.demand + ' demand</option>';
+              esc(s.name) + '</option>';
           }).join('') + '</select>' +
           '<input type="number" min="1" max="40" step="0.5" value="' + t.distance +
           '" data-tree="' + i + '" data-field="distance" aria-label="Tree ' + (i + 1) + ' distance in metres">' +
@@ -10166,7 +10325,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         '<span class="pick-tick" aria-hidden="true">' + (on ? '✓' : '') + '</span>' +
         '<span class="pick-name">' + esc(t.name) + '</span>' +
         '<span class="pick-blurb">' + esc(t.blurb) + '</span>' +
-        '<span class="pick-foot"><span class="pick-typ">' + (r ? 'Typical ' + money(r.incVat) : '') +
+        '<span class="pick-foot"><span class="pick-typ">' + (r ? 'Typically about ' + money(Math.round(r.incVat / 1000) * 1000) : '') +
         '</span></span></button>';
     }).join('');
 
@@ -10193,7 +10352,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       } else {
         note.innerHTML = sel.length
           ? ''
-          : '<p class="q-help">Tick everything you are thinking about. You can change your mind later.</p>';
+          : '';
       }
     }
   }
@@ -10262,11 +10421,11 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       // walls marked on the drawing, rather than a length guessed in metres.
       // Set even when it is nought: marking none means none, not the default.
       set('wallRemoval', m.wallRemoval);
-      // the pins ARE the room list — a kitchen or a bathroom starts at a strip
-      // out because that is what people are doing when they name one
+      // the pins ARE the room list. Each starts untouched: naming a room says
+      // it is there, not that anything is being done to it
       if (m.rooms && m.rooms.length) {
         j.rooms = m.rooms.map(function (type, i) {
-          var r = { type: type, level: (type === 'kitchen' || type === 'bathroom') ? 'strip' : 'refit' };
+          var r = { type: type, level: 'none' };     // named, not yet anything done to it
           if (m.roomAreas && m.roomAreas[i]) r.area = m.roomAreas[i];   // measured from the walls
           return r;
         });
@@ -10286,7 +10445,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       set('deckingArea', m.garden.areas.decking);
       set('drivewayArea', m.garden.areas.drive);
       set('turfArea', m.garden.areas.lawn);
-      set('fenceLength', m.garden.boundary);
+      // the fence line says where the garden ends. It is not an order for new
+      // fencing all round it: that is asked, and starts at none.
       // about 0.3 m³ of dig per m² of anything paved, on level ground
       set('excavationVol', 0.3 * (m.garden.areas.patio + m.garden.areas.drive));
     } else if (typeId === 'loft') {
@@ -10297,8 +10457,13 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       j.drawnFootprint = m.footprint;
       set('floorArea', m.footprint * LOFT_USABLE.ok);
     }
-    if (m.counts.kitchen) set('kitchens', m.counts.kitchen);
-    if (baths) set('bathrooms', baths);
+    // Rooms named on the drawing are the whole house's rooms. Only a new build
+    // is the whole house: counting them into an extension or a loft as well
+    // charged for the existing bathrooms a second time, as new ones.
+    if (typeId === 'newbuild') {
+      if (m.counts.kitchen) set('kitchens', m.counts.kitchen);
+      if (baths) set('bathrooms', baths);
+    }
 
     // Drawing an extension is how you say you want one. It selects the build
     // type as well as sizing it — otherwise the client draws the new bit and
@@ -10362,6 +10527,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var savedJobs = JSON.stringify(jobs), savedTypes = project.types.slice(), savedRoute = route;
     try {
       route = null;                                   // no rail repaint from applySketch
+      DRY = true;                                     // and nothing saved: this is a what-if
       applySketchEverywhere(m);
       var proj = priceNow();
       var incl = incVat;
@@ -10377,6 +10543,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       Object.keys(back).forEach(function (k) { jobs[k] = back[k]; });
       project.types = savedTypes;
       route = savedRoute;
+      DRY = false;
     }
   }
 
@@ -10523,7 +10690,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     if (rooms && rooms.length) {
       j.rooms = rooms.map(function (r) {
         var type = roomTypeFromName(r.name);
-        return { type: type, level: (type === 'kitchen' || type === 'bathroom') ? 'strip' : 'refit' };
+        return { type: type, level: 'none' };
       });
       j.touched.rooms = true;
     }
@@ -10642,7 +10809,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     $('draw-title').textContent = type.name + ' · ' + (step.view === 'plan' ? 'plan' : 'section');
     $('draw-note').textContent =
       (step.view === 'plan' && hasDrawing()) ? 'Your drawing'
-      : (type.id === 'renovation' && step.view === 'plan') ? 'Your uploaded plan, traced'
+      : (type.id === 'renovation' && step.view === 'plan') ? 'An example plan'
       : (step.view === 'plan' ? 'Plan — looking down' : 'Section — cut through');
 
     if (!reduced && gsap) {
@@ -10733,15 +10900,15 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       return;
     }
     if (!g.governing) {
-      el.innerHTML = '<div class="flag flag-good"><span><b>Standard foundations.</b> One metre deep, which is what the rate already allows for.</span></div>';
+      el.innerHTML = '<div class="flag flag-good"><span><b>Standard foundations.</b> One metre deep, already in the price.</span></div>';
       return;
     }
     var sp = g.governing.species;
-    var msg = '<b>' + esc(sp.name) + ' at ' + g.governing.ratio.toFixed(2) + ' × its mature height.</b> ' +
-      'Foundations need to go to ' + g.depth.toFixed(2) + ' m rather than the usual metre. ' +
+    var msg = '<b>The ' + esc(sp.name.toLowerCase()) + ' is close enough to matter.</b> ' +
+      'Foundations need to go ' + g.depth.toFixed(1) + ' m deep instead of the usual 1 m. ' +
       (g.piled
-        ? 'At that depth a trench footing stops being sensible, so we have allowed for piles and a ground beam — and a builder who quotes you without mentioning this has not looked.'
-        : 'That extra digging, carting away and concrete is a line you can see in the breakdown.');
+        ? 'That is deep enough to need piles, and we have allowed for them.'
+        : 'The extra digging and concrete is in your price, as its own line.');
     el.innerHTML = '<div class="flag"><span>' + msg + '</span></div>';
   }
 
@@ -10766,9 +10933,12 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     $('gauge-label').textContent = result.spread <= conf.floor + 0.001
       ? 'Plus or minus ' + spread + '% — as tight as it gets without a survey'
       : 'Plus or minus ' + spread + '%, and it narrows once an architect has measured up';
-    $('readout-note').textContent = (result.area ? result.area.toFixed(0) + ' m² of work · ' : '') +
-      (result.ground ? result.ground.depth.toFixed(2) + ' m foundations · ' : '') +
-      (incVat ? 'VAT included' : 'VAT not included');
+    // nothing is priced until it is asked for, so an untouched job really is nought: say why
+    $('readout-note').textContent = !(result.trade > 0)
+      ? 'Nothing chosen yet. Go back and say what you want done.'
+      : (result.area ? result.area.toFixed(0) + ' m² of work · ' : '') +
+        (result.ground ? result.ground.depth.toFixed(1) + ' m deep foundations · ' : '') +
+        (incVat ? 'VAT included' : 'VAT not included');
 
     // what buying these separately would have cost
     var saveEl = $('result-saving');
@@ -10819,7 +10989,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     }
     $('items').innerHTML = html;
 
-    $('margin-note').textContent = 'On this job the fifteen per cent comes to ' + money(result.margin) +
+    $('margin-note').textContent = 'On this job the ' + Math.round(((book().commercial.margin || {}).total || 0.15) * 100) + ' per cent comes to ' + money(result.margin) +
       '. ' + money(result.datumShare) + ' of that is ours and ' + money(result.tradeShare) +
       ' goes to the builder and the consultants. It sits on the invoice rather than behind it.';
 

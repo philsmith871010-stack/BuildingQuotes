@@ -27,7 +27,12 @@
     var saved = JSON.parse(root.localStorage.getItem(PKEY) || 'null');
     if (saved && Array.isArray(saved.types)) project = saved;
   } catch (e) { /* private mode */ }
+  // While the drawing tool prices a what-if for its running total, nothing is
+  // saved: it used to leave "patio" ticked for good because one had been drawn
+  // and then removed, which reordered the drawing steps on the next visit.
+  var DRY = false;
   function saveProject() {
+    if (DRY) return;
     try { root.localStorage.setItem(PKEY, JSON.stringify(project)); } catch (e) {}
   }
   /** Selected types, in the order the rate book lists them. */
@@ -71,7 +76,7 @@
       (type.modifiers || []).forEach(function (x) { mods[x.id] = x.value; });
       jobs[typeId] = {
         measurements: m, modifiers: mods,
-        ground: { soil: 'high', trees: [] },
+        ground: { soil: 'unsure', trees: [] },
         rooms: type.steps.some(function (st) { return st.rooms; }) ? RB.ROOMS.defaults() : null,
         touched: {}, seen: {}
       };
@@ -295,14 +300,14 @@
 
   function groundHtml(j) {
     return '<div class="flow-field"><p class="q-title">What is the ground?</p>' +
-      '<p class="q-help">Most of Essex and the London basin is heavy clay, so that is where we start.</p>' +
+      '<p class="q-help">Not sure? Leave it. We assume heavy clay, which is the cautious answer.</p>' +
       '<div class="seg" role="group" data-soil="1" aria-label="Ground conditions">' +
       TREES.SOILS.map(function (s) {
         return '<button type="button" data-val="' + s.id + '" aria-pressed="' +
           (s.id === j.ground.soil) + '" title="' + esc(s.note) + '">' + esc(s.name) + '</button>';
       }).join('') + '</div></div>' +
       '<div class="flow-field"><p class="q-title">Trees nearby</p>' +
-      '<p class="q-help">Species, and how far away. Worth checking your neighbours’ gardens too — roots do not stop at the fence.</p>' +
+      '<p class="q-help">Any big tree within about 20 metres, next door’s included. Say what kind, and how far away.</p>' +
       '<div class="tree-list" id="tree-list"></div>' +
       '<div style="margin-top:.55rem"><button type="button" class="btn btn-ghost btn-sm" id="tree-add">+ Add a tree</button></div>' +
       '</div><div id="ground-flag"></div>';
@@ -313,14 +318,14 @@
     if (!list || !route || !route.typeId) return;
     var j = job(route.typeId);
     if (!j.ground.trees.length) {
-      list.innerHTML = '<p class="q-help" style="margin:0">No trees within influencing distance.</p>';
+      list.innerHTML = '<p class="q-help" style="margin:0">No trees added.</p>';
     } else {
       list.innerHTML = j.ground.trees.map(function (t, i) {
         return '<div class="tree-row">' +
           '<select data-tree="' + i + '" data-field="species" aria-label="Tree ' + (i + 1) + ' species">' +
           TREES.SPECIES.map(function (s) {
             return '<option value="' + s.id + '"' + (s.id === t.species ? ' selected' : '') + '>' +
-              esc(s.name) + ' · ' + s.demand + ' demand</option>';
+              esc(s.name) + '</option>';
           }).join('') + '</select>' +
           '<input type="number" min="1" max="40" step="0.5" value="' + t.distance +
           '" data-tree="' + i + '" data-field="distance" aria-label="Tree ' + (i + 1) + ' distance in metres">' +
@@ -347,7 +352,7 @@
         '<span class="pick-tick" aria-hidden="true">' + (on ? '✓' : '') + '</span>' +
         '<span class="pick-name">' + esc(t.name) + '</span>' +
         '<span class="pick-blurb">' + esc(t.blurb) + '</span>' +
-        '<span class="pick-foot"><span class="pick-typ">' + (r ? 'Typical ' + money(r.incVat) : '') +
+        '<span class="pick-foot"><span class="pick-typ">' + (r ? 'Typically about ' + money(Math.round(r.incVat / 1000) * 1000) : '') +
         '</span></span></button>';
     }).join('');
 
@@ -374,7 +379,7 @@
       } else {
         note.innerHTML = sel.length
           ? ''
-          : '<p class="q-help">Tick everything you are thinking about. You can change your mind later.</p>';
+          : '';
       }
     }
   }
@@ -443,11 +448,11 @@
       // walls marked on the drawing, rather than a length guessed in metres.
       // Set even when it is nought: marking none means none, not the default.
       set('wallRemoval', m.wallRemoval);
-      // the pins ARE the room list — a kitchen or a bathroom starts at a strip
-      // out because that is what people are doing when they name one
+      // the pins ARE the room list. Each starts untouched: naming a room says
+      // it is there, not that anything is being done to it
       if (m.rooms && m.rooms.length) {
         j.rooms = m.rooms.map(function (type, i) {
-          var r = { type: type, level: (type === 'kitchen' || type === 'bathroom') ? 'strip' : 'refit' };
+          var r = { type: type, level: 'none' };     // named, not yet anything done to it
           if (m.roomAreas && m.roomAreas[i]) r.area = m.roomAreas[i];   // measured from the walls
           return r;
         });
@@ -467,7 +472,8 @@
       set('deckingArea', m.garden.areas.decking);
       set('drivewayArea', m.garden.areas.drive);
       set('turfArea', m.garden.areas.lawn);
-      set('fenceLength', m.garden.boundary);
+      // the fence line says where the garden ends. It is not an order for new
+      // fencing all round it: that is asked, and starts at none.
       // about 0.3 m³ of dig per m² of anything paved, on level ground
       set('excavationVol', 0.3 * (m.garden.areas.patio + m.garden.areas.drive));
     } else if (typeId === 'loft') {
@@ -478,8 +484,13 @@
       j.drawnFootprint = m.footprint;
       set('floorArea', m.footprint * LOFT_USABLE.ok);
     }
-    if (m.counts.kitchen) set('kitchens', m.counts.kitchen);
-    if (baths) set('bathrooms', baths);
+    // Rooms named on the drawing are the whole house's rooms. Only a new build
+    // is the whole house: counting them into an extension or a loft as well
+    // charged for the existing bathrooms a second time, as new ones.
+    if (typeId === 'newbuild') {
+      if (m.counts.kitchen) set('kitchens', m.counts.kitchen);
+      if (baths) set('bathrooms', baths);
+    }
 
     // Drawing an extension is how you say you want one. It selects the build
     // type as well as sizing it — otherwise the client draws the new bit and
@@ -543,6 +554,7 @@
     var savedJobs = JSON.stringify(jobs), savedTypes = project.types.slice(), savedRoute = route;
     try {
       route = null;                                   // no rail repaint from applySketch
+      DRY = true;                                     // and nothing saved: this is a what-if
       applySketchEverywhere(m);
       var proj = priceNow();
       var incl = incVat;
@@ -558,6 +570,7 @@
       Object.keys(back).forEach(function (k) { jobs[k] = back[k]; });
       project.types = savedTypes;
       route = savedRoute;
+      DRY = false;
     }
   }
 
@@ -704,7 +717,7 @@
     if (rooms && rooms.length) {
       j.rooms = rooms.map(function (r) {
         var type = roomTypeFromName(r.name);
-        return { type: type, level: (type === 'kitchen' || type === 'bathroom') ? 'strip' : 'refit' };
+        return { type: type, level: 'none' };
       });
       j.touched.rooms = true;
     }
@@ -823,7 +836,7 @@
     $('draw-title').textContent = type.name + ' · ' + (step.view === 'plan' ? 'plan' : 'section');
     $('draw-note').textContent =
       (step.view === 'plan' && hasDrawing()) ? 'Your drawing'
-      : (type.id === 'renovation' && step.view === 'plan') ? 'Your uploaded plan, traced'
+      : (type.id === 'renovation' && step.view === 'plan') ? 'An example plan'
       : (step.view === 'plan' ? 'Plan — looking down' : 'Section — cut through');
 
     if (!reduced && gsap) {
@@ -914,15 +927,15 @@
       return;
     }
     if (!g.governing) {
-      el.innerHTML = '<div class="flag flag-good"><span><b>Standard foundations.</b> One metre deep, which is what the rate already allows for.</span></div>';
+      el.innerHTML = '<div class="flag flag-good"><span><b>Standard foundations.</b> One metre deep, already in the price.</span></div>';
       return;
     }
     var sp = g.governing.species;
-    var msg = '<b>' + esc(sp.name) + ' at ' + g.governing.ratio.toFixed(2) + ' × its mature height.</b> ' +
-      'Foundations need to go to ' + g.depth.toFixed(2) + ' m rather than the usual metre. ' +
+    var msg = '<b>The ' + esc(sp.name.toLowerCase()) + ' is close enough to matter.</b> ' +
+      'Foundations need to go ' + g.depth.toFixed(1) + ' m deep instead of the usual 1 m. ' +
       (g.piled
-        ? 'At that depth a trench footing stops being sensible, so we have allowed for piles and a ground beam — and a builder who quotes you without mentioning this has not looked.'
-        : 'That extra digging, carting away and concrete is a line you can see in the breakdown.');
+        ? 'That is deep enough to need piles, and we have allowed for them.'
+        : 'The extra digging and concrete is in your price, as its own line.');
     el.innerHTML = '<div class="flag"><span>' + msg + '</span></div>';
   }
 
@@ -947,9 +960,12 @@
     $('gauge-label').textContent = result.spread <= conf.floor + 0.001
       ? 'Plus or minus ' + spread + '% — as tight as it gets without a survey'
       : 'Plus or minus ' + spread + '%, and it narrows once an architect has measured up';
-    $('readout-note').textContent = (result.area ? result.area.toFixed(0) + ' m² of work · ' : '') +
-      (result.ground ? result.ground.depth.toFixed(2) + ' m foundations · ' : '') +
-      (incVat ? 'VAT included' : 'VAT not included');
+    // nothing is priced until it is asked for, so an untouched job really is nought: say why
+    $('readout-note').textContent = !(result.trade > 0)
+      ? 'Nothing chosen yet. Go back and say what you want done.'
+      : (result.area ? result.area.toFixed(0) + ' m² of work · ' : '') +
+        (result.ground ? result.ground.depth.toFixed(1) + ' m deep foundations · ' : '') +
+        (incVat ? 'VAT included' : 'VAT not included');
 
     // what buying these separately would have cost
     var saveEl = $('result-saving');
@@ -1000,7 +1016,7 @@
     }
     $('items').innerHTML = html;
 
-    $('margin-note').textContent = 'On this job the fifteen per cent comes to ' + money(result.margin) +
+    $('margin-note').textContent = 'On this job the ' + Math.round(((book().commercial.margin || {}).total || 0.15) * 100) + ' per cent comes to ' + money(result.margin) +
       '. ' + money(result.datumShare) + ' of that is ours and ' + money(result.tradeShare) +
       ' goes to the builder and the consultants. It sits on the invoice rather than behind it.';
 

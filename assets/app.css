@@ -266,7 +266,8 @@ html { scroll-padding-top: 62px; }
     border-left: 0; border-bottom: 1px solid var(--rule);
     order: -1;
     position: sticky; top: 52px; z-index: 20;
-    height: 42svh; min-height: 260px;
+    /* a third of the screen, not nearly half: the question has to be in view too */
+    height: 32svh; min-height: 210px;
     background: var(--surface);
   }
   .flow-draw-bar { padding-block: .4rem; }
@@ -958,6 +959,8 @@ html { scroll-padding-top: 62px; }
 }
 .sk-lenedit span { font-family: var(--mono); font-size: .8rem; color: var(--ink-3); }
 .sk-addblock { width: 100%; }
+.closing { text-align: center; display: grid; gap: .9rem; justify-items: center; }
+.closing p { color: var(--ink-2); max-width: 30rem; }
 .sk-size { display: flex; flex-wrap: wrap; gap: 1rem 1.6rem; justify-content: center; margin-top: .5rem; }
 .sk-size-f { display: grid; gap: .35rem; justify-items: center; }
 .sk-size-f label { font-size: .9rem; font-weight: 600; color: var(--ink); }

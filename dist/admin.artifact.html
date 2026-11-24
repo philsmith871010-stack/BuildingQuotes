@@ -944,18 +944,18 @@ select.cell:hover { border-color: var(--rule); }
   }
 
   var ACCESS = {
-    id: 'access', label: 'Site access', help: 'Can a machine, a skip and a grab lorry reach the work?',
+    id: 'access', label: 'Getting to the work', help: 'Can a digger and a skip get round to where the work is?',
     appliesTo: 'all', value: 'good',
     options: [
-      { id: 'good',       label: 'Clear rear access', factor: 1.00 },
-      { id: 'restricted', label: 'Through the house',  factor: 1.09 },
-      { id: 'none',       label: 'Hand dig and barrow', factor: 1.20 }
+      { id: 'good',       label: 'Yes, down the side', factor: 1.00 },
+      { id: 'restricted', label: 'Only through the house',  factor: 1.09 },
+      { id: 'none',       label: 'No, by hand only', factor: 1.20 }
     ]
   };
 
   function spec(hi, top) {
     return {
-      id: 'spec', label: 'Specification', help: 'The level of finish the client is buying.',
+      id: 'spec', label: 'Quality of finish', help: 'Most people choose Standard.',
       appliesTo: 'all', value: 'standard',
       options: [
         { id: 'standard', label: 'Standard', factor: 1.00 },
@@ -1101,19 +1101,12 @@ select.cell:hover { border-color: var(--rule); }
     return m;
   }
 
-  /** A three-bed semi being done properly — the shape most jobs start from. */
+  /** A three-bed semi, every room left alone until somebody says what is being
+      done to it. Nothing is priced that has not been asked for: a first figure
+      that already holds a new kitchen and a rewire is not the customer's. */
   function defaultRooms() {
-    return [
-      { type: 'kitchen',  level: 'strip' },
-      { type: 'living',   level: 'refit' },
-      { type: 'living',   level: 'refit' },
-      { type: 'bedroom',  level: 'refit' },
-      { type: 'bedroom',  level: 'refit' },
-      { type: 'bedroom',  level: 'refit' },
-      { type: 'bathroom', level: 'strip' },
-      { type: 'wc',       level: 'refit' },
-      { type: 'hall',     level: 'decorate' }
-    ];
+    return ['kitchen', 'living', 'living', 'bedroom', 'bedroom', 'bedroom', 'bathroom', 'wc', 'hall']
+      .map(function (type) { return { type: type, level: 'none' }; });
   }
 
   var ROOMS = {
@@ -1142,35 +1135,35 @@ select.cell:hover { border-color: var(--rule); }
         { id: 'width', label: 'Width', unit: 'm',
           ask: { step: 'size', q: 'Width', help: 'Across the back of the house.', input: 'dim', min: 2, max: 12, by: 0.25, value: 5 } },
         { id: 'depth', label: 'Projection', unit: 'm',
-          ask: { step: 'size', q: 'Projection', help: 'How far it comes out into the garden.', input: 'dim', min: 2, max: 8, by: 0.25, value: 4 } },
+          ask: { step: 'size', q: 'How far out', help: 'How far it comes out into the garden.', input: 'dim', min: 2, max: 8, by: 0.25, value: 4 } },
         { id: 'bifoldWidth', label: 'Bi-fold width', unit: 'm',
-          ask: { step: 'build', q: 'Bi-fold doors', help: 'Total width across the opening. Leave at none for a window instead.', input: 'length', min: 0, max: 6, by: 0.3, value: 3, zero: 'None' } },
+          ask: { step: 'build', q: 'Bi-fold doors', help: 'How wide, added together. Choose None for windows instead.', input: 'length', min: 0, max: 6, by: 0.3, value: 0, zero: 'None' } },
         { id: 'rooflights', label: 'Rooflights', unit: 'no.',
-          ask: { step: 'build', q: 'Rooflights in the new flat roof', help: 'Lantern or flat rooflights over the new space.', input: 'count', max: 6, value: 0 } },
+          ask: { step: 'build', q: 'Roof windows', help: 'Glass in the new flat roof, to let light in.', input: 'count', max: 6, value: 0 } },
         { id: 'wallRemoval', label: 'Wall removed', unit: 'm',
-          ask: { step: 'inside', q: 'Opening into the house', help: 'How wide the hole in the existing back wall is, so the new space opens into the house. Steel, padstones and making good included.', input: 'length', min: 0, max: 12, by: 0.5, value: 3, zero: 'None' } },
+          ask: { step: 'inside', q: 'Opening into the house', help: 'How wide a gap to knock through from the house into the new room. The steel beam over it is included.', input: 'length', min: 0, max: 12, by: 0.5, value: 0, zero: 'None' } },
         { id: 'kitchens', label: 'Kitchens', unit: 'no.',
-          ask: { step: 'inside', q: 'A new kitchen?', help: 'Fitting only. You buy the units and appliances you want.', input: 'yesno', value: 1 } },
+          ask: { step: 'inside', q: 'A new kitchen?', help: 'We fit it. You buy the units and appliances you want.', input: 'yesno', value: 0 } },
         { id: 'bathrooms', label: 'Bathrooms', unit: 'no.',
-          ask: { step: 'inside', q: 'Bathrooms in the extension', help: 'Labour only, same principle as the kitchen.', input: 'count', max: 3, value: 0 } }
+          ask: { step: 'inside', q: 'Bathrooms in the extension', help: 'We fit them. You buy the suite.', input: 'count', max: 3, value: 0 } }
       ],
       steps: [
-        { id: 'size',   view: 'plan',    short: 'Size', title: 'How big is it going to be?', lede: 'Drag either dimension on the drawing. Everything else on this site is measured from these two numbers.' },
-        { id: 'build',  view: 'plan',    short: 'Build', title: 'How is it built?', lede: 'The construction of the external walls, and how much of the garden wall is glass.', modifiers: ['wallType'] },
-        { id: 'ground', view: 'section', short: 'Ground', title: 'What is underneath?', lede: 'The question that catches people out. On shrinkable clay a thirsty tree decides how deep you dig, and depth is expensive.', ground: true },
-        { id: 'inside', view: 'plan',    short: 'Inside', title: 'What is going inside?', lede: 'Opening the new space into the house, and the two rooms that carry real labour.', modifiers: ['access', 'spec'] }
+        { id: 'size',   view: 'plan',    short: 'Size', title: 'How big is it going to be?', lede: 'Two numbers: how wide, and how far out.' },
+        { id: 'build',  view: 'plan',    short: 'Build', title: 'How is it built?', lede: 'What the walls are made of, and how much glass faces the garden.', modifiers: ['wallType'] },
+        { id: 'ground', view: 'section', short: 'Ground', title: 'What is underneath?', lede: 'Big trees near clay soil can mean deeper foundations. Not sure? Leave it as it is.', ground: true },
+        { id: 'inside', view: 'plan',    short: 'Inside', title: 'What is going inside?', lede: 'How it joins the house, and what goes in it.', modifiers: ['access', 'spec'] }
       ],
       lines: [
         L('ext.shell',     'Extension shell',      'Foundations to standard depth, walls, flat roof, windows, plaster, first and second fix', 'per_m2', 'floorArea', 3000, 'lee'),
         L('ext.bifold',    'Bi-fold doors',        'Supplied and fitted, aluminium', 'per_linear_m', 'bifoldWidth', 1500, 'lee'),
-        L('ext.wallRemove','Structural openings',  'Steel, padstones and making good', 'per_linear_m', 'wallRemoval', 1000, 'lee'),
+        L('ext.wallRemove','Knocking through walls',  'Steel, padstones and making good', 'per_linear_m', 'wallRemoval', 1000, 'lee'),
         L('ext.kitchen',   'Kitchen fitting',      'Labour only — units and appliances are the client’s', 'per_unit', 'kitchens', 4500, 'lee'),
         L('ext.bathroom',  'Bathroom',             'Labour only', 'per_unit', 'bathrooms', 3000, 'lee'),
         L('ext.rooflight', 'Rooflights',           'Supplied and fitted, kerb included', 'per_unit', 'rooflights', 1800, 'placeholder')
       ],
       modifiers: [
         {
-          id: 'wallType', label: 'Wall construction', help: 'Lee quoted one rate for all three — these deltas are placeholders.',
+          id: 'wallType', label: 'Outside walls', help: 'What the new walls are made of.',
           appliesTo: ['ext.shell'], value: 'brick',
           options: [
             { id: 'brick',  label: 'Brickwork',            factor: 1.00 },
@@ -1197,7 +1190,7 @@ select.cell:hover { border-color: var(--rule); }
       usesFoundations: false,
       measurements: [
         { id: 'floorArea', label: 'Floor area', unit: 'm²',
-          ask: { step: 'size', q: 'Total floor area', help: 'Every storey added together. Sketch the house and this is measured rather than guessed. A three-bed semi is usually 85 to 100 m².', input: 'area', min: 10, max: 500, by: 5, value: 90 } },
+          ask: { step: 'size', q: 'Total floor area', help: 'All floors added together. A three-bed semi is usually 85 to 100 m².', input: 'area', min: 10, max: 500, by: 5, value: 90 } },
 
         /* worked out from the room ticks — never asked directly */
         { id: 'decorArea',       label: 'Area decorated',        unit: 'm²' },
@@ -1217,32 +1210,32 @@ select.cell:hover { border-color: var(--rule); }
 
         /* the things that are not room by room */
         { id: 'wallRemoval', label: 'Wall removed', unit: 'm',
-          ask: { step: 'house', q: 'Walls coming out', help: 'Knocking rooms together. Steel, padstones and making good included.', input: 'length', min: 0, max: 20, by: 0.5, value: 3, zero: 'None' } },
+          ask: { step: 'house', q: 'Walls coming out', help: 'Knocking rooms together. The steel beam over the gap is included.', input: 'length', min: 0, max: 20, by: 0.5, value: 0, zero: 'None' } },
         { id: 'windows', label: 'Windows replaced', unit: 'no.',
-          ask: { step: 'house', q: 'Windows replaced', help: 'Like for like, supplied and fitted. Scaffolding is in the rate.', input: 'count', max: 24, value: 8 } },
+          ask: { step: 'house', q: 'Windows replaced', help: 'New windows, fitted. Scaffolding is included.', input: 'count', max: 24, value: 0 } },
         { id: 'extDoors', label: 'External doors', unit: 'no.',
-          ask: { step: 'house', q: 'External doors', help: 'Front, back or French doors, supplied and fitted.', input: 'count', max: 6, value: 1 } },
+          ask: { step: 'house', q: 'Outside doors', help: 'Front, back or French doors, fitted.', input: 'count', max: 6, value: 0 } },
         { id: 'consumerUnit', label: 'Consumer unit and mains', unit: 'no.',
-          ask: { step: 'house', q: 'New consumer unit?', help: 'The board, the mains work and the electrical certificate. Needed once, however many rooms are rewired.', input: 'yesno', value: 1 } },
+          ask: { step: 'house', q: 'New fuse box?', help: 'A modern fuse box and the safety certificate. Needed once, however many rooms are rewired.', input: 'yesno', value: 0 } },
         { id: 'newBoiler', label: 'Boiler and heating plant', unit: 'no.',
-          ask: { step: 'house', q: 'New boiler?', help: 'Boiler, controls, flue and cylinder. The radiators themselves are counted room by room.', input: 'yesno', value: 1 } },
+          ask: { step: 'house', q: 'New boiler?', help: 'Boiler, controls and hot water tank. Radiators are counted room by room.', input: 'yesno', value: 0 } },
         { id: 'roofArea', label: 'Roof recovered', unit: 'm²',
-          ask: { step: 'house', q: 'Roof recovered', help: 'Strip and re-tile, including battens, felt and scaffolding. Leave at none if the roof is sound.', input: 'area', min: 0, max: 300, by: 5, value: 0, zero: 'Not this time' } }
+          ask: { step: 'house', q: 'New roof tiles', help: 'Strip and re-tile, scaffolding included. Choose Not this time if the roof is sound.', input: 'area', min: 0, max: 300, by: 5, value: 0, zero: 'Not this time' } }
       ],
       steps: [
-        { id: 'size',      view: 'plan',    short: 'Size',  title: 'How big is the house?', lede: 'One number drives everything else. Sketch the house or trace your floor plan and it is measured rather than estimated.' },
-        { id: 'work',      view: 'plan',    short: 'Rooms', title: 'What is being done, room by room?', lede: 'Pick a preset for each room, then tick or untick what is actually happening in it. A kitchen has more to choose from than a hall. Each room shows its own price.', rooms: true },
-        { id: 'house',     view: 'section', short: 'House', title: 'The things that are not room by room', lede: 'Six questions covering the work you buy once for the whole house, however many rooms are involved.' },
-        { id: 'condition', view: 'section', short: 'Condition', title: 'What are we working with?', lede: 'Older fabric costs more to work into, and a family living upstairs costs time.', modifiers: ['age', 'occupied', 'access', 'spec'] }
+        { id: 'size',      view: 'plan',    short: 'Size',  title: 'How big is the house?', lede: 'One number. Draw the house and it is measured for you.' },
+        { id: 'work',      view: 'plan',    short: 'Rooms', title: 'What is being done, room by room?', lede: 'Pick how much is being done in each room. Each room shows its own price.', rooms: true },
+        { id: 'house',     view: 'section', short: 'House', title: 'Things for the whole house', lede: 'Work you only buy once, however many rooms are involved.' },
+        { id: 'condition', view: 'section', short: 'Condition', title: 'About your house', lede: 'Older houses take more work, and so does working around people living there.', modifiers: ['age', 'occupied', 'access', 'spec'] }
       ],
       lines: [
         /* room by room — driven by how far each room is being taken */
         L('ren.strip',      'Strip out and clear',    'Finishes off, back to brick and joists. Removals, skips and protection', 'per_m2', 'stripArea', 85, 'placeholder'),
-        L('ren.firstfix',   'First fix',              'Electrical circuits and pipework back to the board and the boiler', 'per_m2', 'firstFixArea', 95, 'placeholder'),
+        L('ren.firstfix',   'New pipes and wiring',            'Electrical circuits and pipework back to the board and the boiler', 'per_m2', 'firstFixArea', 95, 'placeholder'),
         L('ren.ceilings',   'New ceilings',           'Down, re-boarded and skimmed', 'per_m2', 'ceilingArea', 48, 'placeholder'),
         L('ren.insulation', 'Insulation',             'Insulating the external walls while they are open', 'per_m2', 'insulationArea', 26, 'placeholder'),
         L('ren.plaster',    'Plastering',             'Walls and ceiling, overboarded or hacked off and re-skimmed', 'per_m2', 'plasterArea', 62, 'placeholder'),
-        L('ren.secondfix',  'Second fix electrics',   'Sockets, switches, lighting and testing', 'per_m2', 'secondFixArea', 58, 'placeholder'),
+        L('ren.secondfix',  'Sockets, switches and lights',  'Sockets, switches, lighting and testing', 'per_m2', 'secondFixArea', 58, 'placeholder'),
         L('ren.doors',      'Internal doors',         'Door, frame, ironmongery and hanging', 'per_unit', 'doorsReplaced', 220, 'placeholder'),
         L('ren.radiators',  'Radiators',              'Radiator or towel rail, valves and connection', 'per_unit', 'radiators', 420, 'placeholder'),
         L('ren.flooring',   'Floor finishes',         'Preparation and laying, materials excluded', 'per_m2', 'floorFinishArea', 65, 'placeholder'),
@@ -1250,10 +1243,10 @@ select.cell:hover { border-color: var(--rule); }
         L('ren.tiling',     'Wall tiling',            'Laying and grouting, per m² of wall; tiles excluded', 'per_m2', 'tiledArea', 75, 'placeholder'),
         L('ren.kitchen',    'Kitchen fitting',        'Labour only', 'per_unit', 'kitchens', 4500, 'lee'),
         L('ren.bathroom',   'Bathroom',               'Labour only', 'per_unit', 'bathrooms', 3000, 'lee'),
-        L('ren.wc',         'Cloakroom WC',           'Labour only', 'per_unit', 'wcs', 1200, 'placeholder'),
+        L('ren.wc',         'Downstairs toilet',          'Labour only', 'per_unit', 'wcs', 1200, 'placeholder'),
 
         /* bought once for the whole house */
-        L('ren.opening',    'Structural openings',    'Steel, padstones and making good', 'per_linear_m', 'wallRemoval', 1000, 'lee'),
+        L('ren.opening',    'Knocking through walls',    'Steel, padstones and making good', 'per_linear_m', 'wallRemoval', 1000, 'lee'),
         L('ren.windows',    'Windows',                'Supplied and fitted, like for like, including scaffolding', 'per_unit', 'windows', 850, 'placeholder'),
         L('ren.extdoors',   'External doors',         'Supplied and fitted', 'per_unit', 'extDoors', 1100, 'placeholder'),
         L('ren.consumer',   'Consumer unit and mains','Board, mains work, earthing and certificate', 'per_unit', 'consumerUnit', 1450, 'placeholder'),
@@ -1262,21 +1255,21 @@ select.cell:hover { border-color: var(--rule); }
       ],
       modifiers: [
         {
-          id: 'age', label: 'Property age', help: 'Older fabric costs more to work into.',
+          id: 'age', label: 'When was it built?', help: 'Older houses take more work.',
           appliesTo: 'all', value: 'postwar',
           options: [
-            { id: 'modern',   label: 'Post 1980',   factor: 0.94 },
+            { id: 'modern',   label: 'After 1980',   factor: 0.94 },
             { id: 'postwar',  label: '1945 to 1980', factor: 1.00 },
-            { id: 'prewar',   label: 'Pre 1945',    factor: 1.12 },
+            { id: 'prewar',   label: 'Before 1945',    factor: 1.12 },
             { id: 'listed',   label: 'Listed or conservation area', factor: 1.35 }
           ]
         },
         {
-          id: 'occupied', label: 'Occupied during works', help: 'Working around a family costs time.',
+          id: 'occupied', label: 'Will you live there during the work?', help: 'Working around people takes longer.',
           appliesTo: 'all', value: 'empty',
           options: [
-            { id: 'empty',    label: 'Empty property', factor: 1.00 },
-            { id: 'occupied', label: 'Client living in', factor: 1.11 }
+            { id: 'empty',    label: 'No, it will be empty', factor: 1.00 },
+            { id: 'occupied', label: 'Yes', factor: 1.11 }
           ]
         },
         ACCESS, spec(1.25, 1.60)
@@ -1299,24 +1292,24 @@ select.cell:hover { border-color: var(--rule); }
       usesFoundations: false,
       measurements: [
         { id: 'floorArea', label: 'New floor area', unit: 'm²',
-          ask: { step: 'size', q: 'Usable floor area', help: 'Only the part with head height counts. Draw the house and this follows from the footprint and the head height below.', input: 'area', min: 8, max: 120, by: 1, value: 28 } },
+          ask: { step: 'size', q: 'Usable floor area', help: 'Only the part you can stand up in counts.', input: 'area', min: 8, max: 120, by: 1, value: 28 } },
         { id: 'dormerWidth', label: 'Dormer width', unit: 'm',
-          ask: { step: 'roof', q: 'Dormer width', help: 'A dormer buys you standing room across its width. None means rooflights only.', input: 'length', min: 0, max: 8, by: 0.3, value: 3.6, zero: 'None' } },
+          ask: { step: 'roof', q: 'Dormer width', help: 'A dormer is a box built out of the roof, for standing room. Choose None for roof windows only.', input: 'length', min: 0, max: 8, by: 0.3, value: 0, zero: 'None' } },
         { id: 'rooflights', label: 'Rooflights', unit: 'no.',
-          ask: { step: 'roof', q: 'Rooflights in the roof slope', help: 'Velux-style lights set into the pitch of the existing roof.', input: 'count', max: 8, value: 2 } },
+          ask: { step: 'roof', q: 'Roof windows', help: 'Velux-style windows set into the roof.', input: 'count', max: 8, value: 2 } },
         { id: 'staircases', label: 'Staircases', unit: 'no.',
-          ask: { step: 'inside', q: 'A new staircase?', help: 'Almost always yes — a loft needs a proper fixed stair to be habitable.', input: 'yesno', value: 1 } },
+          ask: { step: 'inside', q: 'A new staircase?', help: 'Almost always yes. A loft room needs a proper staircase.', input: 'yesno', value: 1 } },
         { id: 'steels', label: 'Steel beams', unit: 'no.',
-          ask: { step: 'inside', q: 'Steel beams', help: 'The new floor has to span onto steel. Three is typical; the engineer confirms it.', input: 'count', max: 8, value: 3 } },
+          ask: { step: 'inside', q: 'Steel beams', help: 'The new floor sits on steel. Three is typical, and the engineer confirms it.', input: 'count', max: 8, value: 3 } },
         { id: 'bathrooms', label: 'Bathrooms', unit: 'no.',
-          ask: { step: 'inside', q: 'An ensuite?', help: 'Labour only.', input: 'count', max: 2, value: 1 } },
+          ask: { step: 'inside', q: 'An ensuite?', help: 'We fit it. You buy the suite.', input: 'count', max: 2, value: 0 } },
         { id: 'fireDoors', label: 'Fire doors', unit: 'no.',
-          ask: { step: 'inside', q: 'Fire doors', help: 'Building control requires a protected escape route. Usually every door off the stairwell.', input: 'count', max: 10, value: 4 } }
+          ask: { step: 'inside', q: 'Fire doors', help: 'The rules need a safe way out, so doors that open on to the stairs are usually replaced.', input: 'count', max: 10, value: 4 } }
       ],
       steps: [
-        { id: 'size',   view: 'section', short: 'Space', title: 'How much can you stand up in?', lede: 'Head height decides everything up here. Below 2.2 m the ridge has to come up or the ceilings below go down — and the usable floor area follows from your answer.', modifiers: ['headroom'] },
-        { id: 'roof',   view: 'section', short: 'Roof', title: 'Dormer, or rooflights?', lede: 'A dormer adds standing room and costs real money. Rooflights are cheaper and give you light rather than space.', modifiers: ['roofStructure'] },
-        { id: 'inside', view: 'plan',    short: 'Inside', title: 'What is going in?', lede: 'Stairs, steel and the things building control will insist on.', modifiers: ['access', 'spec'] }
+        { id: 'size',   view: 'section', short: 'Space', title: 'How much can you stand up in?', lede: 'Head height decides how much of the loft you can use.', modifiers: ['headroom'] },
+        { id: 'roof',   view: 'section', short: 'Roof', title: 'Dormer, or rooflights?', lede: 'A dormer adds standing room and costs more. Roof windows are cheaper and give light, not space.', modifiers: ['roofStructure'] },
+        { id: 'inside', view: 'plan',    short: 'Inside', title: 'What is going in?', lede: 'Stairs, steel and the things the rules require.', modifiers: ['access', 'spec'] }
       ],
       lines: [
         L('loft.shell',     'Conversion shell',    'Floor strengthening, insulation, plasterboard, electrics and heating', 'per_m2', 'floorArea', 1850, 'placeholder'),
@@ -1329,15 +1322,15 @@ select.cell:hover { border-color: var(--rule); }
       ],
       modifiers: [
         {
-          id: 'roofStructure', label: 'Existing roof structure', help: 'A trussed roof has to be re-engineered before anything else happens.',
+          id: 'roofStructure', label: 'How is the roof built?', help: 'Look in the loft. Lots of thin timbers in W shapes are trusses, and they need more work.',
           appliesTo: ['loft.shell'], value: 'cut',
           options: [
-            { id: 'cut',    label: 'Traditional cut roof', factor: 1.00 },
-            { id: 'truss',  label: 'Trussed roof',         factor: 1.28 }
+            { id: 'cut',    label: 'A few big timbers', factor: 1.00 },
+            { id: 'truss',  label: 'Lots of thin W shapes', factor: 1.28 }
           ]
         },
         {
-          id: 'headroom', label: 'Head height', help: 'Below 2.2 m the ridge has to be raised or the ceilings dropped.',
+          id: 'headroom', label: 'Head height', help: 'Measured at the highest point. Below 2.2 m the roof has to be raised or the ceilings below lowered.',
           appliesTo: 'all', value: 'ok',
           options: [
             { id: 'ok',      label: 'Over 2.4 m',   factor: 1.00 },
@@ -1365,33 +1358,33 @@ select.cell:hover { border-color: var(--rule); }
         { id: 'perimeter', label: 'External perimeter', unit: 'm', derived: true },
         { id: 'floorArea', label: 'Total internal area', unit: 'm²', derived: true },
         { id: 'footprintArea', label: 'Ground floor footprint', unit: 'm²',
-          ask: { step: 'size', q: 'Ground floor footprint', help: 'The area the house covers on the ground.', input: 'area', min: 30, max: 400, by: 5, value: 78 } },
+          ask: { step: 'size', q: 'Size of the ground floor', help: 'The area the house covers on the ground.', input: 'area', min: 30, max: 400, by: 5, value: 78 } },
         { id: 'storeys', label: 'Storeys', unit: 'no.',
-          ask: { step: 'size', q: 'How many storeys?', help: 'Total internal area is the footprint multiplied by this.', input: 'count', min: 1, max: 3, value: 2 } },
+          ask: { step: 'size', q: 'How many storeys?', help: 'How many floors.', input: 'count', min: 1, max: 3, value: 2 } },
         { id: 'roofArea', label: 'Roof area', unit: 'm²',
-          ask: { step: 'form', q: 'Roof area', help: 'On the slope, so larger than the footprint. Roughly one and a quarter times for a normal pitch.', input: 'area', min: 20, max: 500, by: 5, value: 96 } },
+          ask: { step: 'form', q: 'Roof area', help: 'Measured on the slope, so about one and a quarter times the ground floor.', input: 'area', min: 20, max: 500, by: 5, value: 96 } },
         { id: 'garageArea', label: 'Garage area', unit: 'm²',
-          ask: { step: 'form', q: 'Garage', help: 'A single garage is about 18 m². Leave at none if there isn’t one.', input: 'area', min: 0, max: 120, by: 2, value: 18, zero: 'None' } },
+          ask: { step: 'form', q: 'Garage', help: 'A single garage is about 18 m². Leave at none if there isn’t one.', input: 'area', min: 0, max: 120, by: 2, value: 0, zero: 'None' } },
         { id: 'plots', label: 'Plots', unit: 'no.',
-          ask: { step: 'inside', q: 'How many plots?', help: 'One for a single house. Service connections are charged per plot.', input: 'count', min: 1, max: 12, value: 1 } },
+          ask: { step: 'inside', q: 'How many houses?', help: 'One for a single house.', input: 'count', min: 1, max: 12, value: 1 } },
         { id: 'kitchens', label: 'Kitchens', unit: 'no.',
-          ask: { step: 'inside', q: 'Kitchens', help: 'Labour only.', input: 'count', min: 0, max: 12, value: 1 } },
+          ask: { step: 'inside', q: 'Kitchens', help: 'We fit them. You buy the units.', input: 'count', min: 0, max: 12, value: 1 } },
         { id: 'bathrooms', label: 'Bathrooms', unit: 'no.',
-          ask: { step: 'inside', q: 'Bathrooms', help: 'Labour only, including ensuites and the cloakroom.', input: 'count', max: 8, value: 3 } },
+          ask: { step: 'inside', q: 'Bathrooms', help: 'Including ensuites and the downstairs toilet. We fit them.', input: 'count', max: 8, value: 1 } },
         { id: 'externalArea', label: 'External works area', unit: 'm²',
-          ask: { step: 'inside', q: 'Drives, paths and garden', help: 'Everything outside the walls that still has to be built.', input: 'area', min: 0, max: 1500, by: 10, value: 120, zero: 'None' } }
+          ask: { step: 'inside', q: 'Drives, paths and garden', help: 'Everything outside the walls that still has to be built.', input: 'area', min: 0, max: 1500, by: 10, value: 0, zero: 'None' } }
       ],
       steps: [
-        { id: 'size',   view: 'plan',    short: 'Size', title: 'How big is the house?', lede: 'Footprint and storeys. Draw the house and both are measured for you.' },
-        { id: 'form',   view: 'section', short: 'Form', title: 'Roof and garage', lede: 'The roof is priced on its slope area, which is always more than the footprint.' },
-        { id: 'ground', view: 'section', short: 'Ground', title: 'What are you building on?', lede: 'Substructure is the biggest single unknown on a new build, and trees on clay decide it.', ground: true },
-        { id: 'inside', view: 'plan',    short: 'Fit-out', title: 'Inside and out', lede: 'Rooms that carry labour, and everything beyond the walls.', modifiers: ['method', 'efficiency', 'access', 'spec'] }
+        { id: 'size',   view: 'plan',    short: 'Size', title: 'How big is the house?', lede: 'Draw the house and both are measured for you.' },
+        { id: 'form',   view: 'section', short: 'Form', title: 'Roof and garage', lede: 'A sloping roof is always bigger than the floor under it.' },
+        { id: 'ground', view: 'section', short: 'Ground', title: 'What are you building on?', lede: 'Foundations are the biggest unknown, and trees on clay soil decide them.', ground: true },
+        { id: 'inside', view: 'plan',    short: 'Fit-out', title: 'Inside and out', lede: 'What goes inside, and everything outside the walls.', modifiers: ['method', 'efficiency', 'access', 'spec'] }
       ],
       lines: [
-        L('nb.substructure', 'Substructure',        'Dig, footings, oversite and drainage below slab', 'per_m2', 'footprintArea', 480, 'placeholder'),
-        L('nb.superstructure','Superstructure',     'Frame, external walls, floors, windows and doors', 'per_m2', 'floorArea', 1450, 'placeholder'),
+        L('nb.substructure', 'Foundations and ground floor',      'Dig, footings, oversite and drainage below slab', 'per_m2', 'footprintArea', 480, 'placeholder'),
+        L('nb.superstructure','Walls, floors, windows and doors',    'Frame, external walls, floors, windows and doors', 'per_m2', 'floorArea', 1450, 'placeholder'),
         L('nb.roof',         'Roof',                'Structure, covering, insulation and rainwater goods', 'per_m2', 'roofArea', 220, 'placeholder'),
-        L('nb.mep',          'Mechanical and electrical', 'Heating, plumbing, electrics, ventilation and renewables', 'per_m2', 'floorArea', 260, 'placeholder'),
+        L('nb.mep',          'Heating, plumbing and electrics', 'Heating, plumbing, electrics, ventilation and renewables', 'per_m2', 'floorArea', 260, 'placeholder'),
         L('nb.finishes',     'Internal finishes',   'Plaster, joinery, decoration and floor finishes', 'per_m2', 'floorArea', 340, 'placeholder'),
         L('nb.kitchen',      'Kitchen fitting',     'Labour only', 'per_unit', 'kitchens', 4500, 'lee'),
         L('nb.bathroom',     'Bathroom',            'Labour only', 'per_unit', 'bathrooms', 3000, 'lee'),
@@ -1401,21 +1394,21 @@ select.cell:hover { border-color: var(--rule); }
       ],
       modifiers: [
         {
-          id: 'method', label: 'Construction method', appliesTo: ['nb.superstructure'], value: 'masonry',
-          help: 'Timber frame and SIPs cost more up front and less in programme.',
+          id: 'method', label: 'How it is built', appliesTo: ['nb.superstructure'], value: 'masonry',
+          help: 'Timber frame costs more to buy and is quicker to build. Not sure? Leave it.',
           options: [
-            { id: 'masonry', label: 'Traditional masonry', factor: 1.00 },
+            { id: 'masonry', label: 'Brick and block', factor: 1.00 },
             { id: 'timber',  label: 'Timber frame',        factor: 1.06 },
-            { id: 'sips',    label: 'SIPs',                factor: 1.14 }
+            { id: 'sips',    label: 'Insulated panels',    factor: 1.14 }
           ]
         },
         {
-          id: 'efficiency', label: 'Energy standard', appliesTo: 'all', value: 'partL',
-          help: 'Anything beyond current Building Regulations costs real money.',
+          id: 'efficiency', label: 'How well insulated', appliesTo: 'all', value: 'partL',
+          help: 'Going beyond what the rules require costs more.',
           options: [
-            { id: 'partL',    label: 'Building Regulations', factor: 1.00 },
-            { id: 'enhanced', label: 'Enhanced fabric',      factor: 1.08 },
-            { id: 'passive',  label: 'Passivhaus',           factor: 1.26 }
+            { id: 'partL',    label: 'Standard', factor: 1.00 },
+            { id: 'enhanced', label: 'Better',      factor: 1.08 },
+            { id: 'passive',  label: 'Best (Passivhaus)',  factor: 1.26 }
           ]
         },
         ACCESS, spec(1.24, 1.55)
@@ -1439,28 +1432,28 @@ select.cell:hover { border-color: var(--rule); }
         { id: 'patioArea', label: 'Paved area', unit: 'm²',
           ask: { step: 'area', q: 'Paving', help: 'Porcelain or natural stone. A generous patio is 30 to 50 m².', input: 'area', min: 0, max: 400, by: 2, value: 40, zero: 'None' } },
         { id: 'deckingArea', label: 'Decked area', unit: 'm²',
-          ask: { step: 'area', q: 'Decking', help: 'Framed and boarded, balustrade included.', input: 'area', min: 0, max: 300, by: 2, value: 0, zero: 'None' } },
+          ask: { step: 'area', q: 'Decking', help: 'Frame, boards and handrail.', input: 'area', min: 0, max: 300, by: 2, value: 0, zero: 'None' } },
         { id: 'drivewayArea', label: 'Driveway area', unit: 'm²',
           ask: { step: 'area', q: 'Driveway', help: 'Block paving or resin bound, edgings included.', input: 'area', min: 0, max: 400, by: 5, value: 0, zero: 'None' } },
         { id: 'turfArea', label: 'Turfed area', unit: 'm²',
-          ask: { step: 'area', q: 'Lawn', help: 'Topsoil, preparation and turf.', input: 'area', min: 0, max: 800, by: 5, value: 30, zero: 'None' } },
+          ask: { step: 'area', q: 'Lawn', help: 'Topsoil, preparation and turf.', input: 'area', min: 0, max: 800, by: 5, value: 0, zero: 'None' } },
         { id: 'excavationVol', label: 'Excavation', unit: 'm³',
-          ask: { step: 'ground', q: 'Muck to shift', help: 'Everything dug out and carted away. About 0.3 m³ per m² of paving on level ground, far more on a slope.', input: 'volume', min: 0, max: 300, by: 1, value: 12, zero: 'None' } },
+          ask: { step: 'ground', q: 'Soil to dig out', help: 'Dug out and taken away. About 0.3 m³ for each m² of paving on level ground, and far more on a slope.', input: 'volume', min: 0, max: 300, by: 1, value: 12, zero: 'None' } },
         { id: 'wallLength', label: 'Retaining wall', unit: 'm',
-          ask: { step: 'edges', q: 'Retaining wall', help: 'Holding back a level change. Foundation, blockwork, facing and coping.', input: 'length', min: 0, max: 60, by: 0.5, value: 12, zero: 'None' } },
+          ask: { step: 'edges', q: 'Retaining wall', help: 'Holds the ground back where the level changes.', input: 'length', min: 0, max: 60, by: 0.5, value: 0, zero: 'None' } },
         { id: 'fenceLength', label: 'Fencing', unit: 'm',
-          ask: { step: 'edges', q: 'Fencing', help: 'Posts, panels and gravel boards.', input: 'length', min: 0, max: 150, by: 1, value: 20, zero: 'None' } },
+          ask: { step: 'edges', q: 'Fencing', help: 'Posts and panels.', input: 'length', min: 0, max: 150, by: 1, value: 0, zero: 'None' } },
         { id: 'drainageLength', label: 'Drainage run', unit: 'm',
-          ask: { step: 'edges', q: 'Drainage', help: 'Channel drain, soakaway and connection. Any paving next to the house needs it.', input: 'length', min: 0, max: 100, by: 1, value: 8, zero: 'None' } },
+          ask: { step: 'edges', q: 'Drainage', help: 'Paving next to the house needs a drain.', input: 'length', min: 0, max: 100, by: 1, value: 0, zero: 'None' } },
         { id: 'steps', label: 'Step flights', unit: 'no.',
-          ask: { step: 'edges', q: 'Flights of steps', help: 'Each formed and finished to match.', input: 'count', max: 6, value: 1 } },
+          ask: { step: 'edges', q: 'Flights of steps', help: 'Each one built and finished to match.', input: 'count', max: 6, value: 0 } },
         { id: 'lightPoints', label: 'Light fittings', unit: 'no.',
-          ask: { step: 'edges', q: 'External lighting', help: 'Fitting, cable and controls.', input: 'count', max: 20, value: 4 } }
+          ask: { step: 'edges', q: 'Outside lights', help: 'Each one fitted and wired.', input: 'count', max: 20, value: 0 } }
       ],
       steps: [
-        { id: 'area',   view: 'plan',    short: 'Areas', title: 'What are you laying?', lede: 'Set the areas roughly. You can pace a garden out surprisingly accurately.' },
-        { id: 'ground', view: 'section', short: 'Ground', title: 'What is it going on?', lede: 'Wet clay, made ground and a slope all cost more than the paving does.', modifiers: ['groundConditions', 'levels'] },
-        { id: 'edges',  view: 'plan',    short: 'Edges', title: 'Edges and extras', lede: 'Walls, fences, drainage and steps. Usually more than half the bill on a garden.', modifiers: ['access', 'spec'] }
+        { id: 'area',   view: 'plan',    short: 'Areas', title: 'What are you laying?', lede: 'Rough sizes are fine. You can pace a garden out.' },
+        { id: 'ground', view: 'section', short: 'Ground', title: 'What is it going on?', lede: 'Wet ground and slopes can cost more than the paving.', modifiers: ['groundConditions', 'levels'] },
+        { id: 'edges',  view: 'plan',    short: 'Edges', title: 'Edges and extras', lede: 'Walls, fences, drains and steps are often more than half the cost.', modifiers: ['access', 'spec'] }
       ],
       lines: [
         L('ex.dig',      'Excavation and cart away', 'Dig, load and dispose', 'per_m3', 'excavationVol', 95, 'placeholder'),
@@ -1477,20 +1470,20 @@ select.cell:hover { border-color: var(--rule); }
       ],
       modifiers: [
         {
-          id: 'groundConditions', label: 'Ground conditions', appliesTo: 'all', value: 'normal',
-          help: 'Wet clay and made ground both slow everything down.',
+          id: 'groundConditions', label: 'What is the ground like?', appliesTo: 'all', value: 'normal',
+          help: 'Not sure? Leave it on Normal.',
           options: [
-            { id: 'good',   label: 'Free draining',  factor: 0.95 },
+            { id: 'good',   label: 'Dry and sandy',  factor: 0.95 },
             { id: 'normal', label: 'Normal',         factor: 1.00 },
             { id: 'clay',   label: 'Heavy wet clay', factor: 1.12 },
-            { id: 'made',   label: 'Made ground or obstructions', factor: 1.25 }
+            { id: 'made',   label: 'Rubble or old concrete', factor: 1.25 }
           ]
         },
         {
-          id: 'levels', label: 'Levels', appliesTo: 'all', value: 'flat',
-          help: 'A sloping garden means retaining and steps, not just more paving.',
+          id: 'levels', label: 'Is the garden level?', appliesTo: 'all', value: 'flat',
+          help: 'A slope needs walls and steps as well as paving.',
           options: [
-            { id: 'flat',    label: 'Broadly level', factor: 1.00 },
+            { id: 'flat',    label: 'More or less', factor: 1.00 },
             { id: 'sloping', label: 'Sloping',       factor: 1.14 },
             { id: 'steep',   label: 'Steep or terraced', factor: 1.32 }
           ]
@@ -1517,9 +1510,9 @@ select.cell:hover { border-color: var(--rule); }
         { id: 'floorArea', label: 'Floor area', unit: 'm²',
           ask: { step: 'size', q: 'Floor area', help: 'A single garage is about 18 m². A garden office is usually 10 to 15.', input: 'area', min: 4, max: 120, by: 1, value: 15 } },
         { id: 'garageDoors', label: 'Garage doors', unit: 'no.',
-          ask: { step: 'fit', q: 'Garage doors', help: 'Up-and-over or sectional, supplied and fitted.', input: 'count', max: 2, value: 0 } },
+          ask: { step: 'fit', q: 'Garage doors', help: 'Fitted.', input: 'count', max: 2, value: 0 } },
         { id: 'electrics', label: 'Power and lighting', unit: 'no.',
-          ask: { step: 'fit', q: 'Power and lighting?', help: 'An armoured supply from the house, a small consumer unit, lights and sockets.', input: 'yesno', value: 1 } },
+          ask: { step: 'fit', q: 'Power and lighting?', help: 'Electricity from the house, lights and sockets.', input: 'yesno', value: 0 } },
         { id: 'plumbing', label: 'Water and waste', unit: 'no.',
           ask: { step: 'fit', q: 'A sink or a WC?', help: 'A water supply and a drain run back to the house.', input: 'yesno', value: 0 } }
       ],
@@ -1662,7 +1655,7 @@ select.cell:hover { border-color: var(--rule); }
     var u = UNITS[line.unit];
     if (line.unit === 'per_item') return 'Fixed sum';
     var n = qty % 1 ? qty.toFixed(2) : String(qty);
-    return n + ' ' + u.qtyUnit + ' at £' + line.rate.toLocaleString('en-GB') + u.suffix;
+    return n + (u.qtyUnit === 'no.' ? '' : ' ' + u.qtyUnit) + ' at £' + line.rate.toLocaleString('en-GB') + u.suffix;
   }
 
   /**
@@ -1732,20 +1725,21 @@ select.cell:hover { border-color: var(--rule); }
   /** Fees, margin, contingency and VAT — charged once, over whatever trade total. */
   function wrapUp(book, trade, lines, opts) {
     var c = book.commercial, fe = book.fees;
-    var arch = Math.max(trade * fe.architectural.pct, fe.architectural.min);
-    lines.push({ key: 'architectural', group: 'fees', label: 'Architectural drawings',
+    var some = trade > 0;      // nothing chosen yet: no work, so no fees on it either
+    var arch = some ? Math.max(trade * fe.architectural.pct, fe.architectural.min) : 0;
+    if (some) lines.push({ key: 'architectural', group: 'fees', label: 'Architectural drawings',
       detail: opts.multi ? 'One survey and one set of drawings for the whole project'
                          : 'Survey, plans and planning submission', amount: arch });
 
-    var struct = fe.structural.base + (opts.hasOpenings ? fe.structural.withOpenings : 0);
-    lines.push({ key: 'structural', group: 'fees', label: 'Structural engineer',
+    var struct = some ? fe.structural.base + (opts.hasOpenings ? fe.structural.withOpenings : 0) : 0;
+    if (some) lines.push({ key: 'structural', group: 'fees', label: 'Structural engineer',
       detail: opts.multi ? 'One engineer across every part of the job' : 'Calculations and design',
       amount: struct });
 
     var council = null;
     (book.councils || []).forEach(function (x) { if (x.id === opts.council) council = x; });
-    var bc = council ? council.fee : fe.buildingControl.base;
-    lines.push({ key: 'buildingControl', group: 'fees', label: 'Building control',
+    var bc = some ? (council ? council.fee : fe.buildingControl.base) : 0;
+    if (some) lines.push({ key: 'buildingControl', group: 'fees', label: 'Building control',
       detail: (council ? council.name + ' — ' : 'Your council — ') +
         (opts.multi ? 'one application, not one per job' : 'never a private inspector'), amount: bc });
 
@@ -1964,6 +1958,8 @@ select.cell:hover { border-color: var(--rule); }
   // Essex and most of the London basin is high-plasticity clay, so that is
   // the default. Getting this wrong is the single biggest error in the model.
   var SOILS = [
+    // nobody knows their soil. "Not sure" is priced as heavy clay: the commonest here, and the cautious answer
+    { id: 'unsure', name: 'Not sure',        note: 'We assume heavy clay, the cautious answer',   factor: 1.00 },
     { id: 'high',   name: 'Heavy clay',      note: 'Most of Essex, London and the Home Counties', factor: 1.00 },
     { id: 'medium', name: 'Medium clay',     note: 'Mixed clay and silt',                          factor: 0.85 },
     { id: 'low',    name: 'Light clay',      note: 'Sandy clay, low shrinkage',                    factor: 0.70 },
@@ -2091,7 +2087,7 @@ select.cell:hover { border-color: var(--rule); }
      new question wording. A stored book from an older shape is rebuilt from the
      current defaults with the rates carried across, so nobody is left on a
      structure the app no longer understands. */
-  var SCHEMA = 5;
+  var SCHEMA = 6;      // 6: question wording rewritten in plain English
 
   function now() { return new Date().toISOString(); }
 
