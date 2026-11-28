@@ -166,6 +166,25 @@ function check(S, SK, errors) {
   // the list of room names only ever opens on the Rooms step
   if (shown($('sk-roommenu')) && S.stage !== 'rooms') fail('room-menu-on-another-step', S.stage);
 
+  // nothing drawn on the plan sits on anything else: the × that removes a
+  // thing, the + that adds a corner, and the length labels each have their own
+  // clear spot, or a tap lands on the wrong one and nobody can read either
+  if (!(S.drawing && S.drawing.length)) {
+    const boxes = (sel, k) => all('#sk-svg ' + sel).map((el) => { const r = el.getBoundingClientRect(); return { k, r }; });
+    const marks = [].concat(boxes('.sk-kill circle', 'x'), boxes('.sk-add circle', '+'), boxes('.sk-tag rect', 'label'),
+      boxes('.sk-arrow circle', 'arrow'), boxes('.sk-moveh circle', 'move'), boxes('.sk-node', 'corner'));
+    const clash = [];
+    for (let i = 0; i < marks.length; i++) for (let j = i + 1; j < marks.length; j++) {
+      const a = marks[i], b = marks[j];
+      const mine = a.k === 'x' || a.k === '+' || b.k === 'x' || b.k === '+' || (a.k === 'label' && b.k === 'label');
+      if (!mine) continue;
+      const ox = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
+      const oy = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
+      if (ox > 2 && oy > 2) clash.push(a.k + ' on ' + b.k);
+    }
+    if (clash.length) fail('marks-on-top-of-each-other', S.stage + ': ' + clash.slice(0, 3).join(', '));
+  }
+
   // the panel belongs to the step
   const side = (document.querySelector('.sk-side') || {}).innerText || '';
   if (S.stage === 'extension' && !S.calibrating && !S.askUp && !/storey/i.test(side)) fail('extension-step-without-its-tools');
@@ -299,7 +318,19 @@ function actions(S, R) {
     [2, clickOne('#sk-droparea')],
     [1, twice('#sk-dropplot')],
     [3, clickOne('#sk-floors [data-skfloor]')],
-    [2, clickOne('#sk-addfloor2, #sk-addfloor')],
+    // a floor above always arrives with a shape: the one underneath it
+    [2, async () => {
+      const b = all('#sk-addfloor2, #sk-addfloor').filter(shown)[0];
+      if (!b) return null;
+      const had = S.floors.length, below = S.floors.slice().reverse().find((f) => f.closed);
+      b.click();
+      const top = S.floors[had];
+      // thrown, so it is reported like anything else that goes wrong in an action
+      if (top && below && (!top.closed || JSON.stringify(top.outline) !== JSON.stringify(below.outline))) {
+        throw new Error('floor-above-not-a-copy: floor ' + had);
+      }
+      return 'add a floor above';
+    }],
     [1, twice('#sk-dropfloor')],
     [1, clickOne('#sk-redraw')],
     [1, clickOne('#sk-recal')],

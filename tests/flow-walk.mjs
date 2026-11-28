@@ -82,7 +82,16 @@ export async function run(opts) {
         $('sk-box-go').click(); await wait(500);
         for (let guard = 0; guard < 14 && $('sk-overlay').classList.contains('on'); guard++) {
           page(project, 'draw:' + SK._S.stage);
-          if (shown($('sk-upstairs'))) { all('#sk-upstairs [data-up]')[R() < 0.5 ? 0 : 2].click(); await wait(500); continue; }
+          if (shown($('sk-upstairs'))) { const yes = R() < 0.5, had = SK._S.floors.length;
+            all('#sk-upstairs [data-up]')[yes ? 0 : 1].click(); await wait(500);
+            // an upstairs arrives as the same shape as downstairs, ready to change
+            if (yes) {
+              const fl = SK._S.floors;
+              if (fl.length !== had + 1 || !fl[had].closed || JSON.stringify(fl[had].outline) !== JSON.stringify(fl[had - 1].outline)) {
+                fail(project, 'draw', 'upstairs-not-a-copy-of-downstairs', '');
+              }
+            }
+            continue; }
           // put something on the steps that have a one-press way to
           const add = [$('sk-addext'), $('sk-addplot')].filter(shown)[0];
           if (add && R() < 0.8) { add.click(); await wait(400); }

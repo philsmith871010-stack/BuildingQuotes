@@ -250,8 +250,9 @@ Supporting choices:
   are effortless and a 45° bay is still one click away.
 - Internal walls are **single segments, two clicks each**. Chains needed a
   "finish this run" step, which is an instruction, which is a failure.
-- **Floors replace the storeys question.** You draw or copy each floor, so
-  nobody is asked how many there are.
+- **Floors replace the storeys question.** Nobody is asked how many there
+  are. A floor above always arrives as a copy of the outline under it, and is
+  changed from there by dragging.
 
 ## A closed shape is a live thing
 
@@ -264,6 +265,29 @@ Drawing it once is never enough, so a finished outline stays editable:
   where the wall passes through one, which every square and 45° wall does.
 - **Tap a corner, then the ×** — the two walls either side merge. A bare tap
   never deletes anything.
+
+### Nothing drawn on the plan sits on anything else
+
+Tapping a + used to leave a heap where the finger had just been: the new
+corner, the × that removes it, the arrow of the short wall beside it, the next
++ and two length labels, some of them on top of each other. Every mark now
+records where it is as it is drawn (`lay`), and what is drawn after it keeps
+clear (`laidHit`):
+
+- A **length label** stands far enough off its wall to clear the arrow on the
+  wall's middle (a wide label beside an upright wall did not). If it would
+  print over another label it goes to the other side of its own wall, and only
+  then a row further out, so it always stays beside the wall it measures.
+- A **picked corner** keeps a clear space round it. The arrows and + of the
+  walls either side are left off while it is picked; only its × goes there.
+- The **×** is put in the first clear spot beside the thing it removes
+  (`killSpot`): straight above when that is free, then round the clock, then
+  further out. Never on a label, a handle or a wall.
+- A **+** with no room is left off rather than piled on.
+
+A picked corner also says what it is for, in the one sentence at the top of the
+panel: *Drag this corner to where it is. Tap × to remove it.* The random test
+checks after every action that no two of these marks overlap.
 
 Corners drag on every step, not only the Shape step, because the dots are on
 screen on every step and a dot that will not move reads as broken. Splitting a
@@ -335,7 +359,11 @@ sentence.
    measured across its whole front (the orange band) rather than along one
    wall that may just have been split. A hand-drawn shape measures its longest
    wall, and *measure a different wall* lets you tap another. Then one more:
-   *does it have an upstairs?* Yes copies the floor below.
+   *does it have an upstairs?* Yes or No. Yes adds the floor as a copy of
+   the outline below and shows it, saying it is the same shape and that a
+   wall can be dragged if theirs is different. *Add a floor above* does the
+   same. There is no "a different shape" answer: one fewer thing to decide,
+   and nobody is left facing an empty grid upstairs.
 2. **Inside walls** — optional. *Add a wall* puts one in, it drags to where it
    is, and a tap on it offers a doorway, a turn, or knocking it out. They come
    before the rooms because they are what makes a room a room. There are no
@@ -448,7 +476,7 @@ with.
 The side panel is one column read top to bottom: where you are (step and
 name), one sentence saying what to do, the tools for this step, the one big
 Next button, and then the figures. A refusal reads in the warning colour; a
-note ("Upstairs added") reads as a note. On a finished shape the small things
+note reads as a note. On a finished shape the small things
 you might still want (change the measurement, draw the floor again, draw over a
 plan, remove the floor) sit as a quiet row *after* Next, not as a stack of
 buttons in front of it. While a run of corners or a wall is open there is a
@@ -578,9 +606,11 @@ the house.
 
 ## Known limits
 
-- Copying a floor copies its outline and internal walls but **not** its
-  openings or room pins — upstairs is a different room layout, and a wrong
-  bathroom count is worse than no bathroom count.
+- A floor above copies the outline below and nothing else: **not** the
+  inside walls, openings or room pins — upstairs is a different room layout,
+  and a wrong bathroom count is worse than no bathroom count. It is a copy
+  made once; changing the ground floor afterwards does not move the floor
+  above it.
 - Openings are counted for the plaster deduction, not positioned for daylight,
   structure or building control.
 - Each floor is a single outline. An L-shaped house is fine; a detached garage

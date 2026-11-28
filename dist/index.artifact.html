@@ -2566,8 +2566,7 @@ html { scroll-padding-top: 62px; }
 
         <!-- One clear question, instead of a small "+ floor" nobody finds. -->
         <div class="sk-upstairs" id="sk-upstairs" hidden>
-          <button type="button" class="btn" data-up="same">Yes &mdash; same shape as downstairs</button>
-          <button type="button" class="btn btn-ghost" data-up="diff">Yes &mdash; a different shape</button>
+          <button type="button" class="btn" data-up="yes">Yes</button>
           <button type="button" class="btn btn-ghost" data-up="no">No, just the one floor</button>
         </div>
 
@@ -5566,7 +5565,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
  * arithmetic at all.
  *
  * The stages are the order a builder walks a house:
- *   1 outline      the shape, per floor. Copy the floor below or draw a new one
+ *   1 outline      the shape, per floor. A floor above starts as a copy of the one below
  *   2 inside walls two clicks each, no chains, nothing to "finish"
  *   3 doors        click a wall
  *   4 windows      click a wall
@@ -6112,11 +6111,87 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
      garden's zoom a label drawn in plan units is four pixels high. `key` makes
      it a button — tap it and type the length. */
   var TAGS = 1;
+  /* ---- nothing sits on anything else -----------------------------------------
+   * Every label and handle drawn on the plan says where it is, so whatever is
+   * drawn after it can keep clear. Two short walls side by side used to print
+   * their lengths over each other, and the × that removes a corner landed on
+   * the label and the arrow next to it — a heap of little marks, right where
+   * somebody had just tapped. Boxes, in SVG units; a circle is its square.
+   */
+  var LAID = [];
+  var RUNOW = 0;      // SVG units per screen pixel on the plan being drawn; 0 on a picture with no handles
+  function lay(x, y, rx, ry, kind) { LAID.push({ x: +x, y: +y, rx: rx, ry: ry, kind: kind }); }
+  function laidHit(x, y, rx, ry, pad, kinds, not) {
+    for (var i = 0; i < LAID.length; i++) {
+      var o = LAID[i];
+      if (kinds && kinds.indexOf(o.kind) < 0) continue;
+      if (not && o.kind === not) continue;
+      if (Math.abs(x - o.x) < rx + o.rx + pad && Math.abs(y - o.y) < ry + o.ry + pad) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Where the × for the picked thing goes: beside it, in the first clear spot.
+   * Straight above when that is free, which is where it has always been; then
+   * round the clock and further out. Never on a label, a handle or a wall.
+   */
+  function killSpot(anchor, RU, v, segs) {
+    var r = 13 * RU, ax = anchor[0] * K, ay = anchor[1] * K, q = 0.7071;
+    var dirs = [[0, -1], [q, -q], [-q, -q], [1, 0], [-1, 0], [q, q], [-q, q], [0, 1]];
+    var best = null, least = Infinity;
+    for (var d = 28; d <= 70; d += 14) {
+      for (var k = 0; k < dirs.length; k++) {
+        var x = ax + dirs[k][0] * d * RU, y = ay + dirs[k][1] * d * RU;
+        if (x - r < v.x0 * K || x + r > v.x1 * K || y - r < v.y0 * K || y + r > v.y1 * K) continue;
+        var bad = laidHit(x, y, r, r, 3 * RU, null, 'hold') ? 2 : 0;
+        for (var j = 0; j < segs.length && bad < 3; j++) {
+          if (segDist([x / K, y / K], segs[j][0], segs[j][1]) * K < r + 3 * RU) { bad += 1; break; }
+        }
+        if (!bad) return [x, y];
+        if (bad < least) { least = bad; best = [x, y]; }
+      }
+    }
+    return best || [ax, ay - 28 * RU];
+  }
+  function segDist(p, a, b) {
+    var ex = b[0] - a[0], ey = b[1] - a[1], L2 = ex * ex + ey * ey;
+    var t = L2 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * ex + (p[1] - a[1]) * ey) / L2)) : 0;
+    return Math.hypot(p[0] - a[0] - ex * t, p[1] - a[1] - ey * t);
+  }
+
   function lengthTag(a, b, cls, off, at, key) {
     if (!S.scale) return '';
     var o = off || [0, 0], fr = at === undefined ? 0.5 : at;
     var mx = (a[0] + (b[0] - a[0]) * fr + o[0] * TAGS) * K, my = (a[1] + (b[1] - a[1]) * fr + o[1] * TAGS) * K;
     var w = 48 * TAGS, h = 19 * TAGS;
+    var ol = Math.hypot(o[0], o[1]);
+    // a wall's arrow sits on its middle, and so does its label: the label stands
+    // far enough off the wall to clear the arrow, which a wide label beside an
+    // upright wall did not
+    if (ol && fr === 0.5 && RUNOW) {
+      var need = 15 * RUNOW + Math.abs(o[0] / ol) * w / 2 + Math.abs(o[1] / ol) * h / 2;
+      if (need > ol * TAGS * K) {
+        mx = (a[0] + (b[0] - a[0]) * fr) * K + o[0] / ol * need;
+        my = (a[1] + (b[1] - a[1]) * fr) * K + o[1] / ol * need;
+        o = [o[0] / ol * need / (TAGS * K), o[1] / ol * need / (TAGS * K)];
+        ol = Math.hypot(o[0], o[1]);
+      }
+    }
+    // a label that would print over another goes to the other side of its wall,
+    // and only then a row further out: it stays next to the wall it measures
+    if (ol && laidHit(mx, my, w / 2, h / 2, 2 * TAGS, ['tag'])) {
+      var bx = (a[0] + (b[0] - a[0]) * fr) * K, by = (a[1] + (b[1] - a[1]) * fr) * K;      // the point on the wall
+      var ux = o[0] / ol, uy = o[1] / ol, near = ol * TAGS * K;
+      var row = Math.abs(ux) * (w + 4 * TAGS) + Math.abs(uy) * (h + 4 * TAGS);
+      [-near, near + row, -near - row, near + 2 * row, -near - 2 * row, near + 3 * row].some(function (dd) {
+        var tx = bx + ux * dd, ty = by + uy * dd;
+        if (laidHit(tx, ty, w / 2, h / 2, 2 * TAGS, ['tag'])) return false;
+        mx = tx; my = ty;
+        return true;
+      });
+    }
+    lay(mx, my, w / 2, h / 2, 'tag');
     return '<g class="sk-tag ' + (cls || '') + (key ? ' tap' : '') + '"' + (key ? ' data-len="' + key + '"' : '') + '>' +
       (key ? '<title>Tap to type this length</title>' : '') +
       '<rect x="' + (mx - w / 2) + '" y="' + (my - h / 2) + '" width="' + w + '" height="' + h + '" rx="' + (3 * TAGS) + '"/>' +
@@ -6199,6 +6274,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     var f = floor(), out = [];
 
     TAGS = Math.max(1, Math.min(2.6, RU * 0.92));
+    LAID = []; RUNOW = RU;
     if (f.image) out.push(photoSvg(f.image));
     out.push(gridSvg(v, px));
 
@@ -6340,8 +6416,11 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       var isTarget = live.length > 2 && i === 0;
       var picked = !live.length && editing && S.pick && S.pick.kind === 'corner' && S.pick.i === i &&
         (S.pick.which === editing || (editing === 'floor' && S.pick.which === 'floor'));
-      out.push('<circle cx="' + P(p)[0] + '" cy="' + P(p)[1] + '" r="' +
-        (isTarget ? 15 * RU : (S.touch ? 11 : 9) * RU * dotS).toFixed(1) + '" class="sk-node' +
+      var nodeR = isTarget ? 15 * RU : (S.touch ? 11 : 9) * RU * dotS;
+      lay(p[0] * K, p[1] * K, nodeR, nodeR, 'node');
+      // the picked corner keeps a clear space round it: only its × goes there
+      if (picked) lay(p[0] * K, p[1] * K, 30 * RU, 30 * RU, 'hold');
+      out.push('<circle cx="' + P(p)[0] + '" cy="' + P(p)[1] + '" r="' + nodeR.toFixed(1) + '" class="sk-node' +
         (isTarget ? ' start' : '') + (picked ? ' on' : '') + '"/>');
     });
 
@@ -6354,6 +6433,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         if (wl * px < 46) return;
         var wdeg = (Math.atan2((sg[1][0] - sg[0][0]) / wl, -(sg[1][1] - sg[0][1]) / wl) * 180 / Math.PI).toFixed(1);
         var grip = wallGrip(f, wi);
+        lay(grip[0] * K, grip[1] * K, 11 * RU * 0.9, 11 * RU * 0.9, 'arrow');
         out.push('<g class="sk-arrow" transform="translate(' + (grip[0] * K).toFixed(1) + ' ' + (grip[1] * K).toFixed(1) +
           ') rotate(' + wdeg + ') scale(' + (RU * 0.9).toFixed(3) + ')"><title>Drag to move this wall</title><circle r="11"/>' +
           '<path d="M-6.5 0H6.5M-6.5 0l3.4-3.4M-6.5 0l3.4 3.4M6.5 0l-3.4-3.4M6.5 0l-3.4 3.4"/></g>');
@@ -6380,12 +6460,18 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         if (Lpx >= 58 * hs) {
           // points across the wall: the way it will go
           var deg = (Math.atan2((b[0] - a[0]) / L, -(b[1] - a[1]) / L) * 180 / Math.PI).toFixed(1);
+          var amx = (a[0] + b[0]) / 2 * K, amy = (a[1] + b[1]) / 2 * K;
+          if (!laidHit(amx, amy, 11 * RU * hs, 11 * RU * hs, 0, ['hold'])) {
+          lay(amx, amy, 11 * RU * hs, 11 * RU * hs, 'arrow');
           out.push('<g class="sk-arrow" transform="translate(' + ((a[0] + b[0]) / 2 * K).toFixed(1) + ' ' + ((a[1] + b[1]) / 2 * K).toFixed(1) +
             ') rotate(' + deg + ') scale(' + ru + ')"><title>Drag to move this wall in or out</title><circle r="11"/>' +
             '<path d="M-6.5 0H6.5M-6.5 0l3.4-3.4M-6.5 0l3.4 3.4M6.5 0l-3.4-3.4M6.5 0l-3.4 3.4"/></g>');
+          }
         }
         if (editing !== 'block' && Lpx >= 128) {
           var at = 0.25, qx = (a[0] + (b[0] - a[0]) * at) * K, qy = (a[1] + (b[1] - a[1]) * at) * K;
+          if (laidHit(qx, qy, 8 * RU, 8 * RU, 3 * RU)) return;      // no room for it here: it is left off, not piled on
+          lay(qx, qy, 8 * RU, 8 * RU, 'add');
           out.push('<g class="sk-add" data-addcorner="' + i + '" data-addt="' + at + '"><title>Add a corner here</title><circle cx="' + qx +
             '" cy="' + qy + '" r="' + (8 * RU).toFixed(1) + '"/><text x="' + qx + '" y="' + (qy + 3.8 * RU) +
             '" text-anchor="middle" font-size="' + (12 * RU).toFixed(1) + '">+</text></g>');
@@ -6396,6 +6482,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         var wM = (Math.max.apply(null, xsM) - Math.min.apply(null, xsM)) * px, hM = (Math.max.apply(null, ysM) - Math.min.apply(null, ysM)) * px;
         if (wM >= 54 && hM >= 54) {
           var cM = centroid(editRing);
+          lay(cM[0] * K, cM[1] * K, 15 * RU * hs, 15 * RU * hs, 'move');
           out.push('<g class="sk-moveh" transform="translate(' + (cM[0] * K).toFixed(1) + ' ' + (cM[1] * K).toFixed(1) + ') scale(' + ru +
             ')"><title>Drag to move it</title><circle r="15"/>' +
             '<path d="M-9 0H9M0-9V9M-9 0l3-3M-9 0l3 3M9 0l-3-3M9 0l-3 3M0-9l-3 3M0-9l3 3M0 9l-3-3M0 9l3-3"/></g>');
@@ -6410,26 +6497,33 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       if (S.pick.kind === 'corner' && editing) {
         var ring = shapeOf(S.pick.which).outline;
         var c = ring[S.pick.i];
-        if (c) kill = [c[0], c[1] - 26 * RU / K];
+        if (c) kill = [c[0], c[1]];
       } else if (S.pick.kind === 'pin') {
         var pk = f.markers[S.pick.i];
-        if (pk) kill = [pk.x, pk.y - 26 * RU / K];
+        if (pk) kill = [pk.x, pk.y];
       } else if (S.pick.kind === 'iwall') {
         var seg = f.internals[S.pick.i];
-        if (seg) kill = [(seg[0][0] + seg[1][0]) / 2, (seg[0][1] + seg[1][1]) / 2 - 24 * RU / K];
+        if (seg) kill = wallGrip(f, S.pick.i);
       }
     }
     if (!live.length && !kill && S.selected && (S.stage === 'openings' || S.stage === 'internal')) {
       f.openings.forEach(function (o) {
         if (o.id !== S.selected) return;
         var wl = openingWall(f, o);
-        if (wl) kill = [wl.a[0] + (wl.b[0] - wl.a[0]) * o.t, wl.a[1] + (wl.b[1] - wl.a[1]) * o.t - 26 * RU / K];
+        if (wl) kill = [wl.a[0] + (wl.b[0] - wl.a[0]) * o.t, wl.a[1] + (wl.b[1] - wl.a[1]) * o.t];
       });
     }
     if (kill) {
-      out.push('<g class="sk-kill" data-killpick="1"><title>Remove this</title><circle cx="' + (kill[0] * K) + '" cy="' +
-        (kill[1] * K) + '" r="' + (13 * RU).toFixed(1) + '"/><text x="' + (kill[0] * K) + '" y="' +
-        (kill[1] * K + 5 * RU) + '" text-anchor="middle" font-size="' + (17 * RU).toFixed(1) +
+      // every wall it could land on: this floor's, and the shape being worked on
+      var walls = f.internals.slice();
+      [f.closed ? f.outline : null, editRing, S.block && S.block.outline].forEach(function (rg) {
+        if (!rg || rg.length < 2) return;
+        for (var wi2 = 0; wi2 < rg.length; wi2++) walls.push([rg[wi2], rg[(wi2 + 1) % rg.length]]);
+      });
+      var ks = killSpot(kill, RU, v, walls);
+      out.push('<g class="sk-kill" data-killpick="1"><title>Remove this</title><circle cx="' + ks[0].toFixed(1) + '" cy="' +
+        ks[1].toFixed(1) + '" r="' + (13 * RU).toFixed(1) + '"/><text x="' + ks[0].toFixed(1) + '" y="' +
+        (ks[1] + 5 * RU).toFixed(1) + '" text-anchor="middle" font-size="' + (17 * RU).toFixed(1) +
         '">\u00d7</text></g>');
     }
 
@@ -6619,8 +6713,8 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       }
       if (S.block) return { id: 'sk-joinblock', label: 'Join it to the house' };
       if (S.drawing && S.drawing.length > 2) return { id: 'sk-close-shape', label: 'Finish the shape' };
-      if (!f.closed && !f.outline.length && S.active > 0 && S.floors[S.active - 1].closed) {
-        return { id: 'sk-copy', label: 'Copy the ' + S.floors[S.active - 1].name.toLowerCase() };
+      if (!f.closed && !f.outline.length && S.active > 0 && shapeBelow(S.active)) {
+        return { id: 'sk-copy', label: 'Same shape as the ' + shapeBelow(S.active).name.toLowerCase() };
       }
       var after = stageAfter('outline');
       if (f.closed && ready() && after) return { id: 'sk-go-' + after.id, label: 'Next — ' + after.label.toLowerCase() };
@@ -6693,6 +6787,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         : ((S.stage === 'internal' || S.stage === 'openings' || S.stage === 'rooms') && !f.closed)
             ? 'The ' + f.name.toLowerCase() + ' has no shape yet, so there is nothing to put walls or rooms in.'
         : (S.stage === 'outline' && S.block) ? 'Put it where it is on your house, and make it the right size.'
+        : (!mid && S.pick && S.pick.kind === 'corner' && editable()) ? 'Drag this corner to where it is. Tap × to remove it.'
         : (S.stage === 'internal' && S.selected) ? 'Drag the doorway along its wall, and choose how wide it is.'
         : (S.stage === 'internal' && S.pick && S.pick.kind === 'iwall') ? stage.picked
         : (S.stage === 'garden' && !mid && isArea(gardenTarget()))
@@ -6707,7 +6802,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
         : (S.stage === 'outline' && !f.closed && !mid && f.image)
             ? stage.plan
         : (S.stage === 'outline' && !f.closed && !f.outline.length && S.active > 0)
-            ? 'Copy the floor below, or draw this one.'
+            ? 'Press the blue button to start from the floor below, or tap round the corners.'
+        : (S.stage === 'outline' && S.active > 0 && f.closed && sameAsBelow(S.active))
+            ? 'Same shape as the ' + shapeBelow(S.active).name.toLowerCase() + '. If yours is different, drag a wall.'
         : (S.stage === 'rooms' && f.markers.length && floorWithoutRooms() >= 0)
             ? 'Tap the next room to name it. When this floor is done, press the blue button.'
         : (edited && stage.done ? stage.done : stage.hint);
@@ -9437,25 +9534,22 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
   function answerUpstairs(how) {
     if (!S.askUp) return;                    // a stale button: there is no question up
     // taken with the question still up, so undoing the answer asks it again
-    if (how === 'same' || how === 'diff') snapshot();
+    if (how === 'yes') snapshot();
     S.askUp = false; S.askedUp = true;
-    if (how === 'same') {
-      S.floors.push(newFloor(S.floors.length));
-      var was = S.active;
-      S.active = S.floors.length - 1;
-      copyFloorBelow(true);
-      S.active = was;
-      say('Upstairs added — same shape. You can change it later.');
-    } else if (how === 'diff') {
-      S.floors.push(newFloor(S.floors.length));
-      S.active = S.floors.length - 1;
-    }
-    FRAME = null; MANUAL = false;
-    settled();
-    // asked on the way to the next step: carry on there, unless there is an upstairs to draw
     var on = S.afterUp;
     S.afterUp = null;
-    if (on && how !== 'diff') goStage(on);
+    if (how === 'yes') {
+      // it arrives the same shape as downstairs and is put in front of them, so
+      // the one that is different can be changed there and then
+      S.floors.push(floorAbove());
+      S.active = S.floors.length - 1;
+      S.pick = null; S.drawing = null;
+    }
+    say('');
+    FRAME = null; MANUAL = false;
+    settled();
+    // asked on the way to the next step: with no upstairs to look at, carry on there
+    if (on && how !== 'yes') goStage(on);
   }
 
   /**
@@ -9677,17 +9771,47 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     settled();
   }
 
+  /** The nearest floor underneath that has a shape. */
+  function shapeBelow(i) {
+    for (var k = i - 1; k >= 0; k--) { if (S.floors[k] && S.floors[k].closed) return S.floors[k]; }
+    return null;
+  }
+
+  /**
+   * A new floor on top. It is always the same outline as the floor under it to
+   * start with — most houses go straight up — and is changed from there by
+   * dragging, like any other shape. Only the outline comes up: the walls,
+   * doors and rooms upstairs are a different layout, and a wrong bathroom
+   * count is worse than no bathroom count.
+   */
+  function floorAbove() {
+    var f = newFloor(S.floors.length), src = shapeBelow(S.floors.length);
+    if (src) {
+      f.outline = src.outline.map(function (p) { return p.slice(); });
+      f.closed = true;
+    }
+    return f;
+  }
+
+  /** This floor still has exactly the outline of the one under it. */
+  function sameAsBelow(i) {
+    var f = S.floors[i], b = shapeBelow(i);
+    if (!f || !b || !f.closed || f.outline.length !== b.outline.length) return false;
+    for (var k = 0; k < f.outline.length; k++) {
+      if (Math.abs(f.outline[k][0] - b.outline[k][0]) > 1e-6 || Math.abs(f.outline[k][1] - b.outline[k][1]) > 1e-6) return false;
+    }
+    return true;
+  }
+
+  /** An upper floor that was drawn again and left empty goes back to the shape below. */
   function copyFloorBelow(quiet) {
-    var src = S.floors[S.active - 1];
-    if (!src || !src.closed) return;
+    var src = shapeBelow(S.active);
+    if (!src || S.active === 0) return;
     if (!quiet) snapshot();                  // quiet: part of a step that has already been snapshotted
     S.drawing = null; S.cursor = null;       // a run of corners half tapped out is given up for the copy
     var f = floor();
     f.outline = src.outline.map(function (p) { return p.slice(); });
     f.closed = true;
-    f.internals = src.internals.map(function (s) { return [s[0].slice(), s[1].slice()]; });
-    // openings and rooms are NOT copied — upstairs is a different room layout,
-    // and a wrong bathroom count is worse than no bathroom count
     settled();
   }
 
@@ -10207,9 +10331,9 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
           snapshot();
           // adding a floor is the answer to "does it have an upstairs?"
           S.askUp = false; S.askedUp = true; S.afterUp = null; S.block = null;
-          S.floors.push(newFloor(S.floors.length));
+          S.floors.push(floorAbove());
           S.active = S.floors.length - 1;
-          S.stage = 'outline'; S.drawing = null; FRAME = null; settled(); return;
+          S.stage = 'outline'; S.drawing = null; S.pick = null; FRAME = null; MANUAL = false; settled(); return;
         case 'sk-dropfloor':
           if (S.active === 0 || S.floors.length < 2) return;       // the ground floor stays
           if (!S.confirm) { S.confirm = 'floor'; render(); return; }
@@ -10395,6 +10519,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
     f.openings.forEach(function (o) { out.push(openingSvg(f, o)); });
 
     var c0 = centroid(f.outline);
+    LAID = []; RUNOW = 0;                     // this picture's labels only keep clear of each other
     for (var i = 0; i < f.outline.length; i++) {
       var a = f.outline[i], b = f.outline[(i + 1) % f.outline.length];
       out.push(lengthTag(a, b, '', outward(a, b, c0)));
@@ -12192,7 +12317,7 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       return out;
     }
     if (S.askUp) {
-      out.now = 'Does your house have an upstairs? Press one of the three answers.';
+      out.now = 'Does your house have an upstairs? Press Yes or No. Yes adds it, the same shape as downstairs, and you can change it.';
       out.target = $('sk-upstairs');
       return out;
     }
@@ -12202,14 +12327,20 @@ var OpenTakeoffGeom=(()=>{var K=Object.defineProperty;var ct=Object.getOwnProper
       : 'Tap the next corner, going round the outside.';
 
     if (S.stage === 'outline') {
-      if (S.block) {
+      if (!S.block && !run && S.pick && S.pick.kind === 'corner') {
+        out.now = 'The blue dot is the corner you picked. Drag it to where it is on your house, or tap the red × to take it away. Tap an empty part of the grid to let go of it.';
+        out.target = $('sk-svg');
+      } else if (S.block) {
         out.now = 'Drag the new part to where it is on your house. Drag its arrows to make it the right size. Then press “Join it to the house”.';
         out.target = next;
       } else if (run) {
         out.now = runText; out.target = run > 2 ? next : $('sk-svg');
       } else if (!f.closed) {
-        if (nextOn) { out.now = 'Press the blue button to carry on. If this floor is a different shape, tap round its corners on the grid instead.'; out.target = next; }
+        if (nextOn) { out.now = 'Press the blue button to start this floor the same shape as the one below. You can change it after.'; out.target = next; }
         else { out.now = 'Tap each outside corner of your house on the grid, going round until you are back where you started.'; out.target = $('sk-svg'); }
+      } else if (S.active > 0) {
+        out.now = 'This is the ' + String(f.name || 'floor above').toLowerCase() + '. It starts the same shape as the floor below. If yours is different, drag a blue arrow or tap a number. When it looks right, press “' + (nextTxt || 'Next') + '”.';
+        out.target = next;
       } else {
         out.now = 'Check the sizes look about right. To change one, drag a blue arrow or tap a number. If part of your house sticks out, press “Add a part that sticks out”. When it looks right, press “' + (nextTxt || 'Next') + '”.';
         out.target = next;

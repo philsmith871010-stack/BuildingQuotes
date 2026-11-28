@@ -90,7 +90,7 @@
       return out;
     }
     if (S.askUp) {
-      out.now = 'Does your house have an upstairs? Press one of the three answers.';
+      out.now = 'Does your house have an upstairs? Press Yes or No. Yes adds it, the same shape as downstairs, and you can change it.';
       out.target = $('sk-upstairs');
       return out;
     }
@@ -100,14 +100,20 @@
       : 'Tap the next corner, going round the outside.';
 
     if (S.stage === 'outline') {
-      if (S.block) {
+      if (!S.block && !run && S.pick && S.pick.kind === 'corner') {
+        out.now = 'The blue dot is the corner you picked. Drag it to where it is on your house, or tap the red × to take it away. Tap an empty part of the grid to let go of it.';
+        out.target = $('sk-svg');
+      } else if (S.block) {
         out.now = 'Drag the new part to where it is on your house. Drag its arrows to make it the right size. Then press “Join it to the house”.';
         out.target = next;
       } else if (run) {
         out.now = runText; out.target = run > 2 ? next : $('sk-svg');
       } else if (!f.closed) {
-        if (nextOn) { out.now = 'Press the blue button to carry on. If this floor is a different shape, tap round its corners on the grid instead.'; out.target = next; }
+        if (nextOn) { out.now = 'Press the blue button to start this floor the same shape as the one below. You can change it after.'; out.target = next; }
         else { out.now = 'Tap each outside corner of your house on the grid, going round until you are back where you started.'; out.target = $('sk-svg'); }
+      } else if (S.active > 0) {
+        out.now = 'This is the ' + String(f.name || 'floor above').toLowerCase() + '. It starts the same shape as the floor below. If yours is different, drag a blue arrow or tap a number. When it looks right, press “' + (nextTxt || 'Next') + '”.';
+        out.target = next;
       } else {
         out.now = 'Check the sizes look about right. To change one, drag a blue arrow or tap a number. If part of your house sticks out, press “Add a part that sticks out”. When it looks right, press “' + (nextTxt || 'Next') + '”.';
         out.target = next;
